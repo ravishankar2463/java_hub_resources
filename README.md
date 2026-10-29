@@ -1,7 +1,4 @@
-# Structured Output Record Parser
+# LLM Structured Output Live Lab
 
-Demonstrates parsing structured JSON from Large Language Models directly into immutable Java 21 Records:
-- **Type-safe schema binding**: Prevents hallucinated or malformed properties from breaking downstream processing.
-- **Fail-safe fallbacks**: Ensures sensible defaults when optional fields are omitted.
-
-Run test suite: `mvn clean test`
+Run: `mvn spring-boot:run`
+Analyze: `curl -X GET "http://localhost:8080/api/v1/ai/review/analyze?file=MyService.java"`
