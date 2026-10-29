@@ -1,11 +1,4 @@
-# BoundedContextServiceBoundary
+# Microservice Principles Live Application
 
-Demonstrates microservice bounded context isolation and shared-nothing database architectures.
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Query: `curl -X GET http://localhost:8080/api/v1/context/info`
