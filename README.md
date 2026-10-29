@@ -1,11 +1,15 @@
-# KeycloakRoleMapper
+# Centralized Identity with Keycloak Live Application
 
-Maps realm_access and resource_access roles from Keycloak JWT claims into Spring authorities.
+Demonstrates:
+- **Keycloak Role Claims Mapping**: Parsing nested `realm_access.roles` and `resource_access` claims from OpenID Connect ID tokens.
+- **Custom JWT Converter**: Translating enterprise identity provider roles into Spring Security authorities.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
+## Running the Application
 ```bash
-mvn clean test
+mvn spring-boot:run
+```
+
+## Automated Testing
+```bash
+mvn test
 ```
