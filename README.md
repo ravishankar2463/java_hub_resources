@@ -1,11 +1,4 @@
-# CircuitBreakerStateMachine
+# Resiliency Patterns & Circuit Breakers Live Application
 
-Demonstrates Resilience4j Circuit Breaker state transitions: CLOSED, OPEN, and HALF_OPEN.
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Trip breaker: 3 failures `curl -X POST "http://localhost:8080/api/v1/resilience/call?fail=true"`
