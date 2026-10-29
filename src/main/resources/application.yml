@@ -1,0 +1,9 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: netflix-dgs-graphql-app
+  graphql:
+    graphiql:
+      enabled: true
+      path: /graphiql
