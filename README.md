@@ -1,60 +1,11 @@
-# Level 12: Kubernetes (K8s) for Java Devs — Hands-On Lab
+# K8sHealthProbeManager
 
-[![Live Guide](https://img.shields.io/badge/JavaHub-Read_Full_Lesson-10b981?style=for-the-badge&logo=googlechrome&logoColor=white)](https://ravishankar2463.github.io/java_hub/roadmap/level-12/kubernetes-k8s-for-java-devs)
-[![Branch](https://img.shields.io/badge/Git_Branch-topic--level-12--kubernetes-k8s-for-java-devs-blue?style=for-the-badge&logo=git&logoColor=white)](https://github.com/ravishankar2463/java_hub_resources/tree/topic/level-12/kubernetes-k8s-for-java-devs)
+Demonstrates Kubernetes Liveness, Readiness, and Startup probe state transitions.
 
-> **Companion Code Laboratory for [JavaHub](https://ravishankar2463.github.io/java_hub/)**  
-> **Level:** Level 12 (Level 12: Cloud-Native, Kubernetes & DevOps: Containers, Orchestration & CI/CD)  
-> **Topic:** Kubernetes (K8s) for Java Devs
+## Architectural Overview
+This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
 
----
-
-## 1. Overview & Lab Objective
-This branch contains verified, runnable Java 21 code and JUnit 5 test suites demonstrating the architecture and mechanisms discussed in the **[Kubernetes (K8s) for Java Devs Deep-Dive Guide](https://ravishankar2463.github.io/java_hub/roadmap/level-12/kubernetes-k8s-for-java-devs)**.
-
-### Key Concepts Covered:
-- Runtime memory models, invariants, and execution flow.
-- Idiomatic modern Java 21+ patterns and error prevention.
-- Automated assertion test suites with AssertJ and JUnit 5.
-
----
-
-## 2. Project Structure
-```
-.
-├── pom.xml                                        # Maven configuration (Java 21, JUnit 5, AssertJ)
-├── README.md                                      # This lab guide
-└── src
-    ├── main
-    │   └── java
-    │       └── io
-    │           └── javahub
-    │               └── level12
-    │                   └── kubernetesk8sforjavadevs
-    │                       └── Kubernetesk8sforjavadevsLab.java     # Implementation code
-    └── test
-        └── java
-            └── io
-                └── javahub
-                    └── level12
-                        └── kubernetesk8sforjavadevs
-                            └── Kubernetesk8sforjavadevsLabTest.java # Verified test suite
-```
-
----
-
-## 3. How to Run & Verify
-
-### Execute the automated test suite:
+## Running Tests Locally
 ```bash
 mvn clean test
-```
-
-### Switch to another topic or return to main:
-```bash
-# Return to the master catalog
-git checkout main
-
-# Or switch to any other topic
-git checkout topic/level-<N>/<topic-slug>
 ```
