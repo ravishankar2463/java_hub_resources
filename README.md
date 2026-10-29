@@ -1,11 +1,4 @@
-# SagaOrchestrator
+# Distributed Transactions (Saga Orchestration) Live Application
 
-Demonstrates the Orchestrated Saga pattern with forward steps and compensating rollback actions.
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Simulate rollback: `curl -X POST "http://localhost:8080/api/v1/saga/orders/execute?orderId=SAGA-99&failPayment=true"`
