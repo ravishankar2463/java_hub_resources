@@ -1,11 +1,4 @@
-# ApiGatewayRouteMatcher
+# API Gateway Live Application
 
-Demonstrates API gateway path predicates, header manipulation, and client-side load balancing.
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Routes: `curl -X GET http://localhost:8080/api/v1/gateway/routes`
