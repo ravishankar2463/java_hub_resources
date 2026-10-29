@@ -1,11 +1,5 @@
-# TumblingWindowAggregator
+# Stateful Stream Processing with Kafka Streams Live Lab
 
-Demonstrates stateful stream processing: tumbling time windows and state stores.
+Simulates time-windowed tumbling aggregations and state store persistence.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
