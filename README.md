@@ -1,11 +1,19 @@
-# DependencyCoordinateResolver
+# Build Tools & Maven Lifecycle Live Application
 
-Demonstrates Maven and Gradle dependency coordinates, GAV resolution, and transitive exclusion.
+This full Spring Boot 3 application demonstrates modern Maven configuration, reproducible builds, and build metadata injection.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
+## Running the Application
 ```bash
-mvn clean test
+mvn spring-boot:run
+```
+
+## Live Testing Endpoints
+```bash
+# Query build and runtime metadata
+curl -X GET http://localhost:8080/api/v1/build/info
+```
+
+## Running the Test Suite
+```bash
+mvn test
 ```
