@@ -1,11 +1,22 @@
-# TestingMockVerifier
+# Automated Testing & Slices Live Spring Boot Application
 
-Demonstrates service layer isolation, test doubles, and verification spies.
+Demonstrates:
+- **Unit Testing**: Fast, isolated testing of business logic without Spring context.
+- **Slice Testing with `@WebMvcTest`**: Focused controller testing with `@MockBean`.
+- **Full Integration Testing with `@SpringBootTest`**: Verifying end-to-end container integration.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
+## Running the Application
 ```bash
-mvn clean test
+mvn spring-boot:run
+```
+
+## Live Testing with cURL
+```bash
+# Calculate sales tax
+curl -X GET "http://localhost:8080/api/v1/tax/calculate?amount=150.00&rate=0.15"
+```
+
+## Running the Multi-Tier Test Suite
+```bash
+mvn test
 ```
