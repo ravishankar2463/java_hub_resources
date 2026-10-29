@@ -1,11 +1,6 @@
-# RebalancePartitionAssignor
+# Kafka Consumer Group Rebalance Live Application
 
-Demonstrates sticky partition assignments minimizing partition movement during group rebalances.
+Simulates consumer join/leave events and automatic partition reassignment across members.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Join: `curl -X POST "http://localhost:8080/api/v1/kafka/group/join?memberId=instance-1"`
