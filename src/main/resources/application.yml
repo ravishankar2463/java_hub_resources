@@ -1,0 +1,10 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: custom-starters-app
+app:
+  multitenant:
+    enabled: true
+    default-tenant: "production-eu"
+    isolation-mode: "DATABASE_PER_TENANT"
