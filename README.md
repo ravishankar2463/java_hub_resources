@@ -1,11 +1,5 @@
-# DebeziumCdcEventParser
+# Change Data Capture with Debezium Live Application
 
-Parses Debezium CDC event envelopes: before, after, op types (c, u, d), and source metadata.
+Parses Debezium CDC envelopes (before, after, op code) from database WAL streams.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
