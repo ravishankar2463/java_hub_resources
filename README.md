@@ -1,11 +1,24 @@
-# TransactionalOutboxRelay
+# Transactional Outbox Pattern Live Application
 
-Eliminates dual-write anomalies by writing domain entities and outbox events in a single local transaction.
+Demonstrates:
+- **Dual-Write Hazard Mitigation**: Preventing inconsistencies between database commits and message broker dispatch.
+- **Outbox Relay**: Asynchronously publishing events to Kafka without blocking user transactions.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
+## Running the Application
 ```bash
-mvn clean test
+mvn spring-boot:run
+```
+
+## Live Testing with cURL
+```bash
+# 1. Place order (creates outbox event atomically)
+curl -X POST "http://localhost:8080/api/v1/outbox/orders?orderId=ORD-7711&amount=899.00"
+
+# 2. Inspect outbox events (transitions from PENDING to PUBLISHED via scheduled relay)
+curl -X GET http://localhost:8080/api/v1/outbox/events
+```
+
+## Automated Testing
+```bash
+mvn test
 ```
