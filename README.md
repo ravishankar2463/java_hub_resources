@@ -1,60 +1,7 @@
-# Level 15: Zero-Allocation Java and Garbage-Free Patterns — Hands-On Lab
+# Garbage-Free Byte Buffer Pool
 
-[![Live Guide](https://img.shields.io/badge/JavaHub-Read_Full_Lesson-10b981?style=for-the-badge&logo=googlechrome&logoColor=white)](https://ravishankar2463.github.io/java_hub/roadmap/level-15/zero-allocation-java-and-garbage-free-patterns)
-[![Branch](https://img.shields.io/badge/Git_Branch-topic--level-15--zero-allocation-java-and-garbage-free-patterns-blue?style=for-the-badge&logo=git&logoColor=white)](https://github.com/ravishankar2463/java_hub_resources/tree/topic/level-15/zero-allocation-java-and-garbage-free-patterns)
+Demonstrates steady-state zero-allocation programming patterns:
+- **Direct ByteBuffers**: Off-heap I/O buffers avoiding JVM garbage collector pauses.
+- **Object Recycling**: Eliminating the creation of transient objects on microsecond execution paths.
 
-> **Companion Code Laboratory for [JavaHub](https://ravishankar2463.github.io/java_hub/)**  
-> **Level:** Level 15 (Level 15: Ultra-Low Latency & Mechanical Sympathy: Sub-Microsecond Systems & Hardware Alignment)  
-> **Topic:** Zero-Allocation Java and Garbage-Free Patterns
-
----
-
-## 1. Overview & Lab Objective
-This branch contains verified, runnable Java 21 code and JUnit 5 test suites demonstrating the architecture and mechanisms discussed in the **[Zero-Allocation Java and Garbage-Free Patterns Deep-Dive Guide](https://ravishankar2463.github.io/java_hub/roadmap/level-15/zero-allocation-java-and-garbage-free-patterns)**.
-
-### Key Concepts Covered:
-- Runtime memory models, invariants, and execution flow.
-- Idiomatic modern Java 21+ patterns and error prevention.
-- Automated assertion test suites with AssertJ and JUnit 5.
-
----
-
-## 2. Project Structure
-```
-.
-├── pom.xml                                        # Maven configuration (Java 21, JUnit 5, AssertJ)
-├── README.md                                      # This lab guide
-└── src
-    ├── main
-    │   └── java
-    │       └── io
-    │           └── javahub
-    │               └── level15
-    │                   └── zeroallocationjavaandgarbagefreepatterns
-    │                       └── ZeroallocationjavaandgarbagefreepatternsLab.java     # Implementation code
-    └── test
-        └── java
-            └── io
-                └── javahub
-                    └── level15
-                        └── zeroallocationjavaandgarbagefreepatterns
-                            └── ZeroallocationjavaandgarbagefreepatternsLabTest.java # Verified test suite
-```
-
----
-
-## 3. How to Run & Verify
-
-### Execute the automated test suite:
-```bash
-mvn clean test
-```
-
-### Switch to another topic or return to main:
-```bash
-# Return to the master catalog
-git checkout main
-
-# Or switch to any other topic
-git checkout topic/level-<N>/<topic-slug>
-```
+Run test suite: `mvn clean test`
