@@ -1,11 +1,22 @@
-# OAuth2ScopeValidator
+# OAuth2 & OIDC Resource Server Live Application
 
-Demonstrates OAuth2 Resource Server scope validation and JWT bearer token extraction.
+Demonstrates:
+- **Spring Security OAuth2 Resource Server**: Bearer token validation and decoding.
+- **Custom JWT Claim Mapping**: Converting OAuth2 scopes into Spring `GrantedAuthority` instances.
+- **Scope-based Access Control**: Restricting API endpoints by required scope (`SCOPE_orders.read`).
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
+## Running the Application
 ```bash
-mvn clean test
+mvn spring-boot:run
+```
+
+## Live Testing with cURL
+```bash
+# 1. Access public health endpoint
+curl -X GET http://localhost:8080/api/v1/public/ping
+```
+
+## Automated Testing
+```bash
+mvn test
 ```
