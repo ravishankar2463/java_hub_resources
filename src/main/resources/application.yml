@@ -1,0 +1,11 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: kafka-producer-app
+  kafka:
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+        retries: 5

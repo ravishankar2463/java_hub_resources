@@ -1,11 +1,6 @@
-# IdempotentProducerSimulator
+# Kafka Idempotent Producer Live Application
 
-Demonstrates Kafka idempotent producer sequence numbers preventing duplicate messages.
+Demonstrates idempotent message delivery and duplicate elimination using sequence numbering.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Publish: `curl -X POST "http://localhost:8080/api/v1/orders/publish?orderId=ORD-101&payload=Buy&sequence=1"`
