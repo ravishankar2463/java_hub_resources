@@ -1,7 +1,4 @@
-# Function Calling Tool Registry
+# LLM Tool Calling Live Application
 
-Demonstrates registering deterministic Java tools for invocation by autonomous LLMs:
-- **Schema Contracts**: Exposing typed parameter schemas to the model.
-- **Sandboxed Dispatch**: Safely catching execution failures and piping error messages back to the LLM agent.
-
-Run test suite: `mvn clean test`
+Run: `mvn spring-boot:run`
+Invoke tool: `curl -X POST "http://localhost:8080/api/v1/tools/dispatch?tool=getAccountBalance&argument=ACT-101"`
