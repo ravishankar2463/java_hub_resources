@@ -1,7 +1,4 @@
-# Vector Embedding Search Engine
+# Vector Databases & Semantic Search Live Lab
 
-Demonstrates vector indexing and semantic nearest-neighbor search:
-- **Cosine Similarity**: Vector dot-product divided by Euclidean norms.
-- **Top-K Ranking**: Streaming sort and cutoff for LLM context retrieval.
-
-Run test suite: `mvn clean test`
+Run: `mvn spring-boot:run`
+Search: `curl -X GET http://localhost:8080/api/v1/vectors/search`
