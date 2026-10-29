@@ -1,11 +1,4 @@
-# ResilientHttpExecutor
+# Inter-Service Communication Live Lab
 
-Demonstrates connection pooling, client-side timeouts, and HTTP client error classification.
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Call: `curl -X GET "http://localhost:8080/api/v1/communication/call?service=Payment"`
