@@ -1,7 +1,4 @@
-# Retrieval-Augmented Generation (RAG) Engine
+# Retrieval-Augmented Generation (RAG) Live Lab
 
-Demonstrates document chunking and context injection for grounded LLM inference:
-- **Chunking Pipeline**: Splits long-form corporate knowledge bases into consumable passages.
-- **Synthesized Prompt**: Injects grounding knowledge into SYSTEM context to avoid hallucinations.
-
-Run test suite: `mvn clean test`
+Run: `mvn spring-boot:run`
+Synthesize prompt: `curl -X GET "http://localhost:8080/api/v1/rag/prompt?query=VirtualThreads"`
