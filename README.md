@@ -1,8 +1,4 @@
-# Spring AI ChatClient Simulator
+# Spring AI ChatClient Live Lab
 
-This laboratory demonstrates how to configure enterprise LLM interactions using Spring AI abstractions:
-- **Role-based Messages**: Distinction between SYSTEM prompts, USER turns, and ASSISTANT responses.
-- **Prompt Options**: Model parameters including temperature, token ceiling, and target model identifiers.
-- **Conversation State**: Maintaining conversational context across multi-turn interactions.
-
-Run test suite: `mvn clean test`
+Run: `mvn spring-boot:run`
+Generate: `curl -X POST "http://localhost:8080/api/v1/ai/chat/generate?prompt=ExplainLoom"`
