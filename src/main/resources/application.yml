@@ -1,0 +1,16 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: hibernate-tuning-app
+  datasource:
+    url: jdbc:h2:mem:tuningdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        default_batch_fetch_size: 20
