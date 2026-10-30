@@ -1,11 +1,4 @@
-# BTreeIndexSimulator
+# Database Engine Internals (B-Trees & MVCC) Live Lab
 
-Simulates balanced B-Tree index page splitting and MVCC row versioning snapshot visibility.
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Point seek: `curl -X GET "http://localhost:8080/api/v1/engine/btree/seek?key=200"`
