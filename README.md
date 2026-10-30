@@ -1,11 +1,4 @@
-# RedisCacheAsideEngine
+# Distributed Caching with Redis Live Lab
 
-Demonstrates Cache-Aside, TTL expiration, and cache eviction patterns.
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Cache Aside: `curl -X GET "http://localhost:8080/api/v1/redis/get?key=user-99"`
