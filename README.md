@@ -1,11 +1,4 @@
-# SqlWindowFunctionSimulator
+# Advanced SQL & Window Functions Live Application
 
-Simulates SQL window aggregation functions (ROW_NUMBER, RANK, DENSE_RANK, SUM OVER PARTITION).
-
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
-
-## Running Tests Locally
-```bash
-mvn clean test
-```
+Run: `mvn spring-boot:run`
+Query Window Analytics: `curl -X GET http://localhost:8080/api/v1/sql/window-ranking`
