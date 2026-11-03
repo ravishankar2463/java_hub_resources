@@ -1,7 +1,12 @@
-# Chronicle Memory-Mapped Queue Simulator
+# Level 15: Ultra-Low Latency Messaging — Aeron & Chronicle Queue
 
-Demonstrates memory-mapped zero-copy messaging architectures (Chronicle Queue / Aeron IPC):
-- **Length-prefixed binary wire frames**: Fast, compact serializations.
-- **Tailer Cursor Mechanics**: Sequential append-only streaming with zero OS syscalls on the reader thread.
+Demonstrates kernel-bypass and **shared memory-mapped IPC** architectures capable of sub-microsecond point-to-point transfer times.
 
-Run test suite: `mvn clean test`
+---
+
+## Run Commands
+
+```bash
+mvn compile exec:java
+mvn test
+```
