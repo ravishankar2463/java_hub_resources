@@ -1,7 +1,12 @@
-# Garbage-Free Byte Buffer Pool
+# Level 15: Zero-Allocation Java & Flyweight Patterns
 
-Demonstrates steady-state zero-allocation programming patterns:
-- **Direct ByteBuffers**: Off-heap I/O buffers avoiding JVM garbage collector pauses.
-- **Object Recycling**: Eliminating the creation of transient objects on microsecond execution paths.
+Demonstrates zero-garbage programming techniques used by high-frequency trading platforms to guarantee zero Stop-The-World (STW) pauses.
 
-Run test suite: `mvn clean test`
+---
+
+## Run Verification
+
+```bash
+mvn compile exec:java
+mvn test
+```
