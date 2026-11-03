@@ -1,11 +1,21 @@
-# JfrEventSimulator
+# Level 13: JVM Profiling with JFR & Custom Events
 
-Demonstrates JDK Flight Recorder (JFR) custom event emission for low-overhead CPU profiling.
+Continuous production profiling using **Java Flight Recorder (JFR)** introduces less than 1% overhead, making it safe for production hyperscale deployments.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
+---
 
-## Running Tests Locally
+## Starting JFR Recording at JVM Startup
+
 ```bash
-mvn clean test
+java -XX:StartFlightRecording=disk=true,dumponexit=true,filename=recording.jfr,settings=profile -jar app.jar
+```
+
+## Starting JFR via JDK `jcmd` on a Running Process
+
+```bash
+# 1. Discover JVM PID
+jcmd
+
+# 2. Start a 60-second diagnostic recording
+jcmd <PID> JFR.start name=prod-profiling duration=60s filename=prod-profile.jfr
 ```
