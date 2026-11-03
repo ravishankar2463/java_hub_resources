@@ -9,3 +9,20 @@ This companion laboratory provides an authentic, runnable Java 21 implementation
 ```bash
 mvn clean test
 ```
+
+
+---
+
+## Running the Interactive Demo Locally
+
+Execute the Java 21 CLI application directly via Maven:
+```bash
+mvn compile exec:java
+```
+
+## Running the Automated Test Suite
+
+Run the full JUnit 5 and AssertJ verification suite:
+```bash
+mvn test
+```
