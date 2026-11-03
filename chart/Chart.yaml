@@ -1,0 +1,9 @@
+apiVersion: v2
+name: javahub-service
+description: Production-grade Helm chart for JavaHub Spring Boot Services
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: JavaHub Team
+    email: engineering@javahub.io
