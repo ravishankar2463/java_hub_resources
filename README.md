@@ -1,11 +1,21 @@
-# JvmGarbageCollectorProfiler
+# Level 13: Advanced JVM Tuning & Generational GC Profiling
 
-Calculates Young vs Old generation allocation ratios and pause time SLA compliance.
+This project provides live runtime diagnostics into JVM generational memory structures (Eden, Survivor, Old Gen / Tenured, Metaspace) and GC metrics.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
+---
 
-## Running Tests Locally
+## Production Recommended Flag Profiles
+
+### 1. Low Latency: Generational ZGC (Java 21+)
 ```bash
-mvn clean test
+java -XX:+UseZGC -XX:+ZGenerational -Xms4g -Xmx4g -jar app.jar
+```
+
+### 2. High Throughput: G1GC with String Deduplication
+```bash
+java -XX:+UseG1GC \
+     -XX:MaxGCPauseMillis=100 \
+     -XX:+UseStringDeduplication \
+     -Xlog:gc*,gc+phases=debug:file=/var/log/app/gc.log:time,uptime,pid:filecount=5,filesize=50M \
+     -jar app.jar
 ```
