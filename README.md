@@ -1,8 +1,17 @@
-# Project Panama Off-Heap Memory Manager
+# Level 15: Project Panama — Foreign Function & Memory (FFM) API
 
-Demonstrates Java 21 standard Foreign Function & Memory API (JEP 454):
-- **Arena Lifecycle**: Deterministic `Arena.ofConfined()` scoped allocation.
-- **Off-heap MemorySegments**: Direct unmanaged native buffer manipulation bypassing JVM garbage collection.
-- **ValueLayout**: Strongly-typed primitive addressing (`JAVA_LONG`, `JAVA_BYTE`).
+Java 21 officially stabilizes **JEP 454 (Foreign Function & Memory API)**, replacing fragile and unsafe JNI and `sun.misc.Unsafe` with safe, deterministic off-heap memory abstractions:
+- **Arena**: Controls native memory allocation lifecycles (`ofConfined()`, `ofShared()`, `global()`).
+- **MemorySegment**: Bounded, type-safe contiguous buffer representing off-heap memory.
 
-Run test suite: `mvn clean test`
+---
+
+## Run & Verify
+
+```bash
+# Run CLI demo
+mvn compile exec:java
+
+# Run test suite
+mvn test
+```
