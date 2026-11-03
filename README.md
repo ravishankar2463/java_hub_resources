@@ -1,7 +1,14 @@
-# LMAX Disruptor Lock-Free Ring Buffer
+# Level 15: The LMAX Disruptor — Lock-Free Ring Buffers
 
-Demonstrates lock-free circular buffer mechanics:
-- **Bitwise Masking**: Fast modulo operation `(sequence & indexMask)` leveraging power-of-two sizing.
-- **Pre-allocated Event Slots**: Eliminates dynamic memory churn on critical low-latency hot paths.
+This project demonstrates the core architectural patterns behind the **LMAX Disruptor**:
+1. **Power-of-Two Bitwise Masking**: `index = sequence & (capacity - 1)` instead of CPU-costly `sequence % capacity`.
+2. **Pre-Allocated Memory**: Eliminates GC pauses during steady-state event handling.
 
-Run test suite: `mvn clean test`
+---
+
+## Verification
+
+```bash
+mvn compile exec:java
+mvn test
+```
