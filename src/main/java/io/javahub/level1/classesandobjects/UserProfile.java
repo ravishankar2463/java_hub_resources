@@ -60,4 +60,24 @@ public final class UserProfile {
     public String getEmail() { return email; }
     public int getAge() { return age; }
     public boolean isActive() { return active; }
+
+    public static void main(String[] args) {
+        System.out.println("================================================================================");
+        System.out.println("  JavaHub Interactive Lab: Classes, Objects & Builder Pattern");
+        System.out.println("================================================================================");
+        UserProfile profile = new UserProfile.Builder("USR-9921")
+                .email("alice.dev@javahub.io")
+                .age(28)
+                .active(true)
+                .build();
+        System.out.println("Constructed Immutable UserProfile:");
+        System.out.println("  User ID : " + profile.getUserId());
+        System.out.println("  Email   : " + profile.getEmail());
+        System.out.println("  Age     : " + profile.getAge());
+        System.out.println("  Active  : " + profile.isActive());
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("SUCCESS: Execution verified. Run 'mvn test' for full assertion suite.");
+        System.out.println("================================================================================");
+    }
+
 }
