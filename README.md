@@ -1,8 +1,15 @@
-# False Sharing Cache Line Benchmark
+# Level 15: Mechanical Sympathy and CPU Architecture
 
-Demonstrates mechanical sympathy and CPU architecture alignment:
-- **64-Byte Cache Lines**: How modern x86/ARM CPUs fetch memory blocks.
-- **Cache Coherence Protocols (MESI)**: Why multi-core contention on adjacent fields causes pipeline stalls.
-- **Defensive Padding**: Eliminating false sharing without native JNI code.
+This project demonstrates how CPU architecture (L1/L2/L3 cache line width, MESI cache coherence protocol, and pipeline branch predictors) dictates Java execution latency.
 
-Run test suite: `mvn clean test`
+---
+
+## Running the Benchmark
+
+```bash
+# Compile and run CLI benchmark
+mvn compile exec:java
+
+# Run tests
+mvn test
+```
