@@ -1,11 +1,27 @@
-# CiPipelineQualityGate
+# Level 12: CI/CD Pipelines & Infrastructure as Code (IaC)
 
-Demonstrates CI/CD automated test verification, SonarQube quality gates, and artifact deployment.
+This project provides an automated **CI/CD Pipeline** with GitHub Actions and declarative **Terraform** configuration for deploying Java services.
 
-## Architectural Overview
-This companion laboratory provides an authentic, runnable Java 21 implementation and automated JUnit 5 / AssertJ test suite.
+---
 
-## Running Tests Locally
+## Pipeline Features
+
+1. **Deterministic Build & Quality Gate**:
+   - Automated compilation, unit testing, and static analysis verification via `mvn verify`.
+2. **Container Security Audit**:
+   - Vulnerability analysis preventing deployment of compromised dependencies.
+3. **Terraform Validation**:
+   - Automated syntax formatting and schema validation (`terraform fmt`, `terraform validate`).
+
+---
+
+## Verification Commands
+
 ```bash
+# Run automated tests
 mvn clean test
+
+# Validate Terraform code locally
+terraform -chdir=terraform init -backend=false
+terraform -chdir=terraform validate
 ```
