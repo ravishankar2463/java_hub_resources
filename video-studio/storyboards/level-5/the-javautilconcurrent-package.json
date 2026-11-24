@@ -1,0 +1,589 @@
+{
+  "chapterId": "level-5/the-javautilconcurrent-package",
+  "level": "level-5",
+  "levelLabel": "Level 5",
+  "slug": "the-javautilconcurrent-package",
+  "chapterTitle": "The java.util.concurrent Package",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-5/the-javautilconcurrent-package",
+  "branchName": "topic/level-5/the-javautilconcurrent-package",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-explicit-locks",
+      "partTitle": "Beyond Synchronized: Explicit Locks",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Concurrency Primitives • Part 1 of 5",
+          "headline": "Why ditch the synchronized keyword?",
+          "highlightWord": "ditch synchronized",
+          "subline": "Synchronized blocks are rigid. They lack timeouts, interrupts, and granular control.",
+          "narration": "Synchronized blocks are the default, but they're rigid. You cannot set timeouts, you cannot interrupt them, and they share one wait set. Let's look at the alternatives.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-code-reentrant",
+          "kind": "code-spotlight",
+          "title": "ReentrantLock with Conditions",
+          "filename": "BoundedTaskBuffer.java",
+          "code": "private final ReentrantLock lock = new ReentrantLock();\nprivate final Condition notFull = lock.newCondition();\n\npublic void put(T item) throws InterruptedException {\n    lock.lockInterruptibly();\n    try {\n        while (count == items.length) notFull.await();\n        // add item logic\n    } finally {\n        lock.unlock();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "lockInterruptibly",
+              "explanation": "Allows the thread to respond to interrupts, preventing permanent hangs.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "finally block",
+              "explanation": "Mandatory. If you forget this, you leak the lock forever.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use lockInterruptibly and wrap the critical section in a finally block. Unlike synchronized, the JVM won't clean up your lock if an exception escapes.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b3-compare-rw",
+          "kind": "compare",
+          "title": "ReadWriteLock vs. Standard Lock",
+          "top": {
+            "label": "ReentrantLock",
+            "badge": "Exclusive",
+            "tone": "neutral",
+            "code": "lock.lock(); // Blocks all other threads",
+            "points": [
+              "Simple, safe",
+              "Bottlenecks read-heavy state"
+            ]
+          },
+          "bottom": {
+            "label": "ReadWriteLock",
+            "badge": "Shared Reads",
+            "tone": "good",
+            "code": "readLock.lock(); // Concurrent reads allowed",
+            "points": [
+              "High read throughput",
+              "Exclusive write access"
+            ]
+          },
+          "narration": "If your state is read-heavy, ReentrantLock is a bottleneck. ReadWriteLock lets multiple readers in simultaneously, only locking exclusively for writers.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-terminal-stamped",
+          "kind": "terminal",
+          "title": "StampedLock Optimistic Reads",
+          "caption": "No lock acquisition for hot paths",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "long stamp = lock.tryOptimisticRead();"
+            },
+            {
+              "kind": "output",
+              "text": "double x = this.x;"
+            },
+            {
+              "kind": "command",
+              "text": "if (!lock.validate(stamp)) {"
+            },
+            {
+              "kind": "comment",
+              "text": "// Writer intervened, fallback to readLock"
+            },
+            {
+              "kind": "command",
+              "text": "stamp = lock.readLock(); ..."
+            }
+          ],
+          "narration": "StampedLock is the speed king. Optimistic reads grab a version stamp without locking. If the data hasn't changed, you're done. No lock overhead at all.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Always unlock in finally",
+            "Use ReadWriteLock for read-heavy state",
+            "StampedLock avoids locking for reads"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Atomic variables and the CAS loop →",
+          "narration": "That's the locking layer. In Part 2, we dive into lock-free atomic variables and how CAS instructions keep your counters fast.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-atomics-and-cas",
+      "partTitle": "Lock-Free Atomics & CAS",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Lock-Free Concurrency • Part 2 of 5",
+          "headline": "Locks are slow. Can we do better?",
+          "highlightWord": "do better",
+          "subline": "Hardware-level Compare-And-Swap (CAS) lets you update state without ever blocking a thread.",
+          "narration": "Locks are pessimistic. They assume conflict and block. Atomics are optimistic. They use CPU-level CAS instructions to update state without ever stopping a thread.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-cas",
+          "kind": "code-spotlight",
+          "title": "The CAS Retry Loop",
+          "filename": "RetryBudget.java",
+          "code": "public boolean tryConsume() {\n    while (true) {\n        int current = remaining.get();\n        if (current <= 0) return false;\n        if (remaining.compareAndSet(current, current - 1))\n            return true;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "while(true)",
+              "explanation": "The retry loop is essential because CAS might fail if another thread wins.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "compareAndSet",
+              "explanation": "Atomic hardware instruction: update only if value is still 'current'.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The CAS loop is the heart of lock-free code. You read, you check, and you attempt to swap. If another thread beat you to it, you simply retry.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow-longadder",
+          "kind": "flow-diagram",
+          "title": "AtomicLong vs LongAdder",
+          "nodes": [
+            {
+              "label": "AtomicLong",
+              "detail": "Single memory address, high contention",
+              "tag": "Bottleneck",
+              "accent": "amber"
+            },
+            {
+              "label": "LongAdder",
+              "detail": "Striped cells, padded to avoid cache-line bouncing",
+              "tag": "Scalable",
+              "accent": "emerald"
+            },
+            {
+              "label": "Summation",
+              "detail": "Aggregates cells on demand",
+              "tag": "Read-Heavy",
+              "accent": "sky"
+            }
+          ],
+          "narration": "AtomicLong hits a wall under high contention because every core fights for the same cache line. LongAdder stripes the work across multiple cells to scale linearly.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code-aba",
+          "kind": "code-spotlight",
+          "title": "The ABA Problem",
+          "filename": "VersionedState.java",
+          "code": "AtomicStampedReference<String> state = ...;\n\npublic boolean transition(String expected) {\n    int[] stamp = new int[1];\n    String current = state.get(stamp);\n    return state.compareAndSet(current, \"NEXT\", \n                               stamp[0], stamp[0] + 1);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "AtomicStampedReference",
+              "explanation": "Pairs the value with a version stamp to prevent ABA bugs.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The ABA problem happens when a value changes from A to B and back to A. CAS thinks nothing changed. AtomicStampedReference fixes this by tracking a version stamp.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "CAS is optimistic, not blocking",
+            "LongAdder beats AtomicLong at scale",
+            "Use StampedReference to prevent ABA"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Concurrent Collections →",
+          "narration": "Atomics are fast, but complex. In Part 3, we simplify your life with concurrent collections that handle the heavy lifting for you.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-concurrent-collections",
+      "partTitle": "Concurrent Collections",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Collections • Part 3 of 5",
+          "headline": "Stop wrapping collections in synchronized!",
+          "highlightWord": "Stop wrapping",
+          "subline": "Coarse locking kills performance. Use concurrent-specific structures designed for multi-core scaling.",
+          "narration": "Wrapping a map in synchronized is a performance killer. It serializes everything. Concurrent collections are designed for lock-free reads and granular bucket locking.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow-chm",
+          "kind": "flow-diagram",
+          "title": "ConcurrentHashMap Internals",
+          "nodes": [
+            {
+              "label": "Reads",
+              "detail": "Volatile, lock-free traversal",
+              "tag": "Fast",
+              "accent": "emerald"
+            },
+            {
+              "label": "Writes",
+              "detail": "Locking only on the specific bucket head",
+              "tag": "Granular",
+              "accent": "amber"
+            },
+            {
+              "label": "Trees",
+              "detail": "O(log n) for high collisions",
+              "tag": "Safe",
+              "accent": "sky"
+            }
+          ],
+          "narration": "ConcurrentHashMap is a masterpiece. Reads are lock-free. Writes only lock the specific bucket head. And if collisions spike, it converts linked lists into red-black trees.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-compare-map",
+          "kind": "compare",
+          "title": "Check-Then-Act Bugs",
+          "top": {
+            "label": "Buggy",
+            "badge": "Race Condition",
+            "tone": "bad",
+            "code": "if (!map.containsKey(k)) map.put(k, v);",
+            "points": [
+              "Non-atomic",
+              "Multiple threads can overwrite"
+            ]
+          },
+          "bottom": {
+            "label": "Safe",
+            "badge": "Atomic",
+            "tone": "good",
+            "code": "map.computeIfAbsent(k, key -> v);",
+            "points": [
+              "Atomic per key",
+              "Thread-safe"
+            ]
+          },
+          "narration": "Never combine two map calls. Two threads can check and then both put. Use computeIfAbsent to make the check and insertion a single atomic operation.",
+          "durationSec": 11,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b4-code-cow",
+          "kind": "code-spotlight",
+          "title": "CopyOnWriteArrayList",
+          "filename": "AuditBus.java",
+          "code": "private final List<Consumer> listeners = \n    new CopyOnWriteArrayList<>();\n\npublic void publish(String event) {\n    for (Consumer l : listeners) {\n        l.accept(event);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Copy-on-write",
+              "explanation": "Every mutation creates a new array. Perfect for read-heavy listener lists.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Snapshot iteration",
+              "explanation": "Iterators never throw ConcurrentModificationException.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "CopyOnWriteArrayList is for lists you read constantly but change rarely. Iterators work on a snapshot, so you never get a concurrent modification exception.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Avoid synchronized wrappers",
+            "Use computeIfAbsent for atomicity",
+            "CopyOnWrite for read-heavy lists"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Blocking Queues →",
+          "narration": "Collections are sorted. In Part 4, we use BlockingQueues to build robust producer-consumer pipelines without managing raw threads.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-blocking-queues",
+      "partTitle": "Blocking Queues",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Pipelines • Part 4 of 5",
+          "headline": "Stop writing your own wait/notify loops.",
+          "highlightWord": "wait/notify",
+          "subline": "BlockingQueues handle backpressure, locking, and thread handoffs out of the box.",
+          "narration": "Stop writing manual wait-notify loops. BlockingQueues handle the queueing, locking, and backpressure for you. It's the standard for producer-consumer pipelines.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow-methods",
+          "kind": "flow-diagram",
+          "title": "Queue Method Families",
+          "nodes": [
+            {
+              "label": "Exception",
+              "detail": "add(), remove()",
+              "tag": "Strict",
+              "accent": "amber"
+            },
+            {
+              "label": "Special",
+              "detail": "offer(), poll()",
+              "tag": "Non-blocking",
+              "accent": "sky"
+            },
+            {
+              "label": "Blocking",
+              "detail": "put(), take()",
+              "tag": "Backpressure",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Choose your method family. Use exceptions for strict logic, special values for non-blocking checks, or blocking methods to apply natural backpressure.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-queue",
+          "kind": "code-spotlight",
+          "title": "Producer-Consumer Pipeline",
+          "filename": "Pipeline.java",
+          "code": "BlockingQueue<Order> queue = new ArrayBlockingQueue<>(1000);\n\npublic void consume() throws InterruptedException {\n    while (!Thread.interrupted()) {\n        Order o = queue.take(); // Blocks until available\n        process(o);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "ArrayBlockingQueue",
+              "explanation": "Bounded capacity prevents memory exhaustion.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "take()",
+              "explanation": "Efficiently parks the thread until data arrives.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "ArrayBlockingQueue is your best friend for backpressure. If the queue is full, the producer blocks. If it's empty, the consumer waits. Simple, robust, and fast.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare-queues",
+          "kind": "compare",
+          "title": "Queue Implementations",
+          "top": {
+            "label": "LinkedBlockingQueue",
+            "badge": "Dual Locks",
+            "tone": "good",
+            "code": "new LinkedBlockingQueue<>(1000);",
+            "points": [
+              "Separate put/take locks",
+              "Higher throughput"
+            ]
+          },
+          "bottom": {
+            "label": "SynchronousQueue",
+            "badge": "Zero Capacity",
+            "tone": "neutral",
+            "code": "new SynchronousQueue<>();",
+            "points": [
+              "Direct handoff",
+              "No buffering"
+            ]
+          },
+          "narration": "LinkedBlockingQueue uses separate locks for put and take, scaling better than array versions. Use SynchronousQueue if you need a direct handoff with zero buffering.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "BlockingQueue for backpressure",
+            "Use take() to wait efficiently",
+            "LinkedBlockingQueue scales better"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Synchronizers →",
+          "narration": "Queues are ready. In Part 5, we wrap up with Synchronizers: CountDownLatches, Barriers, and Semaphores for complex thread coordination.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-synchronizers",
+      "partTitle": "Synchronizers & Recap",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Coordination • Part 5 of 5",
+          "headline": "How do you sync 100 threads?",
+          "highlightWord": "sync 100 threads",
+          "subline": "CountDownLatches, Barriers, and Semaphores are the final pieces of the concurrency puzzle.",
+          "narration": "Coordinating multiple threads is hard. Synchronizers make it easy. From one-shot gates to reusable barriers, here is how you manage complex thread lifecycles.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-flow-sync",
+          "kind": "flow-diagram",
+          "title": "Choosing a Synchronizer",
+          "nodes": [
+            {
+              "label": "Latch",
+              "detail": "One-shot gate, wait for N tasks",
+              "tag": "CountDownLatch",
+              "accent": "amber"
+            },
+            {
+              "label": "Barrier",
+              "detail": "Reusable checkpoint for N threads",
+              "tag": "CyclicBarrier",
+              "accent": "sky"
+            },
+            {
+              "label": "Semaphore",
+              "detail": "Permit-based resource limiting",
+              "tag": "Semaphore",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use a Latch for startup gates. Use a Barrier for multi-phase parallel algorithms. Use a Semaphore to cap access to scarce resources like database connections.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-code-semaphore",
+          "kind": "code-spotlight",
+          "title": "Rate Limiting with Semaphores",
+          "filename": "Gateway.java",
+          "code": "private final Semaphore limit = new Semaphore(20);\n\npublic void call() throws InterruptedException {\n    limit.acquire();\n    try {\n        // call external API\n    } finally {\n        limit.release();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "20 Permits",
+              "explanation": "Limits concurrent outbound calls to exactly 20.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                8
+              ],
+              "badge": "acquire/release",
+              "explanation": "Always release in finally to prevent resource starvation.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Semaphores are perfect for rate limiting. Acquire a permit before calling an external API and release it in a finally block. It's the cleanest way to cap concurrency.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-terminal-recap",
+          "kind": "terminal",
+          "title": "Concurrency Cheat Sheet",
+          "caption": "Your toolkit for high-performance Java",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Locks: Reentrant, ReadWrite, Stamped"
+            },
+            {
+              "kind": "comment",
+              "text": "# Atomics: CAS, LongAdder, StampedRef"
+            },
+            {
+              "kind": "comment",
+              "text": "# Collections: CHM, CopyOnWrite, BlockingQueue"
+            },
+            {
+              "kind": "comment",
+              "text": "# Synchronizers: Latch, Barrier, Semaphore"
+            }
+          ],
+          "narration": "That's the package. Locks for safety, Atomics for speed, Collections for data, and Synchronizers for coordination. Master these, and you've mastered Java concurrency.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "Latch = one-shot gate",
+            "Barrier = reusable checkpoint",
+            "Semaphore = resource limit"
+          ],
+          "command": "git checkout topic/level-5/the-javautilconcurrent-package",
+          "nextPartTeaser": "Full guide + labs at ravishankar2463.github.io/java_hub",
+          "narration": "Checkout the companion branch to run the concurrency labs yourself. See you in the next level.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
