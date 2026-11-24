@@ -1,0 +1,493 @@
+{
+  "chapterId": "level-1/inheritance",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "inheritance",
+  "chapterTitle": "Inheritance",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/inheritance",
+  "branchName": "topic/level-1/inheritance",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-extends-and-memory-layout",
+      "partTitle": "The extends Keyword & Subclass Memory Layout",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Java Inheritance • Part 1 of 4",
+          "headline": "Does subclassing create two objects on the heap?",
+          "highlightWord": "two objects",
+          "subline": "The JVM memory layout for extended classes is simpler and tighter than you think.",
+          "narration": "When ElectricCar extends Vehicle, does the JVM allocate two separate heap objects? No. The JVM allocates one single unified memory block containing every field from Object, Vehicle, and ElectricCar together.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Inheritance vs. Composition",
+          "top": {
+            "label": "Is-A (Inheritance)",
+            "badge": "Strict Identity",
+            "tone": "good",
+            "code": "public class ElectricCar extends Vehicle { }",
+            "points": [
+              "Passes strict Liskov Substitution test",
+              "Child safely stands in anywhere parent is expected"
+            ]
+          },
+          "bottom": {
+            "label": "Has-A (Composition)",
+            "badge": "Field Reference",
+            "tone": "neutral",
+            "code": "public class Car {\n    private Engine engine;\n}",
+            "points": [
+              "Reuses code without class hierarchy coupling",
+              "Prevents fragile base class maintenance traps"
+            ]
+          },
+          "narration": "Inheritance requires passing the strict Is-A test. An ElectricCar is a Vehicle, so inheritance fits cleanly. But a Car is not an Engine—it has an Engine, which requires composition instead.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-memory",
+          "kind": "code-spotlight",
+          "title": "Subclassing and Unified Object Memory",
+          "filename": "ElectricCar.java",
+          "code": "public class Vehicle {\n    private final String brand;\n    private int speedKmh;\n\n    public Vehicle(String brand) {\n        this.brand = brand;\n    }\n}\n\npublic class ElectricCar extends Vehicle {\n    private final int batteryKwh;\n\n    public ElectricCar(String brand, int batteryKwh) {\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "private parent fields",
+              "explanation": "Fields occupy memory inside every child instance, regardless of private modifier.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                11,
+                14
+              ],
+              "badge": "subclass allocation",
+              "explanation": "JVM packs parent state and subclass fields into one contiguous heap block.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Notice how brand and speedKmh are private in Vehicle, yet they still reside inside every ElectricCar allocation. Private is an access restriction enforced by the compiler, not a memory exclusion rule.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-diamond",
+          "kind": "flow-diagram",
+          "title": "Single Inheritance & The Diamond Problem",
+          "subtitle": "Why Java bans extending multiple class implementation bases",
+          "nodes": [
+            {
+              "label": "Vehicle Base",
+              "detail": "Defines shared maxSpeed field and state",
+              "tag": "Superclass",
+              "accent": "sky"
+            },
+            {
+              "label": "Car & Boat",
+              "detail": "Both extend Vehicle with custom state rules",
+              "tag": "Branch",
+              "accent": "amber"
+            },
+            {
+              "label": "AmphibiousVehicle",
+              "detail": "Extends Car, Boat? Banned to stop state clashes!",
+              "tag": "Forbidden",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Java enforces single class inheritance to avoid the diamond problem. If two parent classes defined conflicting fields or methods, a subclass inheriting from both would face ambiguous memory layouts and execution paths.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Subclasses allocate ONE contiguous object memory block",
+            "Private superclass fields still occupy heap space in child instances",
+            "Single class inheritance prevents diamond problem memory collisions"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Constructor chaining rules & Java 25 JEP 513 flexibility →",
+          "narration": "Subclasses sit in a single heap block with all parent fields. In Part 2, see how constructor chaining initializes parent state first, plus Java 25's brand new constructor rules.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-super-and-constructor-chaining",
+      "partTitle": "Constructor Chaining, super & Java 25 Rules",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Constructor Pipeline • Part 2 of 4",
+          "headline": "Why does your Java subclass fail to compile?",
+          "highlightWord": "fail to compile",
+          "subline": "Forget super(...) when parent lacks default constructor and Java halts immediately.",
+          "narration": "Ever wonder why your subclass constructor fails to compile? If a superclass defines only parameterized constructors, omitting explicit super calls breaks the build instantly because Java cannot find a default no-args constructor.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-j25-super",
+          "kind": "code-spotlight",
+          "title": "Constructor Chaining & Java 25 JEP 513",
+          "filename": "Account.java",
+          "code": "public class BaseEntity {\n    private final String id;\n    public BaseEntity(String id) {\n        this.id = Objects.requireNonNull(id);\n    }\n}\n\npublic class Account extends BaseEntity {\n    private final String owner;\n\n    public Account(String id, String owner) {\n        // Java 25: statements allowed BEFORE super!\n        String cleanId = id.trim().toLowerCase();\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "parameterized parent",
+              "explanation": "BaseEntity has no default constructor, requiring explicit super(id) call.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                13,
+                14
+              ],
+              "badge": "Java 25 JEP 513 flexible super",
+              "explanation": "Statements allowed before super(...) provided code does not reference this.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "BaseEntity lacks a default constructor, so Account must invoke super explicitly. Modern Java 25 JEP 513 now lets you clean arguments before calling super, as long as you do not access this beforehand.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-term-compile-err",
+          "kind": "terminal",
+          "title": "Implicit super() Compilation Failure",
+          "caption": "What happens when default parent constructors do not exist",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Compiling Account.java without explicit super call"
+            },
+            {
+              "kind": "command",
+              "text": "javac src/com/javahub/Account.java"
+            },
+            {
+              "kind": "error",
+              "text": "Account.java:11: error: constructor BaseEntity in class BaseEntity cannot be applied to given types;"
+            },
+            {
+              "kind": "error",
+              "text": "  required: java.lang.String"
+            },
+            {
+              "kind": "error",
+              "text": "  found:    no arguments"
+            }
+          ],
+          "narration": "If you omit super, javac automatically inserts an implicit no-args super call. When the parent class lacks a default constructor, compilation halts with a clear signature mismatch error.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-super-method",
+          "kind": "code-spotlight",
+          "title": "Delegating to Parent Behavior",
+          "filename": "LoggingElectricCar.java",
+          "code": "public class Vehicle {\n    public void start() {\n        System.out.println(\"Engine powering up...\");\n    }\n}\n\npublic class LoggingElectricCar extends Vehicle {\n    @Override\n    public void start() {\n        super.start(); // Execute parent logic first\n        System.out.println(\"Battery telemetry online.\");\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                10
+              ],
+              "badge": "super.start() delegation",
+              "explanation": "Invokes immediate superclass method to extend behavior rather than overwrite it.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use super dot start to extend parent behavior instead of replacing it completely. Super targets only your immediate parent—Java explicitly forbids multi-level super calls like super dot super dot start.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Constructor Rules Mastered",
+          "takeaways": [
+            "Child constructors execute superclass constructors before child state setup",
+            "Java 25 JEP 513 allows argument validation before calling super(...)",
+            "super.method() targets only immediate parent implementation levels"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Method overriding vs overloading and @Override safety →",
+          "narration": "Parent constructors must execute before child initialization. In Part 3, we uncover how accidental method overloading creates silent bugs and how at Override saves your code.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-overriding-vs-overloading",
+      "partTitle": "Method Overriding vs. Overloading Pitfalls",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Polymorphism • Part 3 of 4",
+          "headline": "Why did your HashSet ignore your equals method?",
+          "highlightWord": "ignore your equals",
+          "subline": "A single parameter mistake converts an intended override into a silent overload bug.",
+          "narration": "Writing equals with a custom class parameter looks right, but it silently breaks your collections. Java treats it as an overload, completely bypassing runtime dynamic dispatch when added to a HashSet.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare-binding",
+          "kind": "compare",
+          "title": "Static Overloading vs. Dynamic Overriding",
+          "top": {
+            "label": "Overloading (Static Binding)",
+            "badge": "Compile-Time",
+            "tone": "neutral",
+            "code": "public void send(String msg)\npublic void send(String msg, int priority)",
+            "points": [
+              "Same method name, different parameter lists",
+              "Compiler picks exact signature at compile time"
+            ]
+          },
+          "bottom": {
+            "label": "Overriding (Dynamic Dispatch)",
+            "badge": "Runtime invokevirtual",
+            "tone": "good",
+            "code": "@Override\npublic void send(String msg)",
+            "points": [
+              "Exact signature match in subclass hierarchy",
+              "JVM resolves method by actual heap object type"
+            ]
+          },
+          "narration": "Overloading selects methods at compile time based on parameter signatures. Overriding redefines an instance method in a subclass, letting the JVM dispatch calls dynamically at runtime based on the actual heap object.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-override-bug",
+          "kind": "code-spotlight",
+          "title": "The @Override Safety Net & Covariant Returns",
+          "filename": "Book.java",
+          "code": "public class Book {\n    private final String isbn;\n    public Book(String isbn) { this.isbn = isbn; }\n\n    // @Override // Un-commenting triggers COMPILE ERROR!\n    public boolean equals(Book other) { // SILENT OVERLOAD BUG!\n        return other != null && this.isbn.equals(other.isbn);\n    }\n}\n\nclass BookFactory extends ItemFactory {\n    @Override\n    public Book create() { return new Book(\"978-0134685991\"); }\n}",
+          "steps": [
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "silent overload bug",
+              "explanation": "Object.equals expects Object. Parameter Book creates an overload, missing dynamic dispatch!",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                12,
+                13
+              ],
+              "badge": "covariant return type",
+              "explanation": "Java 5+ permits overriding methods to return a specialized child subtype.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Adding at Override turns silent parameter mismatches into instant compile errors. Also notice covariant return types: an overriding method can return a more specific subclass reference than its parent method.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-override-rules",
+          "kind": "terminal",
+          "title": "Compiler Enforcement on Overriding Rules",
+          "caption": "Why access narrowing or broader checked exceptions fail compilation",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Attempting to narrow public method to protected in child class"
+            },
+            {
+              "kind": "command",
+              "text": "javac src/com/javahub/EmailService.java"
+            },
+            {
+              "kind": "error",
+              "text": "EmailService.java:12: error: send() in EmailService cannot override send() in NotificationService"
+            },
+            {
+              "kind": "error",
+              "text": "  attempting to assign weaker access privileges; was public"
+            },
+            {
+              "kind": "success",
+              "text": "Rule: Can widen access privileges, but NEVER narrow visibility or add checked exceptions!"
+            }
+          ],
+          "narration": "Java forces strict overriding rules to guarantee substitutability. You can widen access from protected to public, but narrowing visibility or adding new checked exceptions fails compilation immediately.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Polymorphism Rules Locked In",
+          "takeaways": [
+            "Always annotate overrides with @Override to prevent static overload bugs",
+            "Overriding uses runtime dynamic dispatch; overloading resolves statically",
+            "Overriding methods can widen visibility and return covariant subtypes"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Cosmic Object class and the equals/hashCode contract →",
+          "narration": "Always use at Override to catch accidental overloading bugs. In Part 4, we examine the cosmic Object class and why breaking the hashCode contract corrupts HashMaps.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-cosmic-object-equals-hashcode",
+      "partTitle": "The Cosmic Object Class & equals/hashCode Contract",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Object Contract • Part 4 of 4",
+          "headline": "Why do HashMaps drop entries when keys match?",
+          "highlightWord": "drop entries",
+          "subline": "Overriding equals without hashCode breaks hash-based collections instantly.",
+          "narration": "Why does HashSet return false for a key you just added? If you override equals without overriding hashCode, equal objects hash to different internal buckets, rendering lookups completely broken.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-equals-hash",
+          "kind": "code-spotlight",
+          "title": "Implementing equals & hashCode Correctly",
+          "filename": "ProductCode.java",
+          "code": "public final class ProductCode {\n    private final String region;\n    private final String sku;\n\n    public ProductCode(String region, String sku) {\n        this.region = Objects.requireNonNull(region);\n        this.sku = Objects.requireNonNull(sku);\n    }\n\n    @Override\n    public boolean equals(Object obj) {\n        if (this == obj) return true;\n        if (!(obj instanceof ProductCode other)) return false;\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                12,
+                13,
+                14
+              ],
+              "badge": "pattern matching instanceof",
+              "explanation": "Validates type and extracts cast variable safely in a single expression.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                14
+              ],
+              "badge": "Objects.hash alignment",
+              "explanation": "Guarantees equal objects calculate identical hash codes for bucket indexing.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Write equals using pattern matching instanceof to verify type and extract fields safely in one step. Then pair it with Objects dot hash to guarantee equal objects produce identical hash codes.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-term-hash-bug",
+          "kind": "terminal",
+          "title": "The Missing hashCode Bug in JShell",
+          "caption": "Demonstrating failed set lookups when hashCode is not overridden",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Object with custom equals BUT default Object.hashCode"
+            },
+            {
+              "kind": "command",
+              "text": "jshell"
+            },
+            {
+              "kind": "output",
+              "text": "Set<ProductCode> catalog = new HashSet<>();"
+            },
+            {
+              "kind": "output",
+              "text": "catalog.add(new ProductCode(\"US\", \"KB-900\"));"
+            },
+            {
+              "kind": "error",
+              "text": "catalog.contains(new ProductCode(\"US\", \"KB-900\")); // returns FALSE!"
+            },
+            {
+              "kind": "success",
+              "text": "Fix: Equal objects MUST generate identical hashCode values for bucket match!"
+            }
+          ],
+          "narration": "Here is the exact bug in action. Inserting a key into HashSet works, but querying with an identical value object returns false because default Object dot hashCode routes to the wrong bucket.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow-object",
+          "kind": "flow-diagram",
+          "title": "Core Methods of java.lang.Object",
+          "subtitle": "Understanding the foundational methods inherited by every Java class",
+          "nodes": [
+            {
+              "label": "equals & hashCode",
+              "detail": "Logical identity check & hash bucket lookup contract",
+              "tag": "Override Pair",
+              "accent": "emerald"
+            },
+            {
+              "label": "toString & getClass",
+              "detail": "Human-readable logs & JVM runtime class reflection mirror",
+              "tag": "Inspection",
+              "accent": "sky"
+            },
+            {
+              "label": "wait, notify & final",
+              "detail": "Low-level thread monitor sync primitives; cannot override",
+              "tag": "Concurrency",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Every Java class inherits from Object. Override toString for readable logs, override equals and hashCode for value identity, and leave thread monitor primitives like wait and notify untouched.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Equal objects MUST produce matching hashCode integers",
+            "Use pattern matching instanceof inside equals overrides",
+            "Java 16+ records implement equals, hashCode & toString automatically"
+          ],
+          "command": "git checkout topic/level-1/inheritance",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered Java inheritance and the Object contract. Run git checkout topic/level-1/inheritance to experiment with the companion Java 21 lab and JUnit 5 test suite.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
