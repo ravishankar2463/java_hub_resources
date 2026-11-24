@@ -1,0 +1,489 @@
+{
+  "chapterId": "level-7/database-migrations",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "database-migrations",
+  "chapterTitle": "Database Migrations",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/database-migrations",
+  "branchName": "topic/level-7/database-migrations",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-why-migrations",
+      "partTitle": "Stop Using ddl-auto=update",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Database Migrations • Part 1 of 4",
+          "headline": "Is your database managed by Hibernate?",
+          "highlightWord": "managed by Hibernate",
+          "subline": "If you use ddl-auto=update in production, you are one deployment away from a total outage.",
+          "narration": "If your production database schema is managed by Hibernate ddl-auto update, you are one deployment away from a total outage. It cannot safely rename columns or handle complex constraints. You need versioned migrations.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Migration Lifecycle",
+          "subtitle": "Versioned scripts ensure environment parity",
+          "nodes": [
+            {
+              "label": "Versioned SQL",
+              "detail": "V1, V2 scripts in Git",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Migration Runner",
+              "detail": "Flyway or Liquibase",
+              "tag": "Engine",
+              "accent": "amber"
+            },
+            {
+              "label": "History Table",
+              "detail": "Tracks applied checksums",
+              "tag": "State",
+              "accent": "purple"
+            },
+            {
+              "label": "Schema Lock",
+              "detail": "Prevents concurrent drift",
+              "tag": "Safety",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Flyway and Liquibase treat schema changes like code. You define versioned scripts that run in order. The runner tracks state in a metadata table, ensuring every environment—from local to production—is identical.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-flyway",
+          "kind": "code-spotlight",
+          "title": "Flyway Naming Rules",
+          "filename": "V2__add_orders_table.sql",
+          "code": "src/main/resources/db/migration/\n  ├── V1__init.sql\n  ├── V2__add_orders.sql\n  └── R__summary_view.sql",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "V-Prefix",
+              "explanation": "Versioned migrations run once. The double underscore is mandatory—forget it, and Flyway ignores your file.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "R-Prefix",
+              "explanation": "Repeatable migrations run whenever the checksum changes. Perfect for views and stored procedures.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Flyway relies on strict naming. Use V for versioned scripts that run once, and R for repeatable scripts like views. That double underscore is non-negotiable; miss it, and your migration simply won't run.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Flyway vs Liquibase",
+          "top": {
+            "label": "Flyway",
+            "badge": "SQL-First",
+            "tone": "good",
+            "code": "V1__init.sql",
+            "points": [
+              "Minimal ceremony",
+              "Best for single-engine apps"
+            ]
+          },
+          "bottom": {
+            "label": "Liquibase",
+            "badge": "Declarative",
+            "tone": "neutral",
+            "code": "changelog.yaml",
+            "points": [
+              "Multi-db support",
+              "Rich preconditions"
+            ]
+          },
+          "narration": "Flyway is the gold standard for SQL-heavy teams. Liquibase offers more abstraction with YAML or XML, which helps if you need to support multiple database engines like Oracle and Postgres simultaneously.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Migrations Locked",
+          "takeaways": [
+            "Use ddl-auto=validate only",
+            "V-scripts run once, R-scripts repeat",
+            "Double underscores are mandatory"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How to avoid production table locks →",
+          "narration": "That's the foundation. In Part 2, we tackle the silent killer: how a simple ALTER TABLE can lock your entire production database.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-locking-and-performance",
+      "partTitle": "Avoid Production Table Locks",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Database Migrations • Part 2 of 4",
+          "headline": "Why did your migration take down production?",
+          "highlightWord": "take down production",
+          "subline": "PostgreSQL locks are FIFO. A single slow query can queue your DDL and starve your app.",
+          "narration": "Why did a simple metadata change take down your production site? In Postgres, DDL locks are FIFO. If your migration queues behind a long-running report, every new request piles up behind it, exhausting your connection pool.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-term-lock",
+          "kind": "terminal",
+          "title": "The Lock Timeout Fix",
+          "caption": "Fail fast instead of queuing",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "-- Always set a lock timeout for DDL"
+            },
+            {
+              "kind": "command",
+              "text": "SET lock_timeout = '2s';"
+            },
+            {
+              "kind": "command",
+              "text": "ALTER TABLE orders ADD COLUMN status text;"
+            },
+            {
+              "kind": "success",
+              "text": "OK"
+            },
+            {
+              "kind": "error",
+              "text": "ERROR: canceling statement due to lock timeout"
+            }
+          ],
+          "narration": "Always set a lock timeout. If your migration can't grab the lock in two seconds, it should fail immediately. This prevents a cascade of blocked connections and gives your pipeline a chance to retry.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-concurrent",
+          "kind": "code-spotlight",
+          "title": "Concurrent Indexing",
+          "filename": "V12__add_idx.sql",
+          "code": "CREATE INDEX CONCURRENTLY idx_users_email \n    ON users (email);\n\n-- V12.sql.conf\nexecuteInTransaction=false",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "CONCURRENTLY",
+              "explanation": "Avoids blocking writes during the index build. Essential for large production tables.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "No Transaction",
+              "explanation": "Postgres forbids concurrent index creation inside a transaction block. Disable it in your config file.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Standard index creation blocks writes. Use CREATE INDEX CONCURRENTLY instead. Just remember: Postgres forbids this inside a transaction block, so you must explicitly disable transactions for that specific migration file.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Constraint Validation",
+          "subtitle": "Split heavy scans into two steps",
+          "nodes": [
+            {
+              "label": "NOT VALID",
+              "detail": "Apply constraint without scanning",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "VALIDATE",
+              "detail": "Scan rows in background",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "SET NOT NULL",
+              "detail": "Finalize after validation",
+              "tag": "Step 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Adding a NOT NULL constraint on a huge table will lock it. Instead, add it as NOT VALID to enforce it for new rows, then run VALIDATE in a separate step to scan existing data without blocking.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Locking Strategies Locked",
+          "takeaways": [
+            "Set lock_timeout = '2s'",
+            "Disable transactions for CONCURRENTLY",
+            "Use NOT VALID for constraints"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The Expand-and-Contract pattern →",
+          "narration": "You're now safe from production locks. In Part 3, we master the Expand-and-Contract pattern to ship breaking schema changes with zero downtime.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-expand-contract",
+      "partTitle": "Zero-Downtime Schema Evolution",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Database Migrations • Part 3 of 4",
+          "headline": "How do you rename a column without downtime?",
+          "highlightWord": "without downtime",
+          "subline": "In a rolling deployment, old and new code run simultaneously. One wrong ALTER TABLE breaks everything.",
+          "narration": "How do you rename a column during a rolling deployment? You can't just drop the old one. Old pods will crash instantly. You need the Expand-and-Contract pattern to keep both versions happy.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Expand-and-Contract",
+          "subtitle": "Safe, multi-release schema evolution",
+          "nodes": [
+            {
+              "label": "Expand",
+              "detail": "Add column, dual-write",
+              "tag": "Phase 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Backfill",
+              "detail": "Copy data in batches",
+              "tag": "Phase 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Contract",
+              "detail": "Drop old column",
+              "tag": "Phase 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "First, add the new column and dual-write from your app. Second, backfill existing rows in small, throttled batches. Finally, once all old pods are gone, you can safely drop the legacy column.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-backfill",
+          "kind": "code-spotlight",
+          "title": "Throttled Data Backfill",
+          "filename": "BackfillJob.sql",
+          "code": "UPDATE users \nSET display_name = full_name \nWHERE id IN (\n    SELECT id FROM users \n    WHERE display_name IS NULL \n    LIMIT 5000\n);",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4,
+                5
+              ],
+              "badge": "Batching",
+              "explanation": "Never update millions of rows at once. Use LIMIT to keep transactions short and WAL growth manageable.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Never update millions of rows in one go. You'll bloat your transaction logs and kill performance. Use a loop with a LIMIT to process data in small, safe chunks.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Transactional DDL",
+          "top": {
+            "label": "PostgreSQL",
+            "badge": "Transactional",
+            "tone": "good",
+            "code": "BEGIN; ALTER...; COMMIT;",
+            "points": [
+              "Rolls back on failure",
+              "Clean recovery"
+            ]
+          },
+          "bottom": {
+            "label": "MySQL",
+            "badge": "Implicit Commit",
+            "tone": "bad",
+            "code": "ALTER... (Auto-commit)",
+            "points": [
+              "Partial failures common",
+              "Requires manual cleanup"
+            ]
+          },
+          "narration": "Postgres supports transactional DDL, so failed migrations roll back automatically. MySQL triggers an implicit commit after every statement, which makes partial failures a nightmare to clean up.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Zero-Downtime Locked",
+          "takeaways": [
+            "Dual-write during transitions",
+            "Batch backfills to save WAL",
+            "Postgres DDL is transactional"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Final checklist & Lab →",
+          "narration": "You are now a migration expert. In Part 4, we wrap up with the final checklist and the lab link to test these skills.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-summary",
+      "partTitle": "Final Checklist & Lab",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Database Migrations • Part 4 of 4",
+          "headline": "Ready to ship schema changes safely?",
+          "highlightWord": "safely",
+          "subline": "Avoid drift, prevent locks, and embrace the expand-and-contract pattern.",
+          "narration": "Ready to ship schema changes without fear? Avoid drift, prevent locks, and embrace the expand-and-contract pattern. Your database is the most important part of your application; treat it with the respect it deserves.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Migration Best Practices",
+          "subtitle": "The senior engineer's checklist",
+          "nodes": [
+            {
+              "label": "Git-First",
+              "detail": "Review scripts like code",
+              "tag": "Process",
+              "accent": "sky"
+            },
+            {
+              "label": "Fast DDL",
+              "detail": "Use lock_timeout",
+              "tag": "Performance",
+              "accent": "amber"
+            },
+            {
+              "label": "Async Backfills",
+              "detail": "Batch, don't block",
+              "tag": "Operations",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Treat migrations as code reviews. Keep DDL fast with lock timeouts, and always move heavy data operations out of the migration script and into asynchronous background jobs.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-term-repair",
+          "kind": "terminal",
+          "title": "When Checksums Fail",
+          "caption": "Don't panic—repair correctly",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Never edit applied scripts!"
+            },
+            {
+              "kind": "error",
+              "text": "FlywayValidateException: Checksum mismatch"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Revert the file, add a new V-script"
+            },
+            {
+              "kind": "command",
+              "text": "git revert V1__init.sql"
+            },
+            {
+              "kind": "command",
+              "text": "flyway repair"
+            }
+          ],
+          "narration": "If you see a checksum mismatch, never edit the old file. Revert the changes to the original state, then add a new forward migration. Use flyway repair only to clean up failed rows.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Versioning Strategy",
+          "top": {
+            "label": "Sequential (V1, V2)",
+            "badge": "Simple",
+            "tone": "neutral",
+            "code": "V1, V2, V3",
+            "points": [
+              "Easy to read",
+              "Merge conflicts common"
+            ]
+          },
+          "bottom": {
+            "label": "Timestamp (V20261029...)",
+            "badge": "Team-Friendly",
+            "tone": "good",
+            "code": "V202610291430__...",
+            "points": [
+              "Zero collisions",
+              "Scales with teams"
+            ]
+          },
+          "narration": "For teams, use timestamps instead of sequential numbers. It eliminates merge conflicts entirely, ensuring your migrations never collide when multiple developers are working on the same branch.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use timestamps for versions",
+            "Use lock_timeout for safety",
+            "Expand-and-Contract for zero downtime"
+          ],
+          "command": "git checkout topic/level-7/database-migrations",
+          "nextPartTeaser": "Run the lab at ravishankar2463.github.io/java_hub",
+          "narration": "Chapter complete. Checkout the branch to run the lab and verify these patterns yourself. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
