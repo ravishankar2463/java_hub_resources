@@ -1,0 +1,329 @@
+{
+  "chapterId": "level-0/environment-setup",
+  "level": "level-0",
+  "levelLabel": "Level 0",
+  "slug": "environment-setup",
+  "chapterTitle": "Environment Setup",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-0/environment-setup",
+  "branchName": "topic/level-0/environment-setup",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-jdk-jre-jvm-bytecode",
+      "partTitle": "JDK vs JRE vs JVM & How Bytecode Runs Fast",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Java Setup • Part 1 of 3",
+          "headline": "JDK, JRE, JVM — stop guessing which one to install.",
+          "highlightWord": "stop guessing",
+          "subline": "They aren't competing downloads. They're nested layers built for Write Once, Run Anywhere.",
+          "narration": "Every Java setup guide throws three acronyms at you: JVM, JRE, and JDK. They aren't rival downloads—they're nested layers, and once you see how they stack, Java setup clicks.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow-layers",
+          "kind": "flow-diagram",
+          "title": "The 3 Nested Layers of Java",
+          "subtitle": "Always install a JDK — it bundles everything",
+          "nodes": [
+            {
+              "label": "JDK (Java Development Kit)",
+              "detail": "Adds dev tools: javac compiler, javap, jar, javadoc & jdb",
+              "tag": "Build",
+              "accent": "amber"
+            },
+            {
+              "label": "JRE (Java Runtime Environment)",
+              "detail": "JVM + Standard Class Libraries (String, List, HashMap, I/O)",
+              "tag": "Run",
+              "accent": "sky"
+            },
+            {
+              "label": "JVM (Java Virtual Machine)",
+              "detail": "Class Loader, Bytecode Verifier, Execution Engine, JIT & GC",
+              "tag": "Engine",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "At the core sits the JVM, which verifies bytecode, executes it, and runs garbage collection. Wrap it with standard libraries like List and HashMap, and you get the JRE. Add javac and dev tools on top—that's the JDK. Always install a JDK.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-term-bytecode",
+          "kind": "terminal",
+          "title": "Inside a .class File (0xCAFEBABE)",
+          "caption": "javac outputs portable stack-based bytecode",
+          "lines": [
+            { "kind": "comment", "text": "# Every valid .class file starts with 0xCAFEBABE" },
+            { "kind": "output", "text": "CA FE BA BE 00 00 00 41 ..." },
+            { "kind": "command", "text": "javap -c Calculator.class" },
+            { "kind": "success", "text": "0: iload_1   // push int 'a' onto operand stack" },
+            { "kind": "success", "text": "1: iload_2   // push int 'b' onto operand stack" },
+            { "kind": "success", "text": "2: iadd      // pop both, add, push sum" },
+            { "kind": "success", "text": "3: ireturn   // return top of stack" }
+          ],
+          "narration": "When javac compiles your code, it builds platform-neutral bytecode stamped with hex CAFEBABE—if that signature is missing, the JVM throws ClassFormatError. Run javap dash c and you'll see clean stack instructions like iload, iadd, and ireturn.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-jit",
+          "kind": "flow-diagram",
+          "title": "Why HotSpot Java Isn't Slow",
+          "subtitle": "Tiered Just-In-Time (JIT) compilation at runtime",
+          "nodes": [
+            {
+              "label": "Interpreter",
+              "detail": "Starts executing bytecode instantly for fast startup",
+              "tag": "Cold",
+              "accent": "sky"
+            },
+            {
+              "label": "C1 JIT Compiler",
+              "detail": "Compiles warm, frequent methods to quick native code",
+              "tag": "Warm",
+              "accent": "amber"
+            },
+            {
+              "label": "C2 JIT Compiler",
+              "detail": "Heavy optimizations: inlining, loop unrolling, escape analysis",
+              "tag": "Hot",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "So why isn't bytecode slow? HotSpot starts by interpreting cold code for snappy startup. Once a method gets busy, the C1 JIT compiles it to native code, and C2 aggressively optimizes hot paths with inlining and loop unrolling.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Mental Model Locked In",
+          "takeaways": [
+            "JDK = JRE + compiler tools (always install a JDK)",
+            "0xCAFEBABE bytecode runs on any OS with a JVM",
+            "HotSpot C1 & C2 JIT compile hot paths to native speed"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Installing Java 21 LTS + fixing PATH & JAVA_HOME →",
+          "narration": "Now you know how the stack fits together. In Part 2, we install Java 21 LTS and squash the PATH and JAVA_HOME mistakes that break day-one setups.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-install-lts-path-java-home",
+      "partTitle": "Installing Java 21 LTS & Fixing PATH / JAVA_HOME",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "LTS & Env Vars • Part 2 of 3",
+          "headline": "'javac' is not recognized — before line 1 of code.",
+          "highlightWord": "not recognized",
+          "subline": "Here's how to install a clean Java 21 LTS and wire up PATH & JAVA_HOME right the first time.",
+          "narration": "Nothing kills day-one momentum faster than seeing javac is not recognized in your terminal. Let's pick the right Java 21 LTS build and fix the two environment variables behind almost every setup bug.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b2-compare-lts",
+          "kind": "compare",
+          "title": "Which JDK Should You Install?",
+          "top": {
+            "label": "6-Month Feature Releases",
+            "badge": "Short Support",
+            "tone": "neutral",
+            "points": [
+              "Great for previewing brand-new syntax",
+              "Replaced every 6 months — not ideal as a baseline"
+            ]
+          },
+          "bottom": {
+            "label": "OpenJDK Java 21 LTS (or 25 LTS)",
+            "badge": "✅ Pick This",
+            "tone": "good",
+            "points": [
+              "Eclipse Adoptium (Temurin): vendor-neutral default",
+              "Amazon Corretto (AWS) & Azul Zulu (broad platforms)",
+              "Years of free security patches & ecosystem support"
+            ]
+          },
+          "narration": "Java ships free, open-source builds under OpenJDK. Grab Eclipse Temurin, Amazon Corretto, or Azul Zulu—and pick a Long-Term Support release. Java 21 LTS is the industry baseline right now, with Java 25 as the next LTS.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term-install",
+          "kind": "terminal",
+          "title": "Fast Install & Version Check",
+          "caption": "SDKMAN on macOS/Linux, winget on Windows",
+          "lines": [
+            { "kind": "comment", "text": "# macOS / Linux via SDKMAN!" },
+            { "kind": "command", "text": "sdk install java 21.0.5-tem" },
+            { "kind": "comment", "text": "# Windows PowerShell via winget" },
+            { "kind": "command", "text": "winget install EclipseAdoptium.Temurin.21.JDK" },
+            { "kind": "comment", "text": "# Open a NEW terminal & verify both match" },
+            { "kind": "command", "text": "java -version && javac -version" },
+            { "kind": "success", "text": "openjdk 21.0.5  |  javac 21.0.5" }
+          ],
+          "narration": "On macOS or Linux, use SDKMAN to install Temurin 21 and switch versions effortlessly. On Windows, run winget or the Adoptium MSI with Add to PATH checked. Then open a fresh terminal—both java and javac dash version should match.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare-env",
+          "kind": "compare",
+          "title": "PATH vs. JAVA_HOME (The #1 Trap)",
+          "top": {
+            "label": "PATH (For Your Shell)",
+            "badge": "Needs /bin",
+            "tone": "neutral",
+            "code": "C:\\Program Files\\Eclipse Adoptium\\jdk-21\\bin",
+            "points": [
+              "Lets your terminal find java & javac",
+              "Debug mismatches with: where java / which java"
+            ]
+          },
+          "bottom": {
+            "label": "JAVA_HOME (For Maven, Gradle & IDEs)",
+            "badge": "❌ NEVER /bin!",
+            "tone": "bad",
+            "code": "✅ C:\\Program Files\\Eclipse Adoptium\\jdk-21\n❌ C:\\Program Files\\Eclipse Adoptium\\jdk-21\\bin",
+            "points": [
+              "Tools append bin/javac onto JAVA_HOME themselves",
+              "Adding /bin makes them look for .../bin/bin/javac!"
+            ]
+          },
+          "narration": "Here's the classic trap. PATH needs the JDK's bin folder so your shell finds javac. JAVA_HOME is checked by Maven, Gradle, and IDEs, and must point to the JDK root—never bin, or tools search for bin slash bin slash javac.",
+          "durationSec": 14,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "JDK 21 Wired Up Cleanly",
+          "takeaways": [
+            "Install Java 21 LTS (Temurin, Corretto, or Zulu)",
+            "PATH points to /bin; JAVA_HOME points to JDK root",
+            "Always open a brand-new terminal after env edits"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): CLI javac/java, single-file launch & IntelliJ vs Eclipse →",
+          "narration": "If java works but javac fails, check where java or which java for an old JRE ahead in PATH. In Part 3, we compile from the CLI and set up IntelliJ and Eclipse.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-cli-workflow-and-ide-setup",
+      "partTitle": "CLI javac/java, Single-File Launch & IntelliJ vs Eclipse",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "CLI & IDEs • Part 3 of 3",
+          "headline": "Docker containers don't have an IDE Play button.",
+          "highlightWord": "Play button",
+          "subline": "Master javac and java in 30 seconds, then level up with IntelliJ IDEA or Eclipse.",
+          "narration": "If IntelliJ compiles code with one click, why bother with the terminal? Because when a CI build breaks or a Docker container won't boot, there's no green Play button—only javac and java.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-hello",
+          "kind": "code-spotlight",
+          "title": "Your First File & IDE Shortcuts",
+          "filename": "HelloWorld.java",
+          "code": "public class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello from the JVM!\");\n    }\n}",
+          "steps": [
+            {
+              "lines": [1],
+              "badge": "Exact Filename",
+              "explanation": "Filename MUST match the public class name with exact capitalization: HelloWorld.java.",
+              "accent": "amber"
+            },
+            {
+              "lines": [2, 3],
+              "badge": "IDE Live Templates",
+              "explanation": "In IntelliJ: type 'main' + Tab for main(), 'sout' + Tab for println, and click the gutter to set a red breakpoint.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Start with HelloWorld dot java—make sure the filename matches your public class capitalization exactly. Inside IntelliJ, typing main plus Tab expands the whole method, sout plus Tab prints a line, and clicking the gutter drops a breakpoint.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-term-cli",
+          "kind": "terminal",
+          "title": "CLI Compile, Run & Single-File Launch",
+          "caption": "Pass the class name, NEVER .class — or launch .java directly",
+          "lines": [
+            { "kind": "comment", "text": "# 1. Classic 2-step compile & run" },
+            { "kind": "command", "text": "javac HelloWorld.java" },
+            { "kind": "command", "text": "java HelloWorld" },
+            { "kind": "success", "text": "Hello from the JVM!" },
+            { "kind": "error", "text": "✗ Wrong: java HelloWorld.class (ClassNotFound!)" },
+            { "kind": "comment", "text": "# 2. Java 11+ / Java 21 single-file launch (in memory)" },
+            { "kind": "command", "text": "java HelloWorld.java" }
+          ],
+          "narration": "From the terminal, run javac HelloWorld dot java to generate HelloWorld dot class, then run java HelloWorld—never pass dot class or it fails. Need a quick test? Since Java 11, java HelloWorld dot java compiles and runs straight in memory.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-ide",
+          "kind": "compare",
+          "title": "IntelliJ IDEA vs. Eclipse IDE",
+          "top": {
+            "label": "IntelliJ IDEA Community (Recommended)",
+            "badge": "✅ Free & Smart",
+            "tone": "good",
+            "points": [
+              "Clean layout: src/ for code, out/ for .class, skip .idea/ in Git",
+              "Auto-detects or downloads JDK 21 (Ctrl+Alt+Shift+S to change)",
+              "Run (Shift+F10) & visual debugger (F8 Over, F7 Into, F9 Resume)"
+            ]
+          },
+          "bottom": {
+            "label": "Eclipse IDE for Java Developers",
+            "badge": "Open Source",
+            "tone": "neutral",
+            "points": [
+              "Workspace holds multiple projects; compiles on save into bin/",
+              "Point Installed JREs → Standard VM to your JDK 21 root folder",
+              "Debug Perspective: F6 Step Over, F5 Step Into, F8 Resume"
+            ]
+          },
+          "narration": "For real projects, pick IntelliJ IDEA Community Edition—it's free, compiles src into out, and even downloads JDK 21 for you. Prefer Eclipse? Point Installed JREs to your JDK 21 root, and it compiles on every save into bin.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Environment Ready! Run the Lab",
+          "takeaways": [
+            "javac compiles to .class; java takes class name (no .class)",
+            "java File.java runs single files in memory for quick tests",
+            "Use IDE breakpoints to inspect variables line by line"
+          ],
+          "command": "git checkout topic/level-0/environment-setup",
+          "nextPartTeaser": "Full guide + setup checklist at ravishankar2463.github.io/java_hub",
+          "narration": "Your Java 21 workstation is officially ready. Checkout the companion branch in java hub resources to run the setup checks, and grab the full guide on the roadmap.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
