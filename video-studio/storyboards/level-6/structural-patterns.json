@@ -1,0 +1,519 @@
+{
+  "chapterId": "level-6/structural-patterns",
+  "level": "level-6",
+  "levelLabel": "Level 6",
+  "slug": "structural-patterns",
+  "chapterTitle": "Structural Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-6/structural-patterns",
+  "branchName": "topic/level-6/structural-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-adapter-vs-decorator",
+      "partTitle": "Adapter vs Decorator: The Wrapper War",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Structural Patterns • Part 1 of 4",
+          "headline": "Adapter and Decorator look the same, but they aren't.",
+          "highlightWord": "look the same",
+          "subline": "One changes the interface to fix incompatibility, the other stacks behavior.",
+          "narration": "Adapter and Decorator look identical on a class diagram. Both wrap an object. But their intent is polar opposites. If you mix them up, you'll end up with unmaintainable spaghetti code.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Interface Intent",
+          "top": {
+            "label": "Adapter",
+            "badge": "Change Interface",
+            "tone": "neutral",
+            "code": "interface Target { void execute(); }\nclass Adapter implements Target { ... }",
+            "points": [
+              "Translates incompatible APIs",
+              "Connects legacy code to domain"
+            ]
+          },
+          "bottom": {
+            "label": "Decorator",
+            "badge": "Same Interface",
+            "tone": "good",
+            "code": "interface Service { void run(); }\nclass Decorator implements Service { ... }",
+            "points": [
+              "Stacks optional behaviors",
+              "Runtime composition"
+            ]
+          },
+          "narration": "Adapter is a translator. It forces a square peg into a round hole by changing the interface. Decorator is an enhancer. It keeps the interface identical while adding layers like logging or retries.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-adapter",
+          "kind": "code-spotlight",
+          "title": "Object Adapter Pattern",
+          "filename": "LegacyBankAdapter.java",
+          "code": "public final class LegacyBankAdapter implements PaymentGatewayPort {\n    private final LegacyBankSoapClient soapClient;\n\n    @Override\n    public PaymentResult processCharge(BigDecimal amount, ...) {\n        long cents = amount.multiply(100).longValueExact();\n        return soapClient.executeWireTransfer(cents);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Implements Target",
+              "explanation": "The adapter must conform to your domain interface.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Composition",
+              "explanation": "Hold the legacy object as a private final field.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Translation",
+              "explanation": "Convert domain types (BigDecimal) to legacy types (long).",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use composition, not inheritance, for your adapter. This works even if the legacy class is final. You simply map your clean domain parameters into the messy legacy method signature.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Decorator Chain",
+          "subtitle": "Stacking behaviors at runtime",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Calls HttpClient",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "LoggingDecorator",
+              "detail": "Logs start/end time",
+              "tag": "Layer 1",
+              "accent": "amber"
+            },
+            {
+              "label": "RetryingDecorator",
+              "detail": "Retries on failure",
+              "tag": "Layer 2",
+              "accent": "purple"
+            },
+            {
+              "label": "BasicClient",
+              "detail": "Actual network call",
+              "tag": "Core",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Decorators are recursive. Each layer delegates to the next. Order matters: wrapping a retry in a logger logs every attempt, but wrapping a logger in a retry logs the total latency.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Adapter = Translation (Different interface)",
+            "Decorator = Enhancement (Same interface)",
+            "Prefer object composition over inheritance"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Facades and the God Class trap →",
+          "narration": "Mastering these wrappers is the first step to clean architecture. In Part 2, we look at Facades and how to avoid the dreaded God Class.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-facade-pattern",
+      "partTitle": "Facade: Shielding Complexity",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Structural Patterns • Part 2 of 4",
+          "headline": "Is your controller orchestrating five different services?",
+          "highlightWord": "five services",
+          "subline": "That's a sign you need a Facade, not more spaghetti code.",
+          "narration": "If your controller calls inventory, payment, shipping, and audit services just to place an order, you've leaked internal complexity. A Facade hides this mess behind a single, clean entry point.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Facade Architecture",
+          "subtitle": "Simplifying subsystem interaction",
+          "nodes": [
+            {
+              "label": "CheckoutController",
+              "detail": "Calls one method",
+              "tag": "Client",
+              "accent": "sky"
+            },
+            {
+              "label": "OrderFulfillmentFacade",
+              "detail": "Orchestrates services",
+              "tag": "Facade",
+              "accent": "amber"
+            },
+            {
+              "label": "Inventory/Payment/Shipping",
+              "detail": "Complex subsystem",
+              "tag": "Subsystem",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Facade doesn't replace the underlying services. It just provides a higher-level API for common workflows. It's the difference between manual assembly and a single 'Place Order' button.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-facade",
+          "kind": "code-spotlight",
+          "title": "Order Fulfillment Facade",
+          "filename": "OrderFulfillmentFacade.java",
+          "code": "public class OrderFulfillmentFacade {\n    private final InventoryService inventory;\n    private final PaymentProcessor payment;\n\n    public String completeOrder(Order order) {\n        if (!inventory.hasStock(order.sku())) throw ...;\n        inventory.reserve(order.sku());\n        payment.charge(order.customerId(), order.amount());\n        return \"SUCCESS\";\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Dependency Injection",
+              "explanation": "Inject all necessary services into the facade.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Unified API",
+              "explanation": "The client only interacts with this single method.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8
+              ],
+              "badge": "Orchestration",
+              "explanation": "The facade manages the sequence of operations.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The facade coordinates the workflow. It handles the sequence, error checking, and delegation. The client doesn't need to know how the inventory or payment systems work internally.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Facade vs God Class",
+          "top": {
+            "label": "Facade",
+            "badge": "Good",
+            "tone": "good",
+            "code": "void completeOrder(Order o) {\n    inventory.reserve(o);\n    payment.charge(o);\n}",
+            "points": [
+              "Delegates to services",
+              "Focuses on orchestration"
+            ]
+          },
+          "bottom": {
+            "label": "God Class",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "void completeOrder(Order o) {\n    // 500 lines of SQL, logic, \n    // and regex parsing here...\n}",
+            "points": [
+              "Owns domain logic",
+              "Hard to test or maintain"
+            ]
+          },
+          "narration": "Don't let your facade become a God Class. If you find yourself writing business logic inside the facade, move it back to the domain services. The facade is a coordinator, not a logic owner.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Facade simplifies complex subsystems",
+            "Orchestrate, don't implement logic",
+            "Avoid the God Class anti-pattern"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Proxies and the Spring @Transactional trap →",
+          "narration": "Facades keep your controllers clean. In Part 3, we dive into Proxies and explain why your Spring transactions might be silently failing.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-proxy-pattern",
+      "partTitle": "Proxy: Access Control & Interception",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Structural Patterns • Part 3 of 4",
+          "headline": "Why does your @Transactional annotation sometimes just... ignore you?",
+          "highlightWord": "ignore you",
+          "subline": "It's not magic. It's a Proxy pattern failure.",
+          "narration": "Spring's @Transactional relies on proxies. If you call a transactional method from within the same class, you bypass the proxy entirely. Here is why that happens and how to fix it.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Proxy Interception",
+          "subtitle": "How Spring handles transactions",
+          "nodes": [
+            {
+              "label": "Controller",
+              "detail": "Calls proxy",
+              "tag": "Client",
+              "accent": "sky"
+            },
+            {
+              "label": "CGLIB Proxy",
+              "detail": "Opens transaction",
+              "tag": "Interceptor",
+              "accent": "amber"
+            },
+            {
+              "label": "Target Service",
+              "detail": "Executes logic",
+              "tag": "Real Object",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When you call a service, you're actually hitting a generated proxy class. The proxy starts the transaction, calls your method, and commits. But if you call 'this.method()', you jump straight to the target, skipping the proxy.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-proxy",
+          "kind": "code-spotlight",
+          "title": "The Self-Invocation Trap",
+          "filename": "OrderService.java",
+          "code": "@Service\npublic class OrderService {\n    public void checkout(Order order) {\n        this.saveOrder(order); // BUG: Bypasses Proxy!\n    }\n\n    @Transactional\n    public void saveOrder(Order order) { ... }\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Self-Invocation",
+              "explanation": "Calling 'this' uses the raw object, not the proxy.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Transactional",
+              "explanation": "The proxy never sees this call, so no transaction starts.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "This is the classic Spring bug. Because 'this' points to the raw instance, the proxy logic is never invoked. Always move transactional methods to a separate service bean to ensure the proxy is used.",
+          "durationSec": 13,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "JDK Proxy vs CGLIB",
+          "top": {
+            "label": "JDK Dynamic Proxy",
+            "badge": "Interface-based",
+            "tone": "neutral",
+            "code": "Proxy.newProxyInstance(...)",
+            "points": [
+              "Built into JDK",
+              "Requires interfaces"
+            ]
+          },
+          "bottom": {
+            "label": "CGLIB / ByteBuddy",
+            "badge": "Subclass-based",
+            "tone": "good",
+            "code": "Enhancer.create(...)",
+            "points": [
+              "Works on concrete classes",
+              "Cannot proxy final methods"
+            ]
+          },
+          "narration": "JDK proxies are lightweight but need interfaces. CGLIB generates subclasses at runtime, allowing you to proxy concrete classes. Spring Boot defaults to CGLIB for maximum flexibility.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Proxies control access & cross-cutting concerns",
+            "Avoid self-invocation to keep proxies active",
+            "CGLIB proxies concrete classes via subclassing"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Composite and tree structures →",
+          "narration": "Proxies are powerful but tricky. In Part 4, we wrap up with the Composite pattern for handling tree-based hierarchies.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-composite-pattern",
+      "partTitle": "Composite: Uniform Tree Traversal",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Structural Patterns • Part 4 of 4",
+          "headline": "Are you checking 'instanceof' everywhere in your tree logic?",
+          "highlightWord": "instanceof",
+          "subline": "Stop the type-checking madness with the Composite pattern.",
+          "narration": "If your code has an 'if (node instanceof Directory)' block, you're doing it wrong. Composite lets you treat leaves and containers as the same interface, simplifying your entire tree traversal.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Composite Structure",
+          "subtitle": "Uniform interface for leaves and trees",
+          "nodes": [
+            {
+              "label": "FileSystemItem",
+              "detail": "Shared interface",
+              "tag": "Component",
+              "accent": "sky"
+            },
+            {
+              "label": "FileItem",
+              "detail": "Individual leaf",
+              "tag": "Leaf",
+              "accent": "amber"
+            },
+            {
+              "label": "DirectoryComposite",
+              "detail": "Contains children",
+              "tag": "Composite",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The key is a shared component interface. Whether it's a single file or a directory of files, the caller just calls 'calculateSize()'. The composite handles the recursion automatically.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-composite",
+          "kind": "code-spotlight",
+          "title": "Uniform Traversal",
+          "filename": "FileSystemItem.java",
+          "code": "public interface FileSystemItem {\n    long calculateSizeInBytes();\n}\n\npublic class DirectoryComposite implements FileSystemItem {\n    private List<FileSystemItem> children;\n\n    public long calculateSizeInBytes() {\n        return children.stream().mapToLong(FileSystemItem::calculateSizeInBytes).sum();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Component Interface",
+              "explanation": "Define the operations that apply to both leaves and trees.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Composite",
+              "explanation": "Holds a list of the same component interface.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                8,
+                9
+              ],
+              "badge": "Recursive Delegation",
+              "explanation": "The composite sums up the results of its children.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The recursion is elegant. The composite doesn't care if a child is a file or another directory; it just calls the same interface method. This makes your code infinitely extensible.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Safety vs Uniformity",
+          "top": {
+            "label": "Interface Uniformity",
+            "badge": "Add() in Interface",
+            "tone": "bad",
+            "code": "interface Item { void add(Item i); }\n// FileItem must throw Exception!",
+            "points": [
+              "Breaks Liskov Substitution",
+              "Runtime error prone"
+            ]
+          },
+          "bottom": {
+            "label": "Type Safety",
+            "badge": "Add() in Composite",
+            "tone": "good",
+            "code": "class Directory { void add(Item i); }\n// FileItem doesn't have add()!",
+            "points": [
+              "Compile-time safety",
+              "Clean design"
+            ]
+          },
+          "narration": "Don't put 'add()' in the base interface. It forces leaves to throw exceptions, which is a design smell. Keep mutation methods on the composite class to keep your type system clean.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Composite treats trees and leaves uniformly",
+            "Use recursion for tree traversal",
+            "Keep mutation methods on the composite class"
+          ],
+          "command": "git checkout topic/level-6/structural-patterns",
+          "nextPartTeaser": "Full lab and structural pattern deep-dives at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered structural patterns. Check out the roadmap link to run the lab and see these patterns in real production code. Happy coding.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
