@@ -3,7 +3,7 @@ import path from "node:path";
 import type { ChapterStoryboardBundle, StoryboardBeat } from "../src/types.js";
 import { estimateChapterComplexity } from "./ollama-storyboard.js";
 
-const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 const VALID_KINDS = new Set([
   "hook",
