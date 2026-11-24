@@ -1,0 +1,523 @@
+{
+  "chapterId": "level-1/advanced-class-design",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "advanced-class-design",
+  "chapterTitle": "Advanced Class Design",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/advanced-class-design",
+  "branchName": "topic/level-1/advanced-class-design",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-static-vs-inner-classes",
+      "partTitle": "Static Nested Classes vs. Memory-Leaking Inner Classes",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Advanced Class Design • Part 1 of 4",
+          "headline": "Is your background task keeping 50 megabytes pinned in memory?",
+          "highlightWord": "50 megabytes",
+          "subline": "A non-static inner class silently holds a synthetic reference to its outer instance.",
+          "narration": "Dropping a class reference won't save you from an OutOfMemoryError if an inner class stays alive. A non-static inner class silently holds a hidden synthetic pointer to its enclosing object.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Inner Class Heap Pointer Trap",
+          "subtitle": "How non-static inner classes prevent garbage collection",
+          "nodes": [
+            {
+              "label": "OrderBatchProcessor",
+              "detail": "Holds 50MB byte array working buffer in heap memory",
+              "tag": "Outer Instance",
+              "accent": "amber"
+            },
+            {
+              "label": "CompletionNotifier",
+              "detail": "Non-static inner Runnable with synthetic this$0 pointer",
+              "tag": "Inner Instance",
+              "accent": "purple"
+            },
+            {
+              "label": "Scheduled Executor Queue",
+              "detail": "Holds active reference to Runnable until delay expires",
+              "tag": "Retention Root",
+              "accent": "sky"
+            },
+            {
+              "label": "Garbage Collector",
+              "detail": "Cannot reclaim 50MB outer buffer due to reachable path",
+              "tag": "OOM Risk",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When a inner class is declared without static, javac injects a synthetic field named this dollar zero. If that inner task sits in an executor queue, the entire 50 megabyte outer allocation stays pinned.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-leak",
+          "kind": "code-spotlight",
+          "title": "Fixing the Retention Bug with Static",
+          "filename": "OrderBatchProcessor.java",
+          "code": "public class OrderBatchProcessor {\n    private final byte[] buffer = new byte[50 * 1024 * 1024];\n    private final String batchId;\n\n    // FIX: static nested class drops the hidden outer reference\n    private static class CompletionNotifier implements Runnable {\n        private final String batchId;\n        CompletionNotifier(String batchId) {\n            this.batchId = batchId;\n        }\n        public void run() { System.out.println(batchId); }\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                6
+              ],
+              "badge": "static keyword",
+              "explanation": "Decouples inner class from outer heap instance—no synthetic this$0 reference is created.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                7,
+                8,
+                9
+              ],
+              "badge": "explicit state",
+              "explanation": "Pass only the exact scalar fields needed into constructor instead of capturing whole object.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Declare nested classes static whenever they do not explicitly require instance fields of the outer class. Pass only the scalar data needed into the constructor to break the hidden heap chain.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-term-javap",
+          "kind": "terminal",
+          "title": "Disassembling Synthetic Fields with javap",
+          "caption": "Inspecting the hidden compiler-generated field",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Inspect internal fields of non-static inner class"
+            },
+            {
+              "kind": "command",
+              "text": "javap -p out/BankAccount\\$StatementLine.class"
+            },
+            {
+              "kind": "output",
+              "text": "public class BankAccount$StatementLine {"
+            },
+            {
+              "kind": "error",
+              "text": "  final BankAccount this$0; // Synthesized outer reference!"
+            },
+            {
+              "kind": "output",
+              "text": "  public BankAccount$StatementLine(BankAccount);"
+            },
+            {
+              "kind": "output",
+              "text": "  public java.lang.String summary();"
+            },
+            {
+              "kind": "output",
+              "text": "}"
+            }
+          ],
+          "narration": "Running javap on a non-static inner class file reveals the truth. The compiler generates a synthetic final field named this dollar zero and passes the outer instance straight into the constructor.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Static nested classes have zero outer instance overhead",
+            "Non-static inner classes keep outer instances alive via this$0",
+            "Default to static nested classes per Effective Java Item 24"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why local captured variables MUST be effectively final →",
+          "narration": "Always make nested helper classes static by default. In Part 2, we explore why Java forces local variables captured by anonymous classes and lambdas to be effectively final.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-local-and-anonymous-classes",
+      "partTitle": "Local Classes, Anonymous Types & Stack Captures",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Variable Capture • Part 2 of 4",
+          "headline": "Why does Java fail to compile if you reassign a captured variable?",
+          "highlightWord": "fail to compile",
+          "subline": "Stack frames vanish on return, but heap objects outlive method calls.",
+          "narration": "Try reassigning a variable right before passing it to a lambda or anonymous class, and javac throws a red compile error. The reason lies in how the Java memory stack differs from the heap.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Stack Lifetime vs. Heap Lifetime",
+          "top": {
+            "label": "Stack Frame (Method Scope)",
+            "badge": "Ephemeral",
+            "tone": "bad",
+            "code": "public Runnable task() {\n    double amount = 100.00; // Lives on stack\n    // amount = 105.00; <-- Mutating breaks capture!\n    return () -> System.out.println(amount);\n}",
+            "points": [
+              "Stack frame disappears as soon as method returns",
+              "Reassignment causes stack and heap values to drift"
+            ]
+          },
+          "bottom": {
+            "label": "Captured Heap Field",
+            "badge": "Persistent",
+            "tone": "good",
+            "code": "public Runnable task() {\n    final double amount = 100.00;\n    return new Runnable() {\n        public void run() { System.out.println(amount); }\n    };\n}",
+            "points": [
+              "Compiler copies value into synthetic heap field",
+              "Effectively final rule keeps copies in perfect sync"
+            ]
+          },
+          "narration": "Stack variables vanish when a method returns, but an anonymous Runnable resides on the heap and runs later. Java copies the value into a hidden field on the object, so mutation is forbidden to prevent copies from drifting.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-anonymous",
+          "kind": "code-spotlight",
+          "title": "Anonymous Class vs. Lambda Scope",
+          "filename": "ScopeExample.java",
+          "code": "public class ScopeExample {\n    private String name = \"Outer\";\n\n    public void execute() {\n        Runnable r = new Runnable() {\n            private String name = \"Inner\";\n            public void run() {\n                // 'this' refers to the anonymous Runnable!\n                System.out.println(this.name);\n            }\n        };\n        r.run();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                6
+              ],
+              "badge": "anonymous inner instance",
+              "explanation": "Creates a distinct runtime object that can hold its own instance fields and state.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                9
+              ],
+              "badge": "this keyword",
+              "explanation": "Inside an anonymous class, 'this' points to the inner instance, NOT the outer class scope.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Unlike lambdas where this refers to the enclosing class, inside an anonymous inner class this refers to the anonymous instance itself. Anonymous classes can also hold mutable fields and implement multi-method interfaces.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-error",
+          "kind": "terminal",
+          "title": "Compiler Error on Variable Reassignment",
+          "caption": "Demonstrating the effectively final check",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "javac src/com/javahub/AuditTask.java"
+            },
+            {
+              "kind": "error",
+              "text": "AuditTask.java:12: error: local variables referenced from an"
+            },
+            {
+              "kind": "error",
+              "text": "inner class must be final or effectively final"
+            },
+            {
+              "kind": "output",
+              "text": "    amount = amount * 1.05;"
+            },
+            {
+              "kind": "output",
+              "text": "    ^"
+            },
+            {
+              "kind": "comment",
+              "text": "# Fix: remove reassignment or create a dedicated local copy"
+            }
+          ],
+          "narration": "If you reassign a captured local variable anywhere in the enclosing method, javac halts compilation instantly. The variable must be assigned exactly once to qualify as effectively final.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Local capture copies stack variables to synthetic heap fields",
+            "Captured variables must be final or effectively final",
+            "Inside anonymous classes, 'this' refers to the inner instance"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Java 16 Records, shallow immutability & compact constructors →",
+          "narration": "That is how local scope variable capture works. In Part 3, we dive into Java 16 records, shallow immutability traps, and compact constructors.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-java-16-records-and-defensive-copying",
+      "partTitle": "Java 16 Records & The Shallow Immutability Trap",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Immutable Data • Part 3 of 4",
+          "headline": "Java records are not as immutable as you think.",
+          "highlightWord": "not as immutable",
+          "subline": "Record fields are private final references, but referenced collections stay mutable.",
+          "narration": "Declaring a Java record generates private final fields, but if one component is an ArrayList or array, callers can still mutate your internal state. Here is how shallow immutability traps production apps.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Shallow vs. Deep Immutability",
+          "top": {
+            "label": "Naive Record Declaration",
+            "badge": "❌ MUTABLE TRAP",
+            "tone": "bad",
+            "code": "public record OrderSummary(\n    String orderId,\n    List<String> items\n) {}\n\n// Caller mutates internal record list!\nsummary.items().add(\"HACKED\");",
+            "points": [
+              "List reference is final, but list content is mutable",
+              "Callers can modify internal state directly"
+            ]
+          },
+          "bottom": {
+            "label": "Compact Constructor Copy",
+            "badge": "✅ DEEP IMMUTABILITY",
+            "tone": "good",
+            "code": "public record OrderSummary(\n    String orderId,\n    List<String> items\n) {\n    public OrderSummary {\n        items = List.copyOf(items);\n    }\n}",
+            "points": [
+              "List.copyOf creates an unmodifiable list",
+              "Mutating caller list no longer affects record"
+            ]
+          },
+          "narration": "Notice the vulnerability in naive records. The items component reference is final, but the underlying list can still be mutated. Using a compact constructor with List dot copyOf guarantees true immutability.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-record",
+          "kind": "code-spotlight",
+          "title": "Compact Constructors & Validation",
+          "filename": "OrderSummary.java",
+          "code": "public record OrderSummary(String orderId, BigDecimal total, List<String> items) {\n    // Compact constructor omits parameter list\n    public OrderSummary {\n        Objects.requireNonNull(orderId, \"orderId required\");\n        if (total == null || total.signum() < 0) {\n            throw new IllegalArgumentException(\"Invalid total\");\n        }\n        // Defensive copy runs before fields are assigned!\n        items = List.copyOf(items);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "compact header",
+              "explanation": "No parameter signature needed—runs validation before direct field assignment.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "defensive copy",
+              "explanation": "Reassigns local parameter to immutable copy before final compiler assignment.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Compact constructors let you validate rules and perform defensive copies without re-declaring field assignments. The parameter reassignments run seamlessly right before the compiler sets final record fields.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-javap",
+          "kind": "terminal",
+          "title": "Inspecting Record Bytecode Structure",
+          "caption": "Confirming Record inheritance and generated methods",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "javap out/com/javahub/OrderSummary.class"
+            },
+            {
+              "kind": "output",
+              "text": "public final class com.javahub.OrderSummary extends java.lang.Record {"
+            },
+            {
+              "kind": "output",
+              "text": "  public com.javahub.OrderSummary(java.lang.String, java.math.BigDecimal, java.util.List);"
+            },
+            {
+              "kind": "output",
+              "text": "  public java.lang.String orderId();"
+            },
+            {
+              "kind": "output",
+              "text": "  public java.math.BigDecimal total();"
+            },
+            {
+              "kind": "output",
+              "text": "  public java.util.List<java.lang.String> items();"
+            },
+            {
+              "kind": "output",
+              "text": "}"
+            }
+          ],
+          "narration": "Inspecting class files reveals records automatically extend java lang Record. Notice generated accessors use component names directly like orderId without traditional get prefixes.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Records are shallowly immutable by default",
+            "Use compact constructors for validation and defensive copies",
+            "Records automatically extend java.lang.Record and generate canonical constructors"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Record Serialization safety & Java 21 Record Patterns →",
+          "narration": "Now you know how to lock down records properly. In Part 4, we examine record serialization security gains and Java 21 record pattern deconstruction.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-serialization-and-record-patterns",
+      "partTitle": "Record Serialization & Java 21 Record Patterns",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Java • Part 4 of 4",
+          "headline": "Traditional Java serialization bypasses constructors, but records fix it.",
+          "highlightWord": "records fix it",
+          "subline": "Record deserialization forces data through canonical validation constructors.",
+          "narration": "Standard Java Object Serialization bypasses constructors entirely and injects raw byte streams directly into private fields. Records fix this major security flaw by routing deserialization straight through your canonical constructor.",
+          "durationSec": 12,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Safe Serialization Pipeline",
+          "subtitle": "How records guarantee validation invariants on deserialization",
+          "nodes": [
+            {
+              "label": "Incoming Byte Stream",
+              "detail": "Serialized record components payload from external source",
+              "tag": "Input Payload",
+              "accent": "amber"
+            },
+            {
+              "label": "Canonical Constructor",
+              "detail": "JVM invokes record constructor with stream values",
+              "tag": "Strict Routing",
+              "accent": "sky"
+            },
+            {
+              "label": "Compact Validation",
+              "detail": "Compact constructor checks non-null & non-negative invariants",
+              "tag": "Safety Shield",
+              "accent": "purple"
+            },
+            {
+              "label": "Validated Record Instance",
+              "detail": "Guaranteed valid memory state or throws InvalidObjectException",
+              "tag": "Safe Heap State",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Traditional deserialization constructs objects without calling constructors, bypassing safety checks. For records, Java deserialization extracts component values and passes them to the canonical constructor, enforcing compact constructor validations.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-pattern",
+          "kind": "code-spotlight",
+          "title": "Java 21 Record Patterns (JEP 440)",
+          "filename": "PatternMatching.java",
+          "code": "public record Money(BigDecimal amount, String currency) {}\npublic record Account(String owner, Money balance) {}\n\npublic void process(Object obj) {\n    // Deconstruct nested record in a single instanceof check\n    if (obj instanceof Account(String owner, Money(BigDecimal amt, String curr))) {\n        System.out.println(owner + \" has \" + amt + \" \" + curr);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Record Pattern",
+              "explanation": "Deconstructs outer Account and nested Money record directly into local variables.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Extracted State",
+              "explanation": "Variables owner, amt, and curr are bound and ready for immediate type-safe use.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "In Java 21, pattern matching allows deconstructing nested records inside instanceof and switch expressions. Components like owner, amount, and currency extract cleanly without tedious getter calls.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Records vs. JPA Entities",
+          "top": {
+            "label": "JPA / Hibernate Entity",
+            "badge": "Mutable Class",
+            "tone": "neutral",
+            "code": "@Entity\npublic class UserEntity {\n    @Id private Long id;\n    public UserEntity() {} // No-arg required\n}",
+            "points": [
+              "Requires no-arg constructor and mutable fields for proxies",
+              "Not suitable for Java Records"
+            ]
+          },
+          "bottom": {
+            "label": "Immutable DTO / Value Object",
+            "badge": "✅ Ideal Record Use",
+            "tone": "good",
+            "code": "public record UserDto(Long id, String email) {\n    // Transparent data carrier\n}",
+            "points": [
+              "Perfect for API requests, responses, and Map keys",
+              "Compiler provides equals, hashCode, and accessors"
+            ]
+          },
+          "narration": "Records make ideal data transfer objects and key types. However, do not use records as JPA entities, because ORM frameworks require mutable fields, lazy proxies, and no-argument constructors.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Record deserialization enforces canonical constructor invariants",
+            "Deconstruct nested records cleanly with Java 21 record patterns",
+            "Use records for DTOs and value objects, keep entities as classes"
+          ],
+          "command": "git checkout topic/level-1/advanced-class-design",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered advanced class design. Run git checkout topic level-1 advanced class design in the JavaHub repo to test these nested class and record patterns yourself.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
