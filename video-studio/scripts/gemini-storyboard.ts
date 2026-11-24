@@ -208,66 +208,83 @@ function sanitizeAndValidateBundle(
   return errors;
 }
 
+const FALLBACK_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-flash-latest",
+  "gemini-3.1-flash-lite",
+];
+
 async function callGeminiJson(
   apiKey: string,
   model: string,
   prompt: string,
   label: string
 ): Promise<string> {
-  const maxRetries = 5;
-  for (let retry = 0; retry <= maxRetries; retry++) {
-    const startedAt = Date.now();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      model
-    )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const candidates = [model, ...FALLBACK_MODELS.filter((m) => m !== model)];
+  let lastError = "Unknown Gemini error";
 
-    console.log(
-      `[Gemini:${model}] Requesting ${label}${retry > 0 ? ` (retry ${retry}/${maxRetries})` : ""}...`
-    );
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.45,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
+  for (const currentModel of candidates) {
+    for (let retry = 0; retry <= 1; retry++) {
+      const startedAt = Date.now();
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        currentModel
+      )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    if (res.status === 429 || res.status === 500 || res.status === 503) {
-      const errText = await res.text();
-      if (retry < maxRetries) {
-        const waitSec = 5 * Math.pow(2, retry);
-        console.warn(
-          `[Gemini:${model}] Transient ${res.status} — retrying in ${waitSec}s...`
-        );
-        await new Promise((r) => setTimeout(r, waitSec * 1000));
-        continue;
+      console.log(
+        `[Gemini:${currentModel}] Requesting ${label}${retry > 0 ? " (retry 1/1)" : ""}...`
+      );
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.45,
+            responseMimeType: "application/json",
+          },
+        }),
+      });
+
+      if (res.status === 429 || res.status === 500 || res.status === 503 || res.status === 404) {
+        const errText = await res.text();
+        lastError = `Gemini API error (${res.status} on ${currentModel}): ${errText.slice(0, 260)}`;
+        if (res.status === 404) {
+          console.warn(`[Gemini:${currentModel}] 404 unavailable — trying next fallback model...`);
+          break;
+        }
+        if (retry === 0) {
+          console.warn(`[Gemini:${currentModel}] ${res.status} — waiting 3s before retry...`);
+          await new Promise((r) => setTimeout(r, 3000));
+          continue;
+        }
+        console.warn(`[Gemini:${currentModel}] still ${res.status} — rotating to next fallback model...`);
+        break;
       }
-      throw new Error(`Gemini API error (${res.status}): ${errText.slice(0, 400)}`);
-    }
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Gemini API error (${res.status}): ${errText.slice(0, 400)}`);
-    }
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Gemini API error (${res.status} on ${currentModel}): ${errText.slice(0, 400)}`);
+      }
 
-    const payload = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-    const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-    console.log(`[Gemini:${model}] Received ${label} in ${elapsed}s`);
+      const payload = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+      const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+      console.log(`[Gemini:${currentModel}] Received ${label} in ${elapsed}s`);
 
-    if (!text) {
-      throw new Error("Gemini returned empty response.");
+      if (!text) {
+        lastError = `Gemini (${currentModel}) returned empty response.`;
+        break;
+      }
+      return text;
     }
-    return text;
   }
 
-  throw new Error("Gemini request exhausted retries.");
+  throw new Error(`All Gemini fallback models failed. Last error: ${lastError}`);
 }
 
 export async function generateStoryboardWithGemini(params: {
