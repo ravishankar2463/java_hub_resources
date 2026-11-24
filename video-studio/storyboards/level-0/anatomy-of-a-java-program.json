@@ -1,0 +1,339 @@
+{
+  "chapterId": "level-0/anatomy-of-a-java-program",
+  "level": "level-0",
+  "levelLabel": "Level 0",
+  "slug": "anatomy-of-a-java-program",
+  "chapterTitle": "Anatomy of a Java Program",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-0/anatomy-of-a-java-program",
+  "branchName": "topic/level-0/anatomy-of-a-java-program",
+  "voice": "am_michael",
+  "speed": 1.1,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-hello-world-anatomy",
+      "partTitle": "Why Java Needs 6 Lines for Hello World",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Java Anatomy • Part 1 of 3",
+          "headline": "Why does Java need 6 lines for Hello World?",
+          "highlightWord": "6 lines",
+          "subline": "It isn't random boilerplate. Every single keyword is solving a real engineering problem.",
+          "narration": "Python prints Hello World in one line. Java takes six. If you think that's just bloated ceremony, let's decode what every single line actually tells the compiler and the JVM.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Scripting vs. Enterprise Blueprint",
+          "top": {
+            "label": "Python",
+            "badge": "1 Line",
+            "tone": "neutral",
+            "code": "print(\"Hello, World!\")",
+            "points": [
+              "Loose top-level statements",
+              "Great for quick scripts"
+            ]
+          },
+          "bottom": {
+            "label": "Standard Java",
+            "badge": "Strict Hierarchy",
+            "tone": "good",
+            "code": "package com.javahub.basics;\n\npublic class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}",
+            "points": [
+              "Prevents naming clashes across big teams",
+              "Catches type & structure bugs at compile time"
+            ]
+          },
+          "narration": "In standard Java, statements can't float loosely at the top of a file. Statements live inside methods, methods live inside a class, and classes live inside packages.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-pkg",
+          "kind": "code-spotlight",
+          "title": "Packages, Imports & Class Rules",
+          "filename": "HelloWorld.java",
+          "code": "package com.javahub.basics;\n\nimport java.time.Instant;\n\npublic class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}",
+          "steps": [
+            {
+              "lines": [1],
+              "badge": "package",
+              "explanation": "Maps directly to folders on disk (com/javahub/basics/) and stops class name collisions like two different Order classes.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [3],
+              "badge": "import (zero runtime cost!)",
+              "explanation": "Compile-time shorthand only—unlike C's #include, it never copies code. Bonus: java.lang is auto-imported for you.",
+              "accent": "sky"
+            },
+            {
+              "lines": [5],
+              "badge": "public class HelloWorld",
+              "explanation": "Filename MUST match the public class name—exact capitalization: HelloWorld.java.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "First, package mirrors your folders on disk so two Order classes never collide. Next, import is just compile-time shorthand with zero runtime cost, and java dot lang is imported automatically. Then public class HelloWorld must match your filename letter for letter.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-main",
+          "kind": "code-spotlight",
+          "title": "Decoding public static void main",
+          "filename": "HelloWorld.java",
+          "code": "public class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}",
+          "steps": [
+            {
+              "lines": [2],
+              "badge": "Why static?",
+              "explanation": "At startup, zero objects exist yet. Marking main static lets the JVM call HelloWorld.main(args) directly—and args is never null, just empty.",
+              "accent": "amber"
+            },
+            {
+              "lines": [3],
+              "badge": "System.out.println(...)",
+              "explanation": "System (java.lang class) → out (static PrintStream field) → println() (instance method that prints + newline).",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Why is main static? Because at startup, no object exists yet, so the JVM calls main directly on the class, passing command-line flags in args, which is never null. Inside, System is a class, out is a static PrintStream field, and println prints your line.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "package = folder path + namespace",
+            "import = compile-time shorthand (0 cost)",
+            "static main = JVM entry with no object"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): What javac & the JVM actually do under the hood →",
+          "narration": "That's the blueprint. In Part 2, we crack open HelloWorld dot class with javap to see the exact bytecode the JVM executes.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-javac-and-bytecode",
+      "partTitle": "What Happens When You Run javac & java?",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Pipeline • Part 2 of 3",
+          "headline": "Your CPU cannot read Java.",
+          "highlightWord": "cannot read",
+          "subline": "Here is the exact 2-phase pipeline turning .java into native machine speed.",
+          "narration": "Your CPU has no idea what Java source code is. Every time you build and run a Java app, your code passes through a strict two-phase pipeline.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "From Source to Native CPU",
+          "subtitle": "Compile once with javac → run anywhere on the JVM",
+          "nodes": [
+            {
+              "label": "HelloWorld.java",
+              "detail": "Human-readable Java source file",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "javac Compiler",
+              "detail": "Translates source into platform-neutral .class bytecode",
+              "tag": "Phase 1",
+              "accent": "amber"
+            },
+            {
+              "label": "Class Loader & Verifier",
+              "detail": "Checks stack bounds, types & access rules before running",
+              "tag": "Safety",
+              "accent": "purple"
+            },
+            {
+              "label": "Execution Engine (JIT + GC)",
+              "detail": "Interprets & JIT-compiles hot paths into native CPU instructions",
+              "tag": "Phase 2",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Phase one: javac compiles your dot java file into portable dot class bytecode. Phase two: the JVM loads it, runs the Bytecode Verifier to guarantee memory and type safety, and then the Execution Engine JIT-compiles hot code straight into native CPU instructions.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term-run",
+          "kind": "terminal",
+          "title": "Compiling & Running Packages",
+          "caption": "Avoid the #1 classpath mistake!",
+          "lines": [
+            { "kind": "comment", "text": "# 1. Compile and mirror package folders into out/" },
+            { "kind": "command", "text": "javac -d out src/com/javahub/basics/HelloWorld.java" },
+            { "kind": "comment", "text": "# 2. Point -cp to ROOT (out), pass dots—NEVER .class!" },
+            { "kind": "command", "text": "java -cp out com.javahub.basics.HelloWorld" },
+            { "kind": "success", "text": "Hello, World!" },
+            { "kind": "error", "text": "✗ Wrong: java out/com/javahub/basics/HelloWorld.class" }
+          ],
+          "narration": "When using packages from the terminal, pass dash d out to javac so it mirrors your folder tree. Then run java with dash cp pointing to the root folder out, followed by the dotted class name—never slashes, and never dot class.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-javap",
+          "kind": "terminal",
+          "title": "Disassembling with javap -c -p",
+          "caption": "Two hidden things javac generated for you",
+          "lines": [
+            { "kind": "command", "text": "javap -c -p out/com/javahub/basics/HelloWorld.class" },
+            { "kind": "success", "text": "public HelloWorld();        // Synthesized constructor!" },
+            { "kind": "output", "text": "  0: aload_0  |  1: invokespecial Object.<init>" },
+            { "kind": "output", "text": "" },
+            { "kind": "success", "text": "public static void main(String[]);" },
+            { "kind": "output", "text": "  0: getstatic     System.out" },
+            { "kind": "output", "text": "  3: ldc           \"Hello, World!\"" },
+            { "kind": "output", "text": "  5: invokevirtual PrintStream.println" }
+          ],
+          "narration": "Run javap dash c dash p on that class file and two cool things jump out. First, javac silently synthesized a default constructor calling Object. Second, main is literally three instructions: getstatic System dot out, load the string constant, and invokevirtual println.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Now You See Inside .class",
+          "takeaways": [
+            "javac → portable bytecode; JVM → native speed",
+            "java -cp out uses dots, never .class",
+            "javap -c -p reveals synthesized constructors"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The silent semicolon auth bug + Java 25's 3-line main() →",
+          "narration": "Now you know what's actually inside a dot class file. In Part 3, see the one-character semicolon bug that silently breaks if-checks, plus Java 25's brand new 3-line main.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-pitfalls-and-modern-main",
+      "partTitle": "Silent Semicolon Bug, Javadoc & Java 25 Compact Main",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Pitfalls & Java 25 • Part 3 of 3",
+          "headline": "One stray semicolon can bypass your auth check.",
+          "highlightWord": "stray semicolon",
+          "subline": "It compiles with zero errors—and runs your protected block every single time.",
+          "narration": "Java doesn't care about indentation—it trusts semicolons and curly braces. Which means one tiny stray semicolon can compile cleanly and completely wreck your logic.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-compare-bug",
+          "kind": "compare",
+          "title": "The Empty-Statement Semicolon Trap",
+          "top": {
+            "label": "Compiles, Always Runs!",
+            "badge": "❌ BUG",
+            "tone": "bad",
+            "code": "boolean isAuthorized = false;\n\nif (isAuthorized); // <-- ends the if!\n{\n    System.out.println(\"Sensitive report!\");\n}",
+            "points": [
+              "Semicolon creates an empty if-body",
+              "The { } block executes unconditionally!"
+            ]
+          },
+          "bottom": {
+            "label": "Clean Block Scope",
+            "badge": "✅ SAFE",
+            "tone": "good",
+            "code": "if (isAuthorized) {\n    System.out.println(\"Sensitive report!\");\n}",
+            "points": [
+              "No semicolon after if / for / while headers",
+              "Watch IDE yellow squiggly warnings"
+            ]
+          },
+          "narration": "Look at that semicolon right after if isAuthorized. In Java, a lone semicolon is a valid empty statement, so the if ends immediately and the sensitive block below runs every single time. Never put a semicolon after an if or loop header.",
+          "durationSec": 13,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b3-code-comments",
+          "kind": "code-spotlight",
+          "title": "Comments & Javadoc (Zero Bytecode Cost)",
+          "filename": "Pricing.java",
+          "code": "// Explain WHY, not what the syntax says\n/* Multi-line block (cannot be nested!) */\n\n/**\n * Calculates discounted price in cents.\n * @param priceCents original non-negative price\n * @return final price after discount\n * @throws IllegalArgumentException if invalid\n */\npublic static long applyDiscount(long priceCents) { ... }",
+          "steps": [
+            {
+              "lines": [1, 2],
+              "badge": "// and /* ... */",
+              "explanation": "Stripped completely by javac—zero bytes in .class! Use them to document non-obvious business rules.",
+              "accent": "sky"
+            },
+            {
+              "lines": [4, 5, 6, 7, 8, 9],
+              "badge": "/** Javadoc */",
+              "explanation": "Starts with TWO asterisks. IDEs render @param, @return & @throws on hover, and javadoc generates HTML docs.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Comments never even make it into bytecode. Use double-slash to explain why, not what. And for public APIs, use Javadoc starting with slash-star-star—your IDE renders param, return, and throws right on hover.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-j25",
+          "kind": "compare",
+          "title": "Modern Java: Compact Source Files",
+          "top": {
+            "label": "Production Standard (Java 8–25+)",
+            "badge": "Multi-File Apps",
+            "tone": "neutral",
+            "code": "package com.javahub.basics;\n\npublic class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}"
+          },
+          "bottom": {
+            "label": "Java 25 (JEP 512 Finalized)",
+            "badge": "✅ 3 Lines!",
+            "tone": "good",
+            "code": "void main() {\n    IO.println(\"Hello, World!\");\n}",
+            "points": [
+              "No --enable-preview needed in Java 25+",
+              "Compiler still wraps it in a class under the hood"
+            ]
+          },
+          "narration": "Finally, modern Java heard the complaints. After previews starting in Java 21, Java 25 finalized JEP 512: just void main and IO dot println. Under the hood the compiler still wraps it in a class, so you still need standard syntax for real production services.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "No stray semicolons after if / for headers",
+            "Javadoc (/**) powers IDE hover & HTML docs",
+            "Java 25 JEP 512 gives a 3-line main() on-ramp"
+          ],
+          "command": "git checkout topic/level-0/anatomy-of-a-java-program",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You just mastered the entire anatomy of a Java program. Checkout the companion branch in java hub resources to run the verified Java 21 lab and JUnit 5 tests yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}

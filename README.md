@@ -45,6 +45,25 @@ git checkout main
 
 ---
 
+## Chapter Summary Videos (100% Local & Open-Source)
+
+This repo also includes `video-studio/`, a local video pipeline powered by **Kokoro-82M (ONNX)** + **Remotion** that reads chapters from the companion `java_hub` website repository and outputs short **16:9 widescreen** and **9:16 vertical Shorts/Reels** summary videos into `videos/`.
+
+```powershell
+cd video-studio
+npm install
+
+# Render both 16:9 and 9:16 summary videos for a chapter
+npm run generate -- --chapter level-0/anatomy-of-a-java-program --format both
+
+# Batch-render an entire level
+npm run generate -- --level 0 --format shorts
+```
+
+See [video-studio/README.md](video-studio/README.md) for all CLI options, voice selection, and storyboard customization.
+
+---
+
 ## Complete Curriculum & Branch Index (116 Topics)
 
 | Level | Topic Title | Web Roadmap Guide | Companion Git Branch | Git Switch Command |

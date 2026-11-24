@@ -40,3 +40,11 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Video Studio (dependencies & temporary generated audio/caches)
+video-studio/node_modules/
+video-studio/public/audio/
+video-studio/public/sfx/
+video-studio/.remotion/
+video-studio/out/
+
