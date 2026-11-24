@@ -148,6 +148,8 @@ export interface VideoManifestEntry {
   format: VideoFormat;
   durationSec: number;
   file: string;
+  videoUrl: string;
+  releaseTag?: string;
   roadmapUrl: string;
   branchName: string;
   renderedAt: string;

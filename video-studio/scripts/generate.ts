@@ -1,4 +1,6 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundle } from "@remotion/bundler";
@@ -21,6 +23,7 @@ const DEFAULT_HUB_DIR =
 const DEFAULT_OUT_DIR = path.join(REPO_ROOT, "videos");
 const STORYBOARDS_DIR = path.join(STUDIO_ROOT, "storyboards");
 const PUBLIC_DIR = path.join(STUDIO_ROOT, "public");
+const RELEASE_REPO = "ravishankar2463/java_hub_resources";
 
 interface CliOptions {
   chapter?: string;
@@ -30,6 +33,7 @@ interface CliOptions {
   hubDir: string;
   outDir: string;
   skipTts: boolean;
+  publishRelease: boolean;
   storyboardPath?: string;
   list: boolean;
 }
@@ -39,6 +43,7 @@ function parseArgs(argv: string[]): CliOptions {
     hubDir: DEFAULT_HUB_DIR,
     outDir: DEFAULT_OUT_DIR,
     skipTts: false,
+    publishRelease: false,
     list: false,
   };
 
@@ -80,6 +85,9 @@ function parseArgs(argv: string[]): CliOptions {
       case "--skip-tts":
         opts.skipTts = true;
         break;
+      case "--publish-release":
+        opts.publishRelease = true;
+        break;
       case "--list":
         opts.list = true;
         break;
@@ -110,6 +118,7 @@ Options:
       --storyboard <path>        Explicit path to a chapter storyboard JSON
       --out-dir <path>           Output directory (default: ../videos)
       --skip-tts                 Skip audio generation (silent fast preview)
+      --publish-release          Create/reuse videos-<level> GitHub Release and upload MP4s
       --list                     List chapters in java_hub and authored storyboards
 `);
 }
@@ -149,6 +158,64 @@ function expandBundleToParts(bundleData: ChapterStoryboardBundle): PartStoryboar
     speed: bundleData.speed,
     beats: p.beats,
   }));
+}
+
+function ensureGitHubRelease(level: string, ensured: Set<string>): string {
+  const releaseTag = `videos-${level}`;
+  if (ensured.has(releaseTag)) return releaseTag;
+
+  try {
+    execFileSync(
+      "gh",
+      ["release", "view", releaseTag, "--repo", RELEASE_REPO],
+      { stdio: "ignore" }
+    );
+  } catch {
+    const levelNum = level.replace(/^level-/i, "");
+    console.log(`[Release] Creating GitHub Release ${releaseTag} on ${RELEASE_REPO}...`);
+    execFileSync(
+      "gh",
+      [
+        "release",
+        "create",
+        releaseTag,
+        "--repo",
+        RELEASE_REPO,
+        "--title",
+        `JavaHub Shorts — Level ${levelNum}`,
+        "--notes",
+        `9:16 short summary videos for Level ${levelNum}.`,
+      ],
+      { stdio: "inherit" }
+    );
+  }
+
+  ensured.add(releaseTag);
+  return releaseTag;
+}
+
+function uploadReleaseAsset(releaseTag: string, localFile: string, assetName: string): void {
+  console.log(`[Release] Uploading ${assetName} -> ${releaseTag}...`);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "javahub-release-"));
+  const stagedFile = path.join(tmpDir, assetName);
+  try {
+    fs.copyFileSync(localFile, stagedFile);
+    execFileSync(
+      "gh",
+      [
+        "release",
+        "upload",
+        releaseTag,
+        stagedFile,
+        "--repo",
+        RELEASE_REPO,
+        "--clobber",
+      ],
+      { stdio: "inherit" }
+    );
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 }
 
 function updateManifest(outDir: string, newEntries: VideoManifestEntry[]): string {
@@ -243,6 +310,7 @@ async function main(): Promise<void> {
 
   // 3. Render each 9:16 Short
   const manifestEntries: VideoManifestEntry[] = [];
+  const ensuredReleases = new Set<string>();
   for (const part of preparedParts) {
     const inputProps = { part, format: "shorts" as const };
     const composition = await selectComposition({
@@ -278,6 +346,15 @@ async function main(): Promise<void> {
     });
 
     const relFile = path.relative(opts.outDir, outFile).replace(/\\/g, "/");
+    const releaseTag = `videos-${part.level}`;
+    const assetName = `${part.level}__${part.slug}__${part.partSlug}.mp4`;
+    const videoUrl = `https://github.com/${RELEASE_REPO}/releases/download/${releaseTag}/${assetName}`;
+
+    if (opts.publishRelease) {
+      ensureGitHubRelease(part.level, ensuredReleases);
+      uploadReleaseAsset(releaseTag, outFile, assetName);
+    }
+
     manifestEntries.push({
       chapterId: part.chapterId,
       level: part.level,
@@ -290,6 +367,8 @@ async function main(): Promise<void> {
       format: "shorts",
       durationSec,
       file: relFile,
+      videoUrl,
+      ...(opts.publishRelease ? { releaseTag } : {}),
       roadmapUrl: part.roadmapUrl,
       branchName: part.branchName,
       renderedAt: new Date().toISOString(),
