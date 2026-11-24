@@ -1,0 +1,619 @@
+{
+  "chapterId": "level-7/full-text-search-with-elasticsearch",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "full-text-search-with-elasticsearch",
+  "chapterTitle": "Full-Text Search with Elasticsearch",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/full-text-search-with-elasticsearch",
+  "branchName": "topic/level-7/full-text-search-with-elasticsearch",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-inverted-index-basics",
+      "partTitle": "Why SQL LIKE is Killing Your Database",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Search Internals • Part 1 of 5",
+          "headline": "Why does a leading wildcard kill your SQL performance?",
+          "highlightWord": "leading wildcard",
+          "subline": "It forces a full table scan. Here is how inverted indexes solve that.",
+          "narration": "A leading wildcard in SQL forces a full sequential scan across millions of rows. Elasticsearch avoids this by using an inverted index, mapping every term to a list of document IDs.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Inverted Indexing Pipeline",
+          "subtitle": "From raw text to searchable postings lists",
+          "nodes": [
+            {
+              "label": "Source Docs",
+              "detail": "Unstructured text blobs",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "Analyzer",
+              "detail": "Tokenize, lowercase, stem",
+              "tag": "Process",
+              "accent": "amber"
+            },
+            {
+              "label": "Inverted Index",
+              "detail": "Term -> [DocID, DocID]",
+              "tag": "Storage",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "First, your documents pass through an analyzer. It breaks text into tokens, lowercases them, and stems words. Then, the inverted index maps these terms to a postings list of document IDs.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-analyzer",
+          "kind": "code-spotlight",
+          "title": "The Anatomy of an Analyzer",
+          "filename": "Analyzer.java",
+          "code": "CharacterFilters cf = new HTMLStrip();\nTokenizer tk = new StandardTokenizer();\nTokenFilters tf = new LowercaseFilter();\n\n// Pipeline: Raw -> CF -> TK -> TF -> Terms",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Char Filters",
+              "explanation": "Cleans raw input, like stripping HTML tags before tokenization.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Tokenizer",
+              "explanation": "Exactly one: splits stream into tokens with position offsets.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Token Filters",
+              "explanation": "Modifies tokens: stems, synonyms, or stop-word removal.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "An analyzer is a three-stage pipeline. Character filters clean the input, the tokenizer splits it into chunks, and token filters normalize those chunks into searchable terms.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Standard vs. Keyword Mapping",
+          "top": {
+            "label": "Text Field",
+            "badge": "Analyzed",
+            "tone": "neutral",
+            "code": "type: \"text\", analyzer: \"standard\"",
+            "points": [
+              "Full-text search",
+              "No sorting/aggregations"
+            ]
+          },
+          "bottom": {
+            "label": "Keyword Field",
+            "badge": "Exact",
+            "tone": "good",
+            "code": "type: \"keyword\"",
+            "points": [
+              "Exact filtering",
+              "Fast sorting & aggregation"
+            ]
+          },
+          "narration": "Use text fields for full-text search, but never aggregate on them—it causes heap pressure. Use keyword fields for exact filters, sorting, and faceted counts.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Leading wildcards kill SQL performance",
+            "Inverted indexes map terms to doc IDs",
+            "Text is for search, Keyword is for facets"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): BM25 scoring & Lucene segments →",
+          "narration": "That is the foundation. In Part 2, we explore BM25 relevance scoring and how Lucene segments keep search near-real-time.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-bm25-and-segments",
+      "partTitle": "How Elasticsearch Ranks Results",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Relevance Scoring • Part 2 of 5",
+          "headline": "Why does your search result rank higher than others?",
+          "highlightWord": "rank higher",
+          "subline": "It is not magic. It is BM25, the standard for modern relevance.",
+          "narration": "Why does one document appear at the top while another is buried? It is Okapi BM25, a scoring algorithm that balances term frequency and field length.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "BM25 Scoring Signals",
+          "subtitle": "The math behind relevance",
+          "nodes": [
+            {
+              "label": "IDF",
+              "detail": "Rare terms score higher",
+              "tag": "Weight",
+              "accent": "sky"
+            },
+            {
+              "label": "TF Saturation",
+              "detail": "Diminishing returns on repeats",
+              "tag": "Frequency",
+              "accent": "amber"
+            },
+            {
+              "label": "Field Length",
+              "detail": "Shorter fields carry more weight",
+              "tag": "Normalization",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "BM25 uses three signals: IDF for rarity, TF saturation for diminishing returns on term repeats, and field length normalization to favor concise matches.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term-segments",
+          "kind": "terminal",
+          "title": "Lucene Segment Lifecycle",
+          "caption": "Immutable segments ensure fast reads",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Buffer index requests"
+            },
+            {
+              "kind": "output",
+              "text": "Indexing buffer -> Translog"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Refresh (1s default)"
+            },
+            {
+              "kind": "output",
+              "text": "New Immutable Segment created"
+            },
+            {
+              "kind": "comment",
+              "text": "# 3. Background Merge"
+            },
+            {
+              "kind": "output",
+              "text": "Small segments merged, tombstones purged"
+            }
+          ],
+          "narration": "Lucene segments are immutable. New data creates new segments, while deletes use a tombstone bitmap. Background merges periodically clean up these files to reclaim space.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-refresh",
+          "kind": "code-spotlight",
+          "title": "Avoid ?refresh=true",
+          "filename": "Indexing.java",
+          "code": "// BAD: Forces a refresh on every write\nclient.index(i -> i.index(\"p\").refresh(Refresh.True));\n\n// GOOD: Let the background process handle it\nclient.bulk(b -> b.operations(...));",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Performance Killer",
+              "explanation": "Forcing refreshes creates tiny, fragmented segments that crush indexing speed.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Bulk API",
+              "explanation": "Batch your writes to optimize throughput and segment merging.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never force a refresh on every write. It creates tiny segments that destroy performance. Use the bulk API to batch your operations and let the background process handle indexing.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "BM25 balances rarity, frequency, and length",
+            "Lucene segments are immutable",
+            "Never force refresh=true in production"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Spring Data & Multi-Field mappings →",
+          "narration": "You now understand scoring and segments. In Part 3, we dive into Spring Data Elasticsearch and how to map fields for both search and aggregation.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-spring-data-mapping",
+      "partTitle": "Mapping for Search & Aggregation",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Integration • Part 3 of 5",
+          "headline": "Can you search and aggregate the same field?",
+          "highlightWord": "same field",
+          "subline": "Not if you map it wrong. Multi-fields are your best friend.",
+          "narration": "Trying to aggregate on a text field will crash your JVM with an OutOfMemoryError. The fix is using multi-fields to store the data in two different ways.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-mapping",
+          "kind": "code-spotlight",
+          "title": "The @MultiField Pattern",
+          "filename": "Product.java",
+          "code": "@MultiField(\n  mainField = @Field(type = FieldType.Text),\n  otherFields = {\n    @InnerField(suffix = \"raw\", type = FieldType.Keyword)\n  }\n)\nprivate String title;",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Main Field",
+              "explanation": "Text type for full-text search and BM25 scoring.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Raw Field",
+              "explanation": "Keyword type for exact filters, sorting, and aggregations.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use the multi-field annotation. The main field handles full-text search, while the raw suffix uses the keyword type for exact filtering and faceted aggregations.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Query vs Filter Context",
+          "subtitle": "Performance optimization",
+          "nodes": [
+            {
+              "label": "Query Context",
+              "detail": "Calculates BM25 relevance score",
+              "tag": "Must",
+              "accent": "amber"
+            },
+            {
+              "label": "Filter Context",
+              "detail": "Binary yes/no, cached bitsets",
+              "tag": "Filter",
+              "accent": "emerald"
+            },
+            {
+              "label": "Execution",
+              "detail": "NativeQuery builder",
+              "tag": "Logic",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Separate your logic. Query context computes relevance scores, while filter context performs binary checks and uses cached bitsets for lightning-fast performance.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code-query",
+          "kind": "code-spotlight",
+          "title": "NativeQuery Implementation",
+          "filename": "SearchService.java",
+          "code": "bool.must(m -> m.multiMatch(...)); // Scoring\nbool.filter(f -> f.term(t -> t.field(\"inStock\"))); // Cache",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Must",
+              "explanation": "Use for user-provided search terms that require scoring.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Filter",
+              "explanation": "Use for structured data like status or price ranges.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always put search terms in the must block to trigger scoring. Put structured filters like stock status in the filter block to take advantage of caching.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use MultiField for search and facets",
+            "Query context scores, filter context caches",
+            "Avoid fielddata on text fields"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Bulk indexing & error handling →",
+          "narration": "You are mastering the mapping. In Part 4, we tackle bulk indexing strategies and the critical importance of inspecting per-item errors.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-bulk-indexing",
+      "partTitle": "High-Throughput Bulk Indexing",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Performance Tuning • Part 4 of 5",
+          "headline": "Why is your bulk indexer returning 200 OK with failures?",
+          "highlightWord": "200 OK",
+          "subline": "Elasticsearch lies to you. Here is how to catch silent errors.",
+          "narration": "The bulk API returns 200 OK even if individual items fail. If you ignore the response errors, your search index will drift out of sync with your database.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b2-code-bulk",
+          "kind": "code-spotlight",
+          "title": "Inspecting Bulk Responses",
+          "filename": "Indexer.java",
+          "code": "BulkResponse response = client.bulk(req);\nif (response.errors()) {\n  for (BulkResponseItem item : response.items()) {\n    if (item.error() != null) {\n      log.error(\"Failed: {}\", item.error().reason());\n    }\n  }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Check Errors",
+              "explanation": "The bulk response is a collection; check the error flag explicitly.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Item-Level Check",
+              "explanation": "Inspect every item for mapping or version conflicts.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always check response errors. Even on a successful HTTP call, individual documents can fail due to mapping conflicts. Log these errors or push them to a dead-letter queue.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "Batching Strategy",
+          "top": {
+            "label": "Document Count",
+            "badge": "Naive",
+            "tone": "bad",
+            "code": "batchSize = 1000",
+            "points": [
+              "Ignores document size",
+              "Causes heap pressure"
+            ]
+          },
+          "bottom": {
+            "label": "Megabyte Size",
+            "badge": "Pro",
+            "tone": "good",
+            "code": "batchSize = 10MB",
+            "points": [
+              "Consistent memory usage",
+              "Optimal for network"
+            ]
+          },
+          "narration": "Don't batch by count. Batch by size—aim for 5 to 15 megabytes per request. This keeps memory usage predictable and avoids overwhelming the coordinating node.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Backfill Optimization",
+          "subtitle": "Before loading millions of docs",
+          "nodes": [
+            {
+              "label": "Refresh: -1",
+              "detail": "Disable NRT indexing",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Replicas: 0",
+              "detail": "Speed up writes",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Bulk Load",
+              "detail": "High throughput",
+              "tag": "Step 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For large backfills, disable refreshes and replicas first. Load your data via bulk, then re-enable them. This drastically reduces the time required for massive indexing jobs.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Always inspect bulk response errors",
+            "Batch by size, not by count",
+            "Disable refreshes for mass backfills"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): CDC and Database Sync →",
+          "narration": "Bulk indexing is now your superpower. In Part 5, we finish by solving the biggest problem: keeping Elasticsearch in sync with your primary database using CDC.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-cdc-sync",
+      "partTitle": "Keeping Data in Sync",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture • Part 5 of 5",
+          "headline": "Why do dual-writes always drift?",
+          "highlightWord": "dual-writes",
+          "subline": "Because they lack atomicity. Here is the production-grade fix.",
+          "narration": "Dual-writes to Postgres and Elasticsearch are never atomic. You will eventually have ghost records or missing data. The only way to win is through Change Data Capture.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-flow",
+          "kind": "flow-diagram",
+          "title": "CDC Architecture",
+          "subtitle": "Reliable data synchronization",
+          "nodes": [
+            {
+              "label": "Postgres WAL",
+              "detail": "Source of truth",
+              "tag": "Log",
+              "accent": "sky"
+            },
+            {
+              "label": "Debezium",
+              "detail": "Capture changes",
+              "tag": "CDC",
+              "accent": "amber"
+            },
+            {
+              "label": "Kafka",
+              "detail": "Ordered events",
+              "tag": "Queue",
+              "accent": "purple"
+            },
+            {
+              "label": "Indexer",
+              "detail": "Bulk update",
+              "tag": "Sink",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Debezium tails the Postgres WAL, publishing changes to Kafka. An indexer consumer then processes these ordered events to update Elasticsearch. This ensures eventual consistency.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-compare",
+          "kind": "compare",
+          "title": "Sync Approaches",
+          "top": {
+            "label": "Dual-Write",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "repo.save(); es.save();",
+            "points": [
+              "No transaction atomicity",
+              "High risk of data drift"
+            ]
+          },
+          "bottom": {
+            "label": "CDC / Outbox",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "repo.save(); // CDC handles ES",
+            "points": [
+              "Eventual consistency",
+              "Resilient to failures"
+            ]
+          },
+          "narration": "Avoid dual-writes. Use CDC or a transactional outbox pattern. If Elasticsearch goes down, your database stays safe, and the consumer catches up once the cluster returns.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b4-terminal",
+          "kind": "terminal",
+          "title": "Final Checklist",
+          "caption": "Production readiness",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "✓ Use MultiField for facets"
+            },
+            {
+              "kind": "success",
+              "text": "✓ Batch bulk requests by size"
+            },
+            {
+              "kind": "success",
+              "text": "✓ Inspect response.errors()"
+            },
+            {
+              "kind": "success",
+              "text": "✓ Decouple with CDC"
+            }
+          ],
+          "narration": "Follow this checklist: use multi-fields for facets, batch by size, always inspect bulk errors, and decouple your indexing with CDC. You are now ready for production search.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use CDC for reliable sync",
+            "Never dual-write in production",
+            "Elasticsearch is a derived index"
+          ],
+          "command": "git checkout topic/level-7/full-text-search-with-elasticsearch",
+          "nextPartTeaser": "Explore the full guide at the roadmap URL below.",
+          "narration": "You have mastered full-text search. Checkout the companion branch to explore the code, and visit the roadmap link for the full deep-dive guide.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
