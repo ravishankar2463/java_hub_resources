@@ -87,7 +87,7 @@ function parseArgs(argv: string[]): BatchOptions {
   if (!opts.model) {
     opts.model =
       opts.provider === "gemini"
-        ? process.env.GEMINI_MODEL || "gemini-3.8-flash"
+        ? process.env.GEMINI_MODEL || "gemini-3.6-flash"
         : process.env.OLLAMA_MODEL || "qwen2.5:7b";
   }
   return opts;
