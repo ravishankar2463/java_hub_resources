@@ -1,7 +1,9 @@
 param(
+  [ValidateSet("gemini", "ollama")]
+  [string]$Provider = "gemini",
   [int]$StartLevel = 0,
   [int]$EndLevel = 15,
-  [string]$Model = "qwen2.5:7b",
+  [string]$Model = "",
   [int]$Limit = 0,
   [switch]$Minimized
 )
@@ -19,22 +21,27 @@ $pathInit = if ($pathPrepend.Count -gt 0) {
   "`$env:PATH = '$($pathPrepend -join ';');' + `$env:PATH; "
 } else { "" }
 
-# Ensure Ollama server is started inside the spawned window so it persists independently
-$ollamaBoot = "try { Invoke-RestMethod http://127.0.0.1:11434/api/tags -TimeoutSec 2 | Out-Null } catch { if (Test-Path '$ollamaExe') { Start-Process '$ollamaExe' -ArgumentList 'serve' -WindowStyle Hidden; Start-Sleep -Seconds 3 } }; "
+$ollamaBoot = ""
+if ($Provider -eq "ollama") {
+  $ollamaBoot = "try { Invoke-RestMethod http://127.0.0.1:11434/api/tags -TimeoutSec 2 | Out-Null } catch { if (Test-Path '$ollamaExe') { Start-Process '$ollamaExe' -ArgumentList 'serve' -WindowStyle Hidden; Start-Sleep -Seconds 3 } }; "
+}
 
-$argsList = @("run", "batch-all", "--", "--start-level", "$StartLevel", "--end-level", "$EndLevel", "--model", "$Model")
+$argsList = @("run", "batch-all", "--", "--provider", "$Provider", "--start-level", "$StartLevel", "--end-level", "$EndLevel")
+if ($Model) {
+  $argsList += @("--model", "$Model")
+}
 if ($Limit -gt 0) {
   $argsList += @("--limit", "$Limit")
 }
 
-Write-Host "Starting JavaHub zero-credit local batch runner in a new PowerShell window..." -ForegroundColor Green
-Write-Host "  Range : Level $StartLevel .. Level $EndLevel"
-Write-Host "  Model : $Model (local Ollama on RTX 2060)"
-Write-Host "  Log   : $logFile"
+Write-Host "Starting JavaHub batch video runner in a new PowerShell window..." -ForegroundColor Green
+Write-Host "  Provider : $Provider $(if ($Model) { "($Model)" } else { "(default)" })"
+Write-Host "  Range    : Level $StartLevel .. Level $EndLevel"
+Write-Host "  Log      : $logFile"
 
 $cmd = "$pathInit $ollamaBoot Set-Location '$studioDir'; npm $($argsList -join ' ') *>&1 | Tee-Object -FilePath '$logFile' -Append"
 $winStyle = if ($Minimized) { "Minimized" } else { "Normal" }
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $cmd -WindowStyle $winStyle
 
-Write-Host "`nLaunched new PowerShell terminal! You can also tail the log anytime with:" -ForegroundColor Cyan
+Write-Host "`nLaunched new PowerShell terminal! Watch live progress anytime with:" -ForegroundColor Cyan
 Write-Host "  Get-Content '$logFile' -Wait -Tail 30"

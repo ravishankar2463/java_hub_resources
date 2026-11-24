@@ -7,6 +7,10 @@ import {
   checkOllamaReady,
   generateStoryboardWithOllama,
 } from "./ollama-storyboard.js";
+import {
+  generateStoryboardWithGemini,
+  getGeminiApiKey,
+} from "./gemini-storyboard.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +26,10 @@ const REF_STORYBOARD = path.join(
   "anatomy-of-a-java-program.json"
 );
 
+type Provider = "gemini" | "ollama";
+
 interface BatchOptions {
+  provider: Provider;
   startLevel: number;
   endLevel: number;
   model: string;
@@ -33,9 +40,10 @@ interface BatchOptions {
 
 function parseArgs(argv: string[]): BatchOptions {
   const opts: BatchOptions = {
+    provider: "gemini",
     startLevel: 0,
     endLevel: 15,
-    model: process.env.OLLAMA_MODEL || "qwen2.5:7b",
+    model: "",
     hubDir: DEFAULT_HUB_DIR,
     noPush: false,
   };
@@ -43,6 +51,14 @@ function parseArgs(argv: string[]): BatchOptions {
     const a = argv[i];
     const next = argv[i + 1];
     switch (a) {
+      case "--provider":
+        if (next === "gemini" || next === "ollama") {
+          opts.provider = next;
+        } else {
+          throw new Error(`Invalid --provider "${next}". Use "gemini" or "ollama".`);
+        }
+        i++;
+        break;
       case "--start-level":
         opts.startLevel = Number(next);
         i++;
@@ -68,6 +84,12 @@ function parseArgs(argv: string[]): BatchOptions {
         break;
     }
   }
+  if (!opts.model) {
+    opts.model =
+      opts.provider === "gemini"
+        ? process.env.GEMINI_MODEL || "gemini-2.5-flash"
+        : process.env.OLLAMA_MODEL || "qwen2.5:7b";
+  }
   return opts;
 }
 
@@ -86,20 +108,22 @@ function getCompletedChapterIds(): Set<string> {
 }
 
 function runSync(cmd: string, args: string[], cwd: string): void {
-  execFileSync(cmd, args, { cwd, stdio: "inherit", shell: process.platform === "win32" });
+  execFileSync(cmd, args, { cwd, stdio: "inherit" });
 }
 
-function runAsync(cmd: string, args: string[], cwd: string): Promise<void> {
+function runNpmAsync(args: string[], cwd: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, {
+    const npmBin = process.platform === "win32" ? "cmd.exe" : "npm";
+    const npmArgs = process.platform === "win32" ? ["/d", "/s", "/c", "npm", ...args] : args;
+    const child = spawn(npmBin, npmArgs, {
       cwd,
       stdio: "inherit",
-      shell: process.platform === "win32",
+      windowsHide: true,
     });
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`Command failed (${code}): ${cmd} ${args.join(" ")}`));
+      else reject(new Error(`npm failed (${code}): npm ${args.join(" ")}`));
     });
   });
 }
@@ -107,14 +131,12 @@ function runAsync(cmd: string, args: string[], cwd: string): Promise<void> {
 function commitAndPushTopic(chapterId: string, hubDir: string, noPush: boolean): void {
   console.log(`\n[Git] Committing & syncing ${chapterId}...`);
 
-  // 1. Update VIDEO_PROGRESS.md in java_hub
   runSync(
     "node",
     ["--experimental-strip-types", "scripts/update-video-progress.mjs"],
     hubDir
   );
 
-  // 2. Commit & push java_hub_resources (main) — ONLY storyboard JSON + videos/manifest.json
   const sbRel = `video-studio/storyboards/${chapterId}.json`;
   runSync("git", ["add", sbRel, "videos/manifest.json"], REPO_ROOT);
   const resStatus = execFileSync("git", ["diff", "--cached", "--name-only"], {
@@ -132,7 +154,6 @@ function commitAndPushTopic(chapterId: string, hubDir: string, noPush: boolean):
     }
   }
 
-  // 3. Commit & push java_hub (current tracking PR branch, e.g. feat/chapter-summary-videos)
   runSync("git", ["add", "data/chapter-videos.json", "VIDEO_PROGRESS.md"], hubDir);
   const hubStatus = execFileSync("git", ["diff", "--cached", "--name-only"], {
     cwd: hubDir,
@@ -156,30 +177,34 @@ function commitAndPushTopic(chapterId: string, hubDir: string, noPush: boolean):
 
 async function ensureStoryboard(
   chapterId: string,
-  hubDir: string,
-  model: string
+  opts: BatchOptions
 ): Promise<string> {
   const sbPath = path.join(STORYBOARDS_DIR, `${chapterId}.json`);
   if (fs.existsSync(sbPath)) {
     console.log(`[Storyboard] Using existing ${sbPath}`);
     return sbPath;
   }
-  await generateStoryboardWithOllama({
-    hubDir,
-    chapterId,
-    referenceStoryboardPath: REF_STORYBOARD,
-    outStoryboardPath: sbPath,
-    model,
-  });
+  if (opts.provider === "gemini") {
+    await generateStoryboardWithGemini({
+      studioRoot: STUDIO_ROOT,
+      hubDir: opts.hubDir,
+      chapterId,
+      referenceStoryboardPath: REF_STORYBOARD,
+      outStoryboardPath: sbPath,
+      model: opts.model,
+    });
+  } else {
+    await generateStoryboardWithOllama({
+      hubDir: opts.hubDir,
+      chapterId,
+      referenceStoryboardPath: REF_STORYBOARD,
+      outStoryboardPath: sbPath,
+      model: opts.model,
+    });
+  }
   return sbPath;
 }
 
-/**
- * Hardware-tuned 2-lane pipeline for 6-core / 16 GB RAM / RTX 2060 6 GB:
- * - GPU Lane (Ollama qwen2.5:7b) pre-generates & validates Storyboard N+1
- * - CPU Lane (Kokoro fp32 + Remotion H.264 + gh release upload) renders Chapter N
- * - Sequential Git commits keep both repos + PR #6 atomic and conflict-free.
- */
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   const completed = getCompletedChapterIds();
@@ -190,8 +215,8 @@ async function main(): Promise<void> {
 
   const queue = opts.limit ? allChapters.slice(0, opts.limit) : allChapters;
   console.log(
-    `\n=== JavaHub Zero-Credit Local Batch Runner ===\n` +
-      `Levels: ${opts.startLevel}..${opts.endLevel} | Pending: ${queue.length} chapters | Ollama model: ${opts.model}\n`
+    `\n=== JavaHub Batch Video Runner ===\n` +
+      `Provider: ${opts.provider} (${opts.model}) | Levels: ${opts.startLevel}..${opts.endLevel} | Pending: ${queue.length} chapters\n`
   );
 
   if (queue.length === 0) {
@@ -199,20 +224,18 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Only require Ollama if at least one queued chapter lacks a storyboard
-  const needsOllama = queue.some(
+  const needsDrafting = queue.some(
     (id) => !fs.existsSync(path.join(STORYBOARDS_DIR, `${id}.json`))
   );
-  if (needsOllama) {
-    await checkOllamaReady(opts.model);
+  if (needsDrafting) {
+    if (opts.provider === "gemini") {
+      getGeminiApiKey(STUDIO_ROOT);
+    } else {
+      await checkOllamaReady(opts.model);
+    }
   }
 
-  let nextStoryboardPromise: Promise<string> | null = ensureStoryboard(
-    queue[0],
-    opts.hubDir,
-    opts.model
-  );
-
+  let nextStoryboardPromise: Promise<string> | null = ensureStoryboard(queue[0], opts);
   let succeeded = 0;
   const failed: Array<{ chapterId: string; error: string }> = [];
 
@@ -225,16 +248,10 @@ async function main(): Promise<void> {
     console.log(`============================================================`);
 
     try {
-      // Wait for current chapter's storyboard from GPU lane
       await nextStoryboardPromise;
 
-      // Kick off GPU lane for Chapter N+1 IN PARALLEL with CPU render of Chapter N!
       if (nextChapterId) {
-        nextStoryboardPromise = ensureStoryboard(
-          nextChapterId,
-          opts.hubDir,
-          opts.model
-        ).catch((err) => {
+        nextStoryboardPromise = ensureStoryboard(nextChapterId, opts).catch((err) => {
           console.error(`[Prefetch Error] ${nextChapterId}:`, err);
           throw err;
         });
@@ -242,14 +259,11 @@ async function main(): Promise<void> {
         nextStoryboardPromise = null;
       }
 
-      // CPU Lane: Kokoro fp32 + Remotion 9:16 H.264 + gh release upload + manifest sync
-      await runAsync(
-        "npm",
+      await runNpmAsync(
         ["run", "generate", "--", "--chapter", chapterId, "--publish-release"],
         STUDIO_ROOT
       );
 
-      // Atomic per-topic commit & push in both repos
       commitAndPushTopic(chapterId, opts.hubDir, opts.noPush);
       succeeded++;
       console.log(`[Done ${i + 1}/${queue.length}] ${chapterId} published & pushed!`);
@@ -257,9 +271,8 @@ async function main(): Promise<void> {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[FAILED] ${chapterId}: ${msg}`);
       failed.push({ chapterId, error: msg });
-      // Ensure next chapter still has a storyboard promise if loop continues
       if (nextChapterId && !nextStoryboardPromise) {
-        nextStoryboardPromise = ensureStoryboard(nextChapterId, opts.hubDir, opts.model);
+        nextStoryboardPromise = ensureStoryboard(nextChapterId, opts);
       }
     }
   }

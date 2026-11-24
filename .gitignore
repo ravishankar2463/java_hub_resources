@@ -48,5 +48,6 @@ video-studio/public/sfx/
 video-studio/.remotion/
 video-studio/out/
 video-studio/batch-all.log
+video-studio/.env
 videos/**/*.mp4
 

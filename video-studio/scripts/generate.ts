@@ -335,6 +335,10 @@ async function main(): Promise<void> {
       serveUrl,
       codec: "h264",
       audioCodec: "aac",
+      pixelFormat: "yuv420p",
+      crf: 23,
+      jpegQuality: 85,
+      concurrency: 6,
       outputLocation: outFile,
       inputProps,
       onProgress: ({ progress }) => {
