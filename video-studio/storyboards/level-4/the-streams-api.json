@@ -1,0 +1,454 @@
+{
+  "chapterId": "level-4/the-streams-api",
+  "level": "level-4",
+  "levelLabel": "Level 4",
+  "slug": "the-streams-api",
+  "chapterTitle": "The Streams API",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-4/the-streams-api",
+  "branchName": "topic/level-4/the-streams-api",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-pipeline-anatomy",
+      "partTitle": "Streams are not Collections",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Streams API • Part 1 of 4",
+          "headline": "Why is your Stream pipeline doing nothing?",
+          "highlightWord": "doing nothing",
+          "subline": "It isn't broken—it's lazy. Here is the anatomy of a Java stream.",
+          "narration": "If you think a Stream is just a fancy List, you are setting yourself up for bugs. Streams are lazy, single-use pipelines that hold zero data. Let's look at the anatomy.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Stream Lifecycle",
+          "subtitle": "Source -> Intermediate -> Terminal",
+          "nodes": [
+            {
+              "label": "Source",
+              "detail": "Collection, Array, or Files.lines",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Intermediate",
+              "detail": "filter, map, sorted (Lazy)",
+              "tag": "Transform",
+              "accent": "amber"
+            },
+            {
+              "label": "Terminal",
+              "detail": "toList, count, findFirst (Trigger)",
+              "tag": "Execute",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Every pipeline needs a source, zero or more lazy intermediate operations, and exactly one terminal operation. The terminal operation is the only thing that actually triggers execution.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-lazy",
+          "kind": "code-spotlight",
+          "title": "Lazy Vertical Execution",
+          "filename": "StreamDemo.java",
+          "code": "list.stream()\n    .filter(s -> { System.out.println(\"f: \" + s); return true; })\n    .map(s -> { System.out.println(\"m: \" + s); return s; })\n    .limit(1)\n    .toList();",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Vertical Flow",
+              "explanation": "Elements travel vertically through the entire chain. 'apple' hits filter, then map, before the next element is even touched.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Short-circuit",
+              "explanation": "limit(1) stops the pipeline immediately after the first element finishes, saving massive CPU cycles.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Streams execute vertically, not horizontally. Each element travels through the entire chain before the next one starts. This allows short-circuiting operations like limit to stop the entire process early.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-terminal",
+          "kind": "terminal",
+          "title": "The Single-Use Trap",
+          "caption": "Streams close after the terminal op",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "Stream<String> s = list.stream();"
+            },
+            {
+              "kind": "output",
+              "text": "s.count(); // Works fine"
+            },
+            {
+              "kind": "error",
+              "text": "s.toList(); // IllegalStateException!"
+            }
+          ],
+          "narration": "Never reuse a stream variable. Once that terminal operation runs, the stream is closed. If you need multiple passes, create a new stream from the source or use a Supplier.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Streams are lazy, not eager",
+            "Terminal ops trigger execution",
+            "Streams are single-use only"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Stateful vs Stateless operations →",
+          "narration": "That is the foundation. In Part 2, we tackle the difference between stateless filters and stateful barriers like sorted.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-stateful-ops",
+      "partTitle": "Stateless vs Stateful Barriers",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Streams API • Part 2 of 4",
+          "headline": "Why does sorted() crash your app?",
+          "highlightWord": "sorted()",
+          "subline": "It is an unbounded stateful barrier. Here is why it eats your memory.",
+          "narration": "Why does sorted() sometimes crash your JVM with an OutOfMemoryError? Because it is a stateful barrier that must buffer every single element before it can emit the first one.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Stateless vs Stateful",
+          "top": {
+            "label": "Stateless (filter, map)",
+            "badge": "O(1) per stage",
+            "tone": "good",
+            "code": ".filter(x -> x > 0)\n.map(x -> x * 2)",
+            "points": [
+              "No waiting for upstream",
+              "Memory efficient"
+            ]
+          },
+          "bottom": {
+            "label": "Stateful (sorted, distinct)",
+            "badge": "O(n) memory",
+            "tone": "neutral",
+            "code": ".sorted()\n.distinct()",
+            "points": [
+              "Buffers entire stream",
+              "Can cause OOM on infinite streams"
+            ]
+          },
+          "narration": "Stateless operations like filter process elements one by one. Stateful operations like sorted or distinct must remember everything they have seen, creating a memory barrier that can kill your performance.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-order",
+          "kind": "code-spotlight",
+          "title": "Optimize Your Pipeline Order",
+          "filename": "Optimize.java",
+          "code": "products.stream()\n    .filter(p -> p.price() > 100)\n    .sorted(Comparator.comparing(Product::price))\n    .limit(5)\n    .toList();",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Filter First",
+              "explanation": "Shrink the dataset before the expensive sort. Fewer items to sort means faster execution.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Sort Later",
+              "explanation": "Sorting is O(n log n). Never sort the entire database if you only need the top 5.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always filter before you sort. Shrinking the dataset first reduces the number of elements the sort operation has to buffer, keeping your memory footprint small and your performance high.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-warning",
+          "kind": "terminal",
+          "title": "The Infinite Stream Trap",
+          "caption": "Infinite streams + sorted = crash",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "Stream.iterate(0, i -> i + 1)"
+            },
+            {
+              "kind": "error",
+              "text": ".sorted() // Never finishes!"
+            },
+            {
+              "kind": "success",
+              "text": ".limit(10).sorted() // Safe"
+            }
+          ],
+          "narration": "Never call sorted on an infinite stream. Without a limit, it will buffer forever until the JVM runs out of heap space. Always constrain your data before applying stateful barriers.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Filter before you sort",
+            "Stateful ops buffer data",
+            "Infinite streams need limits"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Flattening with flatMap →",
+          "narration": "You now know how to avoid memory traps. In Part 3, we master flatMap to flatten nested lists into single streams.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-flatmap-magic",
+      "partTitle": "Flattening Nested Data",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Streams API • Part 3 of 4",
+          "headline": "Stop nesting your streams.",
+          "highlightWord": "nesting",
+          "subline": "flatMap is the secret to clean, readable data pipelines.",
+          "narration": "Stuck with a Stream of Lists? Don't use a double loop. Use flatMap to flatten nested structures into a single stream of elements.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Map vs FlatMap",
+          "subtitle": "One-to-one vs One-to-many",
+          "nodes": [
+            {
+              "label": "Map",
+              "detail": "Transform 1 item to 1 item",
+              "tag": "1:1",
+              "accent": "sky"
+            },
+            {
+              "label": "FlatMap",
+              "detail": "Transform 1 item to a Stream",
+              "tag": "1:N",
+              "accent": "emerald"
+            },
+            {
+              "label": "Result",
+              "detail": "Concatenated flat stream",
+              "tag": "Flatten",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Map is one-to-one. FlatMap is one-to-many. It takes a function that returns a stream for every element, then concatenates all those streams into one single flat result.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-flat",
+          "kind": "code-spotlight",
+          "title": "Flattening Order Items",
+          "filename": "Revenue.java",
+          "code": "orders.stream()\n    .flatMap(o -> o.items().stream())\n    .mapToLong(OrderItem::price)\n    .sum();",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "flatMap",
+              "explanation": "Extracts the list of items from each order and turns them into a single continuous stream of items.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "mapToLong",
+              "explanation": "Avoids boxing overhead by using primitive streams for math operations.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Here, flatMap turns a stream of orders into a stream of items. Using mapToLong then lets us perform math without the performance penalty of boxing every number into a Long object.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-nulls",
+          "kind": "terminal",
+          "title": "Empty Streams are Free",
+          "caption": "No null checks needed!",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// If items list is empty, flatMap does nothing"
+            },
+            {
+              "kind": "command",
+              "text": "order.items().stream()"
+            },
+            {
+              "kind": "success",
+              "text": "// Returns empty stream, not null!"
+            }
+          ],
+          "narration": "The best part? If an order has no items, flatMap just returns an empty stream. You avoid all those messy null checks and guard clauses in your business logic.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "flatMap flattens nested data",
+            "Use mapToLong for primitives",
+            "Empty streams replace nulls"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): When to avoid Streams →",
+          "narration": "You are a flatMap pro. In Part 4, we discuss the final rule: when a plain loop is actually better than a stream.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-when-to-avoid",
+      "partTitle": "When Loops Beat Streams",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Streams API • Part 4 of 4",
+          "headline": "Stop using streams for everything.",
+          "highlightWord": "everything",
+          "subline": "Sometimes, a plain for-loop is just better engineering.",
+          "narration": "Streams are powerful, but they aren't a hammer for every nail. Sometimes, a plain for-loop is cleaner, faster, and much easier to debug.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Stream vs Loop",
+          "top": {
+            "label": "Stream",
+            "badge": "Declarative",
+            "tone": "neutral",
+            "code": "list.stream().filter(...).map(...)",
+            "points": [
+              "Clean for pipelines",
+              "Harder to debug"
+            ]
+          },
+          "bottom": {
+            "label": "For-Loop",
+            "badge": "Imperative",
+            "tone": "good",
+            "code": "for (var item : list) { ... }",
+            "points": [
+              "Easy to step-debug",
+              "Supports checked exceptions"
+            ]
+          },
+          "narration": "Use a loop if you need to throw checked exceptions, track complex state, or return early from a method. Streams turn those simple tasks into a mess of try-catch blocks.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-debug",
+          "kind": "code-spotlight",
+          "title": "The Debugging Nightmare",
+          "filename": "Debug.java",
+          "code": "list.stream()\n    .filter(this::complexCheck)\n    .map(this::transform)\n    .forEach(System.out::println);",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Hidden Frames",
+              "explanation": "Stepping through this in a debugger jumps through internal JDK classes, making it impossible to track local state.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Debugging a stream chain is a nightmare. You jump in and out of internal JDK frames. If you are debugging tricky logic, a loop lets you see your variables clearly at every step.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-summary",
+          "kind": "terminal",
+          "title": "The Golden Rule",
+          "caption": "Keep it simple",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "If you have to re-read the stream twice..."
+            },
+            {
+              "kind": "command",
+              "text": "REFACTOR_TO_LOOP = true;"
+            },
+            {
+              "kind": "success",
+              "text": "Readability > Cleverness"
+            }
+          ],
+          "narration": "The rule is simple: if you have to re-read your stream expression twice to understand it, refactor it into a loop or small helper methods. Your team will thank you.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "Streams for pipelines",
+            "Loops for complex state",
+            "Readability is king"
+          ],
+          "command": "git checkout topic/level-4/the-streams-api",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered the Streams API. Check out the roadmap link to run the labs and test your knowledge. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
