@@ -1,0 +1,505 @@
+{
+  "chapterId": "level-3/reflection-api-custom-annotations",
+  "level": "level-3",
+  "levelLabel": "Level 3",
+  "slug": "reflection-api-custom-annotations",
+  "chapterTitle": "Reflection API & Custom Annotations",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-3/reflection-api-custom-annotations",
+  "branchName": "topic/level-3/reflection-api-custom-annotations",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-class-mirror",
+      "partTitle": "Cracking Open the JVM Class Object",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reflection API • Part 1 of 4",
+          "headline": "How do frameworks inspect your code without importing it?",
+          "highlightWord": "inspect your code",
+          "subline": "It isn't magic—it's the Java Reflection API.",
+          "narration": "Spring and Hibernate weren't compiled with your classes in mind. They use the Reflection API to inspect your types at runtime. But how does the JVM actually expose your code to them?",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Runtime Mirror",
+          "subtitle": "From disk to heap-resident metadata",
+          "nodes": [
+            {
+              "label": "Bytecode",
+              "detail": "Compiled .class file on disk",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "ClassLoader",
+              "detail": "Loads bytes into Metaspace",
+              "tag": "Loading",
+              "accent": "amber"
+            },
+            {
+              "label": "Class<?>",
+              "detail": "Heap-resident mirror object",
+              "tag": "Reflection",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When a class is loaded, the JVM creates a java.lang.Class instance on the heap. This object is your entry point to every field, method, and annotation inside that class, regardless of visibility.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-lookup",
+          "kind": "code-spotlight",
+          "title": "Three Ways to Get a Class",
+          "filename": "Lookup.java",
+          "code": "Class<String> s = String.class;\nClass<?> runtime = obj.getClass();\nClass<?> dynamic = Class.forName(\"com.app.User\");\n\n// Don't trigger static blocks!\nClass<?> lazy = Class.forName(\"com.app.User\", false, loader);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Literal",
+              "explanation": "Safest, compile-time checked.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Runtime",
+              "explanation": "Used for dynamic discovery.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Lazy Load",
+              "explanation": "Avoids running static blocks.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "You can grab a class literal, use an instance, or load by name. Pro tip: use the three-argument Class.forName to inspect metadata without triggering static initialization side effects.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Member Visibility Traps",
+          "top": {
+            "label": "getMethods()",
+            "badge": "Public Only",
+            "tone": "neutral",
+            "code": "clazz.getMethods();",
+            "points": [
+              "Includes inherited public members",
+              "Safe for API discovery"
+            ]
+          },
+          "bottom": {
+            "label": "getDeclaredMethods()",
+            "badge": "All Visibility",
+            "tone": "good",
+            "code": "clazz.getDeclaredMethods();",
+            "points": [
+              "Includes private/protected",
+              "Does NOT include superclass members"
+            ]
+          },
+          "narration": "Mixing these up is a classic bug. getMethods only sees public stuff, including inherited ones. getDeclaredMethods sees everything, but only on the current class. You must walk the superclass chain manually.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Reflection Basics Locked",
+          "takeaways": [
+            "Class<?> is the runtime mirror",
+            "Use lazy loading to avoid static blocks",
+            "getDeclaredMethods() requires manual recursion"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Dynamic invocation and breaking JPMS encapsulation →",
+          "narration": "You've got the lookup down. In Part 2, we'll invoke methods dynamically and see how to bypass JPMS module restrictions.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-dynamic-invocation",
+      "partTitle": "Invoking Methods & Breaking Encapsulation",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reflection API • Part 2 of 4",
+          "headline": "Can you call a private method from another package?",
+          "highlightWord": "private method",
+          "subline": "Yes, but the JVM has some strong opinions about it.",
+          "narration": "Reflection lets you reach into private fields and methods. But since Java 9, the module system has been locking things down. Let's see how to invoke methods and handle the security wall.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-invoke",
+          "kind": "code-spotlight",
+          "title": "Dynamic Invocation",
+          "filename": "Invoke.java",
+          "code": "Method m = Engine.class.getMethod(\"run\", int.class);\nObject result = m.invoke(instance, 42);\n\ntry {\n    m.invoke(instance, -1);\n} catch (InvocationTargetException e) {\n    throw e.getCause(); // Always unwrap!\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Lookup",
+              "explanation": "Must match exact parameter types.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Invoke",
+              "explanation": "Pass null for static methods.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Unwrap",
+              "explanation": "Reflection wraps real errors.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Method lookup requires exact parameter types. When invoking, pass null for static methods. Crucially, always unwrap InvocationTargetException; otherwise, you'll lose the real stack trace of your logic error.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "Bypassing JPMS",
+          "caption": "The --add-opens flag",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Accessing internal JDK packages"
+            },
+            {
+              "kind": "command",
+              "text": "java --add-opens java.base/java.time=ALL-UNNAMED -jar app.jar"
+            },
+            {
+              "kind": "comment",
+              "text": "# In code, use trySetAccessible()"
+            },
+            {
+              "kind": "output",
+              "text": "field.trySetAccessible(); // Returns false if blocked"
+            }
+          ],
+          "narration": "Java 17+ strongly encapsulates internal packages. If you need to reflect into them, you must explicitly open the package at startup. In code, prefer trySetAccessible to avoid throwing exceptions.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Reflection vs. MethodHandles",
+          "top": {
+            "label": "Reflection API",
+            "badge": "Legacy",
+            "tone": "neutral",
+            "code": "method.invoke(obj, args);",
+            "points": [
+              "Slow, boxing overhead",
+              "Access checks on every call"
+            ]
+          },
+          "bottom": {
+            "label": "MethodHandles",
+            "badge": "Modern",
+            "tone": "good",
+            "code": "handle.invokeExact(args);",
+            "points": [
+              "JIT-inlinable performance",
+              "Type-safe, constant-foldable"
+            ]
+          },
+          "narration": "Reflection is slow because of boxing and repeated access checks. MethodHandles are the modern alternative—they're type-safe and JIT-inlinable, making them the standard for high-performance frameworks.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Invocation & Handles",
+          "takeaways": [
+            "Always unwrap InvocationTargetException",
+            "Use --add-opens for modular access",
+            "MethodHandles beat reflection for speed"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Building custom annotations and meta-data traps →",
+          "narration": "Reflection is powerful, but use it sparingly. In Part 3, we'll build custom annotations and see why your runtime lookups might be returning null.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-custom-annotations",
+      "partTitle": "Custom Annotations & Retention Traps",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reflection API • Part 3 of 4",
+          "headline": "Why is your annotation returning null at runtime?",
+          "highlightWord": "returning null",
+          "subline": "You missed the retention policy, and the JVM threw it away.",
+          "narration": "You defined an annotation, placed it on a method, and used reflection to find it. But it's null. It's not a bug in your code, it's a configuration trap in the annotation definition.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-annotation",
+          "kind": "code-spotlight",
+          "title": "Defining Runtime Annotations",
+          "filename": "Retryable.java",
+          "code": "@Retention(RetentionPolicy.RUNTIME)\n@Target(ElementType.METHOD)\npublic @interface Retryable {\n    int maxAttempts() default 3;\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@Retention",
+              "explanation": "Must be RUNTIME for reflection.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "@Target",
+              "explanation": "Restricts usage location.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Elements",
+              "explanation": "Only primitives/strings/enums.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The default retention is CLASS, which means the JVM discards it at runtime. You must explicitly set it to RetentionPolicy.RUNTIME if you want to read it via reflection.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Retention Policies",
+          "subtitle": "Where does your metadata go?",
+          "nodes": [
+            {
+              "label": "SOURCE",
+              "detail": "Discarded by compiler",
+              "tag": "Compile",
+              "accent": "sky"
+            },
+            {
+              "label": "CLASS",
+              "detail": "In bytecode, but not JVM",
+              "tag": "Bytecode",
+              "accent": "amber"
+            },
+            {
+              "label": "RUNTIME",
+              "detail": "Available to reflection",
+              "tag": "JVM",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "SOURCE is for build tools like Lombok. CLASS is for bytecode weavers. Only RUNTIME survives the JVM loading process. If you want to read it, you need RUNTIME.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code-read",
+          "kind": "code-spotlight",
+          "title": "Reading Annotations",
+          "filename": "Reader.java",
+          "code": "if (method.isAnnotationPresent(Retryable.class)) {\n    Retryable r = method.getAnnotation(Retryable.class);\n    System.out.println(r.maxAttempts());\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Check",
+              "explanation": "Fast boolean check.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Read",
+              "explanation": "Retrieves the instance.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Reading is simple once the retention is set. Check presence first, then pull the instance. The annotation object acts like a proxy, giving you access to the values defined in the source.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Annotations Mastered",
+          "takeaways": [
+            "Use @Retention(RUNTIME) for reflection",
+            "Use @Target to restrict usage",
+            "Annotations are proxies for metadata"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Compile-time processing vs. Runtime reflection →",
+          "narration": "Annotations are the glue of modern Java. In Part 4, we'll see why moving this logic to compile-time is the ultimate performance hack.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-compile-time-vs-runtime",
+      "partTitle": "The Performance Trade-off",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reflection API • Part 4 of 4",
+          "headline": "Why are modern frameworks moving away from reflection?",
+          "highlightWord": "moving away",
+          "subline": "Reflection is flexible, but compile-time processing is faster.",
+          "narration": "Reflection is slow because it happens at runtime. Modern tools like Dagger and MapStruct do the work at compile-time. Let's compare the two approaches.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Reflection vs. APT",
+          "top": {
+            "label": "Runtime Reflection",
+            "badge": "Flexible",
+            "tone": "neutral",
+            "code": "field.set(obj, val);",
+            "points": [
+              "Slow startup",
+              "Hidden runtime errors"
+            ]
+          },
+          "bottom": {
+            "label": "Annotation Processing",
+            "badge": "Fast",
+            "tone": "good",
+            "code": "GeneratedClass.set(obj, val);",
+            "points": [
+              "Zero runtime overhead",
+              "Fail-fast at compile-time"
+            ]
+          },
+          "narration": "Reflection is great for plugins, but it kills startup time. Annotation processors generate plain Java code, so the JVM sees standard method calls. It's faster, safer, and perfect for GraalVM.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The APT Pipeline",
+          "subtitle": "Generating code during compilation",
+          "nodes": [
+            {
+              "label": "Source",
+              "detail": "Your annotated code",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "Processor",
+              "detail": "Hook into javac",
+              "tag": "javac",
+              "accent": "amber"
+            },
+            {
+              "label": "Generated",
+              "detail": "New .java files",
+              "tag": "Output",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Annotation processors hook into javac. They read your metadata and write new source files before compilation finishes. The final bytecode is just standard Java, with no reflection needed.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Performance Summary",
+          "caption": "Choose your tool wisely",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Reflection: Dynamic, slow, flexible"
+            },
+            {
+              "kind": "comment",
+              "text": "# MethodHandles: Fast, type-safe"
+            },
+            {
+              "kind": "comment",
+              "text": "# APT: Zero-cost, compile-time"
+            },
+            {
+              "kind": "success",
+              "text": "Recommendation: Use APT for performance!"
+            }
+          ],
+          "narration": "Use reflection for dynamic plugins. Use MethodHandles for high-throughput logic. Use annotation processors for everything else. Your startup time will thank you.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Reflection is for dynamic discovery",
+            "MethodHandles are for performance",
+            "APT is for zero-cost metadata"
+          ],
+          "command": "git checkout topic/level-3/reflection-api-custom-annotations",
+          "nextPartTeaser": "Full lab and exercises at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered the reflection API. Check out the companion branch for the full DI container lab and test your knowledge. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
