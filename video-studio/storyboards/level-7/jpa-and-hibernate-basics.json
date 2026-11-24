@@ -1,0 +1,469 @@
+{
+  "chapterId": "level-7/jpa-and-hibernate-basics",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "jpa-and-hibernate-basics",
+  "chapterTitle": "JPA and Hibernate Basics",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/jpa-and-hibernate-basics",
+  "branchName": "topic/level-7/jpa-and-hibernate-basics",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-mapping-and-lifecycle",
+      "partTitle": "Mapping Entities and Lifecycle States",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JPA Deep Dive • Part 1 of 4",
+          "headline": "Why does Hibernate need a protected constructor?",
+          "highlightWord": "protected constructor",
+          "subline": "It isn't just a suggestion. It is the key to how Hibernate proxies your data.",
+          "narration": "Hibernate uses reflection to instantiate your entities. If you don't provide a no-arg constructor, it fails. But why protected? Because it lets Hibernate build your objects while preventing your own code from creating half-baked entities.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Entity Lifecycle",
+          "subtitle": "Tracking state in the Persistence Context",
+          "nodes": [
+            {
+              "label": "Transient",
+              "detail": "New object, no database identity",
+              "tag": "New",
+              "accent": "sky"
+            },
+            {
+              "label": "Persistent",
+              "detail": "Managed by L1 Cache, dirty checking active",
+              "tag": "Managed",
+              "accent": "emerald"
+            },
+            {
+              "label": "Detached",
+              "detail": "Database row exists, but tracking is lost",
+              "tag": "Disconnected",
+              "accent": "amber"
+            },
+            {
+              "label": "Removed",
+              "detail": "Scheduled for SQL DELETE",
+              "tag": "Pending",
+              "accent": "rose"
+            }
+          ],
+          "narration": "Entities move through four states. Transient is just a new object. Persistent means it lives in the Persistence Context. Detached happens when the transaction closes, and Removed marks it for deletion.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-entity",
+          "kind": "code-spotlight",
+          "title": "The Entity Blueprint",
+          "filename": "Product.java",
+          "code": "@Entity\npublic class Product {\n    @Id @GeneratedValue\n    private Long id;\n\n    protected Product() {}\n\n    public Product(String sku) {\n        this.sku = sku;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@Entity",
+              "explanation": "Marks the class for ORM mapping. Never make this class final, or proxy generation will crash.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "protected no-arg",
+              "explanation": "Required for reflection. Protected keeps your API clean while satisfying Hibernate's requirements.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Never mark your entities final. Hibernate uses ByteBuddy to create lazy-loading proxies, which requires subclassing. If you block inheritance, the magic breaks.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Persist vs. Merge",
+          "top": {
+            "label": "em.persist(entity)",
+            "badge": "New Entities",
+            "tone": "good",
+            "code": "Product p = new Product();\nem.persist(p);",
+            "points": [
+              "Takes a transient object",
+              "Makes it managed immediately"
+            ]
+          },
+          "bottom": {
+            "label": "em.merge(entity)",
+            "badge": "Detached Entities",
+            "tone": "neutral",
+            "code": "Product managed = em.merge(detached);",
+            "points": [
+              "Copies state to a new managed instance",
+              "Returns the managed reference"
+            ]
+          },
+          "narration": "Don't confuse these. Persist makes a new object managed. Merge takes a detached object, copies its state onto a managed instance, and returns that new managed reference.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Never use final on entity classes",
+            "Protected no-arg constructor is mandatory",
+            "Merge returns a new managed reference"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why IDENTITY kills your write performance →",
+          "narration": "That covers the basics. In Part 2, we look at why IDENTITY primary keys destroy your batching performance and how to fix it with sequences.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-primary-keys-and-batching",
+      "partTitle": "Identity vs Sequence Performance",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Performance Pitfalls • Part 2 of 4",
+          "headline": "IDENTITY is a performance trap.",
+          "highlightWord": "IDENTITY",
+          "subline": "It forces an immediate database round-trip for every single insert.",
+          "narration": "If you use GenerationType.IDENTITY, you are accidentally disabling JDBC batching. Hibernate needs the ID immediately to manage the entity, forcing it to execute your inserts one by one.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Batching Strategy",
+          "top": {
+            "label": "IDENTITY",
+            "badge": "Slow",
+            "tone": "bad",
+            "code": "@GeneratedValue(strategy = IDENTITY)",
+            "points": [
+              "Forces immediate INSERT",
+              "Disables JDBC batching"
+            ]
+          },
+          "bottom": {
+            "label": "SEQUENCE",
+            "badge": "Fast",
+            "tone": "good",
+            "code": "@GeneratedValue(strategy = SEQUENCE)",
+            "points": [
+              "Fetches IDs in blocks",
+              "Enables JDBC batching"
+            ]
+          },
+          "narration": "With SEQUENCE, Hibernate fetches a block of IDs in one go. It assigns them in memory, allowing it to queue up all your inserts and send them as a single batch at flush time.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-seq",
+          "kind": "code-spotlight",
+          "title": "Configuring Sequence Allocation",
+          "filename": "Product.java",
+          "code": "@SequenceGenerator(\n    name = \"prod_gen\",\n    sequenceName = \"prod_seq\",\n    allocationSize = 50\n)",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "allocationSize = 50",
+              "explanation": "Must match your database sequence's INCREMENT BY. If they mismatch, you get gaps or duplicate keys.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always keep your allocationSize in sync with the database sequence increment. If your DB sequence increments by one but Hibernate expects fifty, you will generate duplicate IDs and crash your app.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Batching Configuration",
+          "caption": "Enable batching in application.properties",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "spring.jpa.properties.hibernate.jdbc.batch_size=50"
+            },
+            {
+              "kind": "command",
+              "text": "spring.jpa.properties.hibernate.order_inserts=true"
+            },
+            {
+              "kind": "command",
+              "text": "spring.jpa.properties.hibernate.order_updates=true"
+            }
+          ],
+          "narration": "Don't forget to set these properties. Ordering your inserts and updates helps Hibernate group similar statements, which is critical for efficient JDBC batching.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "IDENTITY forces immediate INSERTs",
+            "SEQUENCE enables ID pre-allocation",
+            "Match allocationSize to DB increment"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The Persistence Context and Dirty Checking →",
+          "narration": "Now your writes are optimized. In Part 3, we dive into the Persistence Context, L1 caching, and how Hibernate automatically tracks changes without you ever calling update.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-persistence-context",
+      "partTitle": "Dirty Checking and L1 Cache",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Persistence Context • Part 3 of 4",
+          "headline": "Why is there no em.update() method?",
+          "highlightWord": "no em.update()",
+          "subline": "Because Hibernate is already watching your every move.",
+          "narration": "JPA doesn't have an update method because the Persistence Context does it for you. It keeps a snapshot of your entity and compares it against the current state at flush time.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Dirty Checking Pipeline",
+          "subtitle": "How state changes become SQL",
+          "nodes": [
+            {
+              "label": "Snapshot",
+              "detail": "Original state at load time",
+              "tag": "Baseline",
+              "accent": "sky"
+            },
+            {
+              "label": "Mutation",
+              "detail": "Setter calls on entity",
+              "tag": "Change",
+              "accent": "amber"
+            },
+            {
+              "label": "Flush",
+              "detail": "Compare snapshot vs entity",
+              "tag": "Sync",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When you load an entity, Hibernate stores a snapshot. When you flush, it compares the current entity to that snapshot. If anything changed, it generates the SQL update automatically.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-batch",
+          "kind": "code-spotlight",
+          "title": "Managing Memory in Batch Jobs",
+          "filename": "BatchService.java",
+          "code": "for (int i = 0; i < list.size(); i++) {\n    em.persist(list.get(i));\n    if (i % 50 == 0) {\n        em.flush();\n        em.clear();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "em.flush()",
+              "explanation": "Pushes pending changes to the database.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "em.clear()",
+              "explanation": "Detaches all entities from the context, allowing the GC to reclaim memory.",
+              "accent": "rose"
+            }
+          ],
+          "narration": "If you process thousands of records, your L1 cache will explode. Always call flush and clear periodically to keep your heap memory under control.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Flush vs. Commit",
+          "top": {
+            "label": "em.flush()",
+            "badge": "Sync",
+            "tone": "neutral",
+            "code": "em.flush();",
+            "points": [
+              "Sends SQL to DB",
+              "Transaction stays open"
+            ]
+          },
+          "bottom": {
+            "label": "commit()",
+            "badge": "Finalize",
+            "tone": "good",
+            "code": "tx.commit();",
+            "points": [
+              "Triggers flush",
+              "Makes changes permanent"
+            ]
+          },
+          "narration": "Flush just synchronizes the state with the DB. Commit makes it permanent. If you flush and then roll back, the database discards those changes anyway.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "No em.update() needed",
+            "L1 cache holds snapshots for dirty checking",
+            "Clear context during bulk processing"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Schema generation and production safety →",
+          "narration": "That's how Hibernate tracks state. In Part 4, we wrap up with schema generation strategies and why ddl-auto: update is a danger to your production database.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-schema-and-production",
+      "partTitle": "Schema Generation and Safety",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Production Safety • Part 4 of 4",
+          "headline": "Never use ddl-auto: update in production.",
+          "highlightWord": "never use",
+          "subline": "It will silently corrupt your schema and lock your tables.",
+          "narration": "Hibernate's auto-generation is great for local dev, but in production, it is a liability. It can't handle complex migrations and might lock your tables during a deployment.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Schema Strategy",
+          "subtitle": "The right way to manage database changes",
+          "nodes": [
+            {
+              "label": "Flyway/Liquibase",
+              "detail": "Versioned, reviewed SQL scripts",
+              "tag": "Source of Truth",
+              "accent": "emerald"
+            },
+            {
+              "label": "ddl-auto: validate",
+              "detail": "Startup safety check",
+              "tag": "Verification",
+              "accent": "sky"
+            },
+            {
+              "label": "Production DB",
+              "detail": "Immutable schema",
+              "tag": "Target",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use Flyway or Liquibase for your migrations. Set Hibernate to validate mode. This ensures your Java entities always match the database, without letting Hibernate touch the schema itself.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "Production Config",
+          "caption": "The safe way to start up",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "spring.jpa.hibernate.ddl-auto=validate"
+            },
+            {
+              "kind": "command",
+              "text": "spring.flyway.enabled=true"
+            },
+            {
+              "kind": "comment",
+              "text": "# Hibernate verifies, Flyway migrates"
+            }
+          ],
+          "narration": "This is the gold standard. Flyway applies the migrations, and Hibernate validates that your code is compatible. If they don't match, the app fails to start instead of failing at runtime.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "DDL Auto Modes",
+          "top": {
+            "label": "update",
+            "badge": "Local Only",
+            "tone": "bad",
+            "code": "ddl-auto: update",
+            "points": [
+              "Guesses schema changes",
+              "No version history"
+            ]
+          },
+          "bottom": {
+            "label": "validate",
+            "badge": "Production",
+            "tone": "good",
+            "code": "ddl-auto: validate",
+            "points": [
+              "Strict safety check",
+              "Requires external migration"
+            ]
+          },
+          "narration": "Update mode is a guess. It doesn't know if you renamed a column or added a new one. Validate is the only safe choice for production environments.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "Use Flyway/Liquibase for migrations",
+            "Set ddl-auto to validate in production",
+            "Never use update on live data"
+          ],
+          "command": "git checkout topic/level-7/jpa-and-hibernate-basics",
+          "nextPartTeaser": "Full guide + lab at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered JPA basics. Checkout the companion branch to run the lab and verify these configurations yourself. See you in the next chapter.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
