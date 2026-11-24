@@ -34,93 +34,126 @@ export function estimateChapterComplexity(markdown: string): ComplexityEstimate 
     recommendedParts = 4;
   }
 
-  return { wordCount: words, h2Count, codeBlockCount: Math.floor(codeBlockCount), recommendedParts };
+  return {
+    wordCount: words,
+    h2Count,
+    codeBlockCount: Math.floor(codeBlockCount),
+    recommendedParts,
+  };
 }
 
-export function validateStoryboardBundle(
-  data: unknown,
-  expectedChapterId: string,
-  minParts: number
-): string[] {
+function splitMarkdownIntoPartSlices(markdown: string, numParts: number): string[] {
+  // Strip YAML frontmatter
+  const body = markdown.replace(/^---[\s\S]*?---\s*/, "").trim();
+  const sections = body
+    .split(/(?=^##\s+)/gm)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (sections.length <= 1) {
+    const chunkSize = Math.ceil(body.length / numParts);
+    return Array.from({ length: numParts }, (_, i) =>
+      body.slice(i * chunkSize, (i + 1) * chunkSize).slice(0, 3800)
+    );
+  }
+
+  const slices: string[] = Array.from({ length: numParts }, () => "");
+  sections.forEach((sec, idx) => {
+    const bucket = Math.min(numParts - 1, Math.floor((idx * numParts) / sections.length));
+    slices[bucket] += (slices[bucket] ? "\n\n" : "") + sec;
+  });
+
+  return slices.map((s, idx) => {
+    const content = s || sections[Math.min(idx, sections.length - 1)] || body;
+    return content.length > 3800 ? `${content.slice(0, 3800)}\n[...]` : content;
+  });
+}
+
+type PartPayload = ChapterStoryboardBundle["parts"][number];
+
+function validatePart(part: unknown, partNumber: number): string[] {
   const errors: string[] = [];
-  if (!data || typeof data !== "object") {
-    return ["Root JSON must be an object."];
+  if (!part || typeof part !== "object") {
+    return [`Part ${partNumber} must be a JSON object.`];
   }
-  const b = data as Partial<ChapterStoryboardBundle>;
-  if (b.chapterId !== expectedChapterId) {
-    errors.push(`chapterId must be "${expectedChapterId}", got "${String(b.chapterId)}".`);
+  const p = part as Partial<PartPayload>;
+  if (!p.partSlug || typeof p.partSlug !== "string") {
+    errors.push(`Part ${partNumber} missing partSlug.`);
   }
-  if (!Array.isArray(b.parts) || b.parts.length < minParts) {
-    errors.push(`parts must have at least ${minParts} parts, got ${Array.isArray(b.parts) ? b.parts.length : 0}.`);
+  if (!p.partTitle || typeof p.partTitle !== "string") {
+    errors.push(`Part ${partNumber} missing partTitle.`);
+  }
+  if (!Array.isArray(p.beats) || p.beats.length < 4 || p.beats.length > 6) {
+    errors.push(
+      `Part ${partNumber} must have 4–6 beats, got ${Array.isArray(p.beats) ? p.beats.length : 0}.`
+    );
     return errors;
   }
 
-  b.parts.forEach((part, pIdx) => {
-    if (!part.partSlug || !part.partTitle) {
-      errors.push(`Part ${pIdx + 1} missing partSlug or partTitle.`);
-    }
-    if (!Array.isArray(part.beats) || part.beats.length < 4) {
-      errors.push(`Part ${pIdx + 1} must have 4–6 beats.`);
+  p.beats.forEach((beat: StoryboardBeat, bIdx: number) => {
+    const tag = `Part ${partNumber} beat ${bIdx + 1} (${beat?.id || "?"})`;
+    if (!beat || !VALID_KINDS.has(beat.kind)) {
+      errors.push(`${tag}: invalid kind "${String(beat?.kind)}".`);
       return;
     }
-    part.beats.forEach((beat: StoryboardBeat, bIdx: number) => {
-      const tag = `Part ${pIdx + 1} beat ${bIdx + 1} (${beat?.id || "?"})`;
-      if (!beat || !VALID_KINDS.has(beat.kind)) {
-        errors.push(`${tag}: invalid kind "${String(beat?.kind)}".`);
-        return;
+    if (!beat.narration || typeof beat.narration !== "string") {
+      errors.push(`${tag}: missing narration.`);
+    } else {
+      const wc = beat.narration.trim().split(/\s+/).length;
+      if (wc > 52) {
+        errors.push(`${tag}: narration too long (${wc} words; keep <= 42 words).`);
       }
-      if (!beat.narration || typeof beat.narration !== "string") {
-        errors.push(`${tag}: missing narration.`);
+      if (/\blive\s+(inside|in|on|within|under|outside)\b/i.test(beat.narration)) {
+        errors.push(
+          `${tag}: contains homograph trap "live inside/in/on" — use "sit/belong/reside".`
+        );
+      }
+    }
+    if (beat.sfx && !VALID_SFX.has(beat.sfx)) {
+      errors.push(`${tag}: invalid sfx "${beat.sfx}".`);
+    }
+    if (beat.kind === "hook") {
+      if (!beat.eyebrow || !beat.headline || !beat.subline) {
+        errors.push(`${tag}: hook requires eyebrow, headline, subline.`);
+      }
+    }
+    if (beat.kind === "code-spotlight") {
+      const lines = (beat.code || "").split("\n");
+      if (!beat.code || lines.length > 13) {
+        errors.push(`${tag}: code-spotlight code must be 1–12 lines (got ${lines.length}).`);
+      }
+      if (!Array.isArray(beat.steps) || beat.steps.length === 0) {
+        errors.push(`${tag}: code-spotlight must have at least 1 step.`);
       } else {
-        const wc = beat.narration.trim().split(/\s+/).length;
-        if (wc > 52) {
-          errors.push(`${tag}: narration too long (${wc} words; keep <= 45 words).`);
-        }
-        if (/\blive\s+(inside|in|on|within|under|outside)\b/i.test(beat.narration)) {
-          errors.push(`${tag}: contains homograph trap "live inside/in/on" — use "sit/belong/reside" instead.`);
-        }
-      }
-      if (beat.sfx && !VALID_SFX.has(beat.sfx)) {
-        errors.push(`${tag}: invalid sfx "${beat.sfx}".`);
-      }
-      if (beat.kind === "code-spotlight") {
-        const lines = (beat.code || "").split("\n");
-        if (lines.length === 0 || lines.length > 13) {
-          errors.push(`${tag}: code-spotlight code must be 1–12 lines (got ${lines.length}).`);
-        }
-        if (!Array.isArray(beat.steps) || beat.steps.length === 0) {
-          errors.push(`${tag}: code-spotlight must have at least 1 step.`);
-        } else {
-          for (const st of beat.steps) {
-            for (const ln of st.lines || []) {
-              if (ln < 1 || ln > lines.length) {
-                errors.push(`${tag}: step line ${ln} out of bounds (1..${lines.length}).`);
-              }
+        for (const st of beat.steps) {
+          for (const ln of st.lines || []) {
+            if (ln < 1 || ln > lines.length) {
+              errors.push(`${tag}: step line ${ln} out of bounds (1..${lines.length}).`);
             }
           }
         }
       }
-      if (beat.kind === "flow-diagram") {
-        if (!Array.isArray(beat.nodes) || beat.nodes.length < 2 || beat.nodes.length > 5) {
-          errors.push(`${tag}: flow-diagram must have 2–5 nodes.`);
-        }
+    }
+    if (beat.kind === "flow-diagram") {
+      if (!Array.isArray(beat.nodes) || beat.nodes.length < 2 || beat.nodes.length > 5) {
+        errors.push(`${tag}: flow-diagram must have 2–5 nodes.`);
       }
-      if (beat.kind === "terminal") {
-        if (!Array.isArray(beat.lines) || beat.lines.length < 2 || beat.lines.length > 10) {
-          errors.push(`${tag}: terminal must have 2–10 lines.`);
-        }
+    }
+    if (beat.kind === "terminal") {
+      if (!Array.isArray(beat.lines) || beat.lines.length < 2 || beat.lines.length > 10) {
+        errors.push(`${tag}: terminal must have 2–10 lines.`);
       }
-      if (beat.kind === "compare") {
-        if (!beat.top?.label || !beat.bottom?.label) {
-          errors.push(`${tag}: compare must have top and bottom objects with label, badge, tone.`);
-        }
+    }
+    if (beat.kind === "compare") {
+      if (!beat.top?.label || !beat.bottom?.label) {
+        errors.push(`${tag}: compare must have top and bottom with label, badge, tone.`);
       }
-      if (beat.kind === "cta") {
-        if (!Array.isArray(beat.takeaways) || beat.takeaways.length < 2) {
-          errors.push(`${tag}: cta must have 2–4 takeaways.`);
-        }
+    }
+    if (beat.kind === "cta") {
+      if (!Array.isArray(beat.takeaways) || beat.takeaways.length < 2) {
+        errors.push(`${tag}: cta must have 2–4 takeaways.`);
       }
-    });
+    }
   });
 
   return errors;
@@ -136,7 +169,7 @@ async function callOllamaJson(
   const prefillTicker = setInterval(() => {
     if (!gotFirstToken) {
       const sec = ((Date.now() - startedAt) / 1000).toFixed(0);
-      console.log(`[Ollama] ${label} | prefilling prompt on GPU... (${sec}s)`);
+      console.log(`[Ollama] ${label} | prefilling prompt... (${sec}s)`);
     }
   }, 5000);
 
@@ -151,8 +184,10 @@ async function callOllamaJson(
         format: "json",
         stream: true,
         options: {
-          temperature: 0.45,
-          num_ctx: 6144,
+          temperature: 0.4,
+          num_ctx: 4096,
+          num_predict: 1150,
+          repeat_penalty: 1.12,
         },
       }),
     });
@@ -200,7 +235,9 @@ async function callOllamaJson(
         const now = Date.now();
         if (gotFirstToken && now - lastLogAt >= 3000) {
           const elapsedSec = ((now - startedAt) / 1000).toFixed(1);
-          const tokPerSec = (tokenCount / Math.max(0.1, (now - startedAt) / 1000)).toFixed(1);
+          const tokPerSec = (
+            tokenCount / Math.max(0.1, (now - startedAt) / 1000)
+          ).toFixed(1);
           console.log(
             `[Ollama] ${label} | ${tokenCount} tokens | ${elapsedSec}s | ${tokPerSec} tok/s`
           );
@@ -213,9 +250,7 @@ async function callOllamaJson(
   }
 
   const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
-  console.log(
-    `[Ollama] ${label} finished (${tokenCount} tokens in ${totalSec}s)`
-  );
+  console.log(`[Ollama] ${label} finished (${tokenCount} tokens in ${totalSec}s)`);
 
   if (!fullResponse) {
     throw new Error("Ollama returned empty response.");
@@ -262,113 +297,112 @@ export async function generateStoryboardWithOllama(params: {
   const titleMatch = markdown.match(/^title:\s*["']?(.+?)["']?\s*$/m);
   const chapterTitle = titleMatch ? titleMatch[1].trim() : slug.replace(/-/g, " ");
 
-  // Load 1 compact example part from reference storyboard to anchor exact JSON schema
   const refBundle = JSON.parse(
     fs.readFileSync(referenceStoryboardPath, "utf-8")
   ) as ChapterStoryboardBundle;
-  const schemaExample = JSON.stringify(
-    {
-      ...refBundle,
-      parts: [refBundle.parts[0]],
-    },
-    null,
-    2
+  const partSchemaExample = JSON.stringify(refBundle.parts[0], null, 2);
+
+  const slices = splitMarkdownIntoPartSlices(markdown, complexity.recommendedParts);
+  const parts: PartPayload[] = [];
+
+  console.log(
+    `[Ollama:${model}] Drafting ${chapterId} (${complexity.recommendedParts} parts, ${complexity.wordCount}w, per-part mode)...`
   );
 
-  // Keep prompt compact so qwen2.5:7b + 6144 context stays on RTX 2060 6GB GPU
-  const maxMdChars = 9500;
-  const mdSnippet =
-    markdown.length > maxMdChars
-      ? `${markdown.slice(0, maxMdChars)}\n\n[...truncated for context window...]`
-      : markdown;
+  for (let pIdx = 0; pIdx < complexity.recommendedParts; pIdx++) {
+    const partNumber = pIdx + 1;
+    const isLast = partNumber === complexity.recommendedParts;
+    const slice = slices[pIdx];
 
-  const basePrompt = `You are a senior Java engineer scripting crisp, engaging 9:16 YouTube Shorts for JavaHub.
-Convert the following chapter Markdown into a JSON object matching the EXACT TypeScript schema of the example below.
+    const basePrompt = `You are a senior Java engineer scripting ONE 9:16 YouTube Short (Part ${partNumber} of ${complexity.recommendedParts}) for JavaHub chapter "${chapterTitle}" (${levelLabel}).
+Output ONLY a single JSON object matching the exact Part schema below (no wrapper, no markdown fences).
 
-Target metadata (MUST match exactly):
-- chapterId: "${chapterId}"
-- level: "${level}"
-- levelLabel: "${levelLabel}"
-- slug: "${slug}"
-- chapterTitle: "${chapterTitle}"
-- roadmapUrl: "https://ravishankar2463.github.io/java_hub/roadmap/${chapterId}"
-- branchName: "topic/${chapterId}"
-- voice: "af_heart"
-- speed: 1.24
+Rules:
+- partNumber: ${partNumber}
+- partSlug: "part-${partNumber}-<short-kebab-slug>"
+- partTitle: crisp title for Part ${partNumber}
+- beats: EXACTLY 5 beats:
+  1. "hook" (id "p${partNumber}-b1-hook", eyebrow "${chapterTitle} • Part ${partNumber} of ${complexity.recommendedParts}", headline, highlightWord, subline, sfx:"pop")
+  2-4. Mix of "code-spotlight" (1–12 lines of Java, valid 1-based steps[].lines), "flow-diagram" (3–4 nodes), "terminal" (3–7 lines), "compare" (top & bottom with tone "bad"|"good"|"neutral")
+  5. "cta" (id "p${partNumber}-b5-cta", 3 takeaways, ${
+      isLast
+        ? `command: "git checkout topic/${chapterId}", nextPartTeaser: "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub"`
+        : `nextPartTeaser: "Up Next (Part ${partNumber + 1}): ..."`
+    }, sfx:"success")
+- Every beat narration MUST be 16–38 words (NEVER >45 words), conversational spoken English.
+- NEVER use verb "live" (use "sit", "belong", "reside").
+- Include durationSec: 9..15 as an estimate.
 
-Part count rule (based on chapter complexity: ${complexity.wordCount} words, ${complexity.h2Count} sections):
-- Create EXACTLY ${complexity.recommendedParts} focused, self-contained parts (partNumber 1..${complexity.recommendedParts}).
-- Each part has 5 beats:
-  1. "hook" (eyebrow, headline, highlightWord, subline, sfx:"pop")
-  2-4. Mix of "code-spotlight" (1-12 lines of Java, valid 1-based steps[].lines), "flow-diagram" (3-4 nodes), "terminal" (3-7 lines), "compare" (top vs bottom with tone "bad"|"good"|"neutral")
-  5. "cta" (3 crisp takeaways, nextPartTeaser or command: "git checkout topic/${chapterId}", sfx:"success")
+Exact Part JSON Example:
+${partSchemaExample}
 
-Strict TTS & Mobile 9:16 Rules:
-- Conversational spoken English (contractions, punchy, senior-dev tone).
-- Every beat narration MUST be 16–40 words (NEVER >45 words).
-- NEVER use verb "live" (e.g. "live inside" -> use "sit inside", "belong inside", "reside in").
-- Every code-spotlight code MUST be <= 12 lines; every steps[].lines entry MUST be 1..lineCount.
-- Every partSlug format: "part-<N>-<short-kebab-slug>".
-- Every beat id format: "p<N>-b<M>-<kind>".
-- Output ONLY valid JSON (no markdown fences, no commentary).
+Source Material for Part ${partNumber}/${complexity.recommendedParts}:
+${slice}`;
 
-Reference Schema Example:
-${schemaExample}
+    let lastErrors: string[] = [];
+    let lastRaw = "";
+    let validPart: PartPayload | null = null;
 
-Chapter Markdown to convert:
-${mdSnippet}`;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const prompt =
+        attempt === 1
+          ? basePrompt
+          : `${basePrompt}\n\nFix ALL validation errors from your previous JSON and output ONLY valid JSON:\n- ${lastErrors.join("\n- ")}\n\nPrevious JSON:\n${lastRaw.slice(0, 2800)}`;
 
-  let lastErrors: string[] = [];
-  let lastRaw = "";
-
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const prompt =
-      attempt === 1
-        ? basePrompt
-        : `${basePrompt}\n\nYour previous JSON had these validation errors — fix ALL of them and return ONLY valid JSON:\n- ${lastErrors.join("\n- ")}\n\nPrevious JSON:\n${lastRaw.slice(0, 6000)}`;
-
-    console.log(
-      `[Ollama:${model}] Drafting ${chapterId} (${complexity.recommendedParts} parts, attempt ${attempt}/3)...`
-    );
-    lastRaw = await callOllamaJson(prompt, model, `${chapterId} (attempt ${attempt}/3)`);
-
-    try {
-      const parsed = JSON.parse(lastRaw) as ChapterStoryboardBundle;
-      // Enforce deterministic metadata fields so small LLM drift never breaks paths
-      parsed.chapterId = chapterId;
-      parsed.level = level;
-      parsed.levelLabel = levelLabel;
-      parsed.slug = slug;
-      parsed.chapterTitle = chapterTitle;
-      parsed.roadmapUrl = `https://ravishankar2463.github.io/java_hub/roadmap/${chapterId}`;
-      parsed.branchName = `topic/${chapterId}`;
-      parsed.voice = "af_heart";
-      parsed.speed = 1.24;
-      if (Array.isArray(parsed.parts)) {
-        parsed.parts.forEach((p, idx) => {
-          p.partNumber = idx + 1;
-        });
-      }
-
-      lastErrors = validateStoryboardBundle(parsed, chapterId, complexity.recommendedParts);
-      if (lastErrors.length === 0) {
-        fs.mkdirSync(path.dirname(outStoryboardPath), { recursive: true });
-        fs.writeFileSync(outStoryboardPath, JSON.stringify(parsed, null, 2), "utf-8");
-        console.log(
-          `[Ollama] Validated & saved ${outStoryboardPath} (${parsed.parts.length} parts)`
-        );
-        return parsed;
-      }
-      console.warn(
-        `[Ollama] Attempt ${attempt} had ${lastErrors.length} validation issue(s): ${lastErrors[0]}`
+      lastRaw = await callOllamaJson(
+        prompt,
+        model,
+        `${chapterId} P${partNumber}/${complexity.recommendedParts} (try ${attempt}/3)`
       );
-    } catch (err) {
-      lastErrors = [`JSON.parse failed: ${err instanceof Error ? err.message : String(err)}`];
-      console.warn(`[Ollama] Attempt ${attempt} invalid JSON: ${lastErrors[0]}`);
+
+      try {
+        const parsed = JSON.parse(lastRaw) as PartPayload;
+        parsed.partNumber = partNumber;
+        // Normalize beat defaults if omitted
+        if (Array.isArray(parsed.beats)) {
+          parsed.beats.forEach((b, idx) => {
+            if (!b.id) b.id = `p${partNumber}-b${idx + 1}-${b.kind || "beat"}`;
+            if (typeof b.durationSec !== "number") b.durationSec = 10;
+            if (!b.sfx || !VALID_SFX.has(b.sfx)) b.sfx = "whoosh";
+          });
+        }
+        lastErrors = validatePart(parsed, partNumber);
+        if (lastErrors.length === 0) {
+          validPart = parsed;
+          break;
+        }
+        console.warn(
+          `[Ollama] P${partNumber} attempt ${attempt} had ${lastErrors.length} issue(s): ${lastErrors[0]}`
+        );
+      } catch (err) {
+        lastErrors = [`JSON.parse failed: ${err instanceof Error ? err.message : String(err)}`];
+        console.warn(`[Ollama] P${partNumber} attempt ${attempt} invalid JSON: ${lastErrors[0]}`);
+      }
     }
+
+    if (!validPart) {
+      throw new Error(
+        `Failed Part ${partNumber}/${complexity.recommendedParts} of ${chapterId} after 3 attempts:\n${lastErrors.join("\n")}`
+      );
+    }
+    parts.push(validPart);
   }
 
-  throw new Error(
-    `Failed to generate valid storyboard for ${chapterId} after 3 attempts:\n${lastErrors.join("\n")}`
-  );
+  const bundle: ChapterStoryboardBundle = {
+    chapterId,
+    level,
+    levelLabel,
+    slug,
+    chapterTitle,
+    roadmapUrl: `https://ravishankar2463.github.io/java_hub/roadmap/${chapterId}`,
+    branchName: `topic/${chapterId}`,
+    voice: "af_heart",
+    speed: 1.24,
+    parts,
+  };
+
+  fs.mkdirSync(path.dirname(outStoryboardPath), { recursive: true });
+  fs.writeFileSync(outStoryboardPath, JSON.stringify(bundle, null, 2), "utf-8");
+  console.log(`[Ollama] Validated & saved ${outStoryboardPath} (${parts.length} parts)`);
+  return bundle;
 }
