@@ -228,8 +228,8 @@ async function main(): Promise<void> {
       : await synthesizePartAudio(
           part,
           PUBLIC_DIR,
-          opts.voice ?? part.voice ?? "am_michael",
-          opts.speed ?? part.speed ?? 1.1
+          opts.voice ?? part.voice ?? "af_heart",
+          opts.speed ?? part.speed ?? 1.24
         );
     preparedParts.push(withAudio);
   }

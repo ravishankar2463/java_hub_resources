@@ -4,16 +4,16 @@ import { KokoroTTS } from "kokoro-js";
 import type { PartStoryboard } from "../src/types.js";
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
-/** Short, snappy YouTube Shorts breath gap between beats */
-const BEAT_PADDING_SEC = 0.28;
+/** Snappy YouTube Shorts breath gap between beats */
+const BEAT_PADDING_SEC = 0.16;
 
 let cachedTts: KokoroTTS | null = null;
 
 async function getTtsEngine(): Promise<KokoroTTS> {
   if (cachedTts) return cachedTts;
-  console.log(`[TTS] Loading Kokoro-82M (${MODEL_ID}, q8, cpu)...`);
+  console.log(`[TTS] Loading Kokoro-82M (${MODEL_ID}, fp32, cpu)...`);
   cachedTts = await KokoroTTS.from_pretrained(MODEL_ID, {
-    dtype: "q8",
+    dtype: "fp32",
     device: "cpu",
   });
   console.log("[TTS] Kokoro-82M ready.");
@@ -51,8 +51,8 @@ export function getWavDurationSec(wavPath: string): number {
 export async function synthesizePartAudio(
   part: PartStoryboard,
   publicDir: string,
-  defaultVoice = "am_michael",
-  defaultSpeed = 1.1
+  defaultVoice = "af_heart",
+  defaultSpeed = 1.24
 ): Promise<PartStoryboard> {
   const voice = part.voice || defaultVoice;
   const speed = part.speed ?? defaultSpeed;

@@ -6,8 +6,8 @@
   "chapterTitle": "Anatomy of a Java Program",
   "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-0/anatomy-of-a-java-program",
   "branchName": "topic/level-0/anatomy-of-a-java-program",
-  "voice": "am_michael",
-  "speed": 1.1,
+  "voice": "af_heart",
+  "speed": 1.24,
   "parts": [
     {
       "partNumber": 1,
@@ -49,7 +49,7 @@
               "Catches type & structure bugs at compile time"
             ]
           },
-          "narration": "In standard Java, statements can't float loosely at the top of a file. Statements live inside methods, methods live inside a class, and classes live inside packages.",
+          "narration": "In standard Java, statements can't float loosely at the top of a file. Statements sit inside methods, methods belong inside a class, and classes are grouped into packages.",
           "durationSec": 9,
           "sfx": "whoosh"
         },

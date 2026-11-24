@@ -2,7 +2,7 @@
 
 Vertical-first **9:16 YouTube Shorts (`1080×1920`)** generator for the [JavaHub Developer Roadmap](https://ravishankar2463.github.io/java_hub/).
 
-- **Voiceover:** Local **Kokoro-82M (ONNX)** at crisp conversational cadence (`am_michael`, `1.1x`), with automatic drop-in `.human.wav` override support per beat.
+- **Voiceover:** Local **Kokoro-82M (ONNX `fp32`)** at crisp conversational cadence (`af_heart`, `1.24x`), with automatic drop-in `.human.wav` override support per beat.
 - **Sound Design:** Procedural zero-dependency WAV SFX (`whoosh`, `pop`, `keyclick`, `success`, `error`).
 - **Visual Craft:** Senior Dev IDE + Whiteboard + Fireship-style kinetic cuts:
   - `hook` — Kinetic slam headline with highlighted keyword
