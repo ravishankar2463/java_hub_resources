@@ -1,0 +1,586 @@
+{
+  "chapterId": "level-7/relational-database-fundamentals-advanced-sql",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "relational-database-fundamentals-advanced-sql",
+  "chapterTitle": "Relational Database Fundamentals & Advanced SQL",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/relational-database-fundamentals-advanced-sql",
+  "branchName": "topic/level-7/relational-database-fundamentals-advanced-sql",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-acid-transactions",
+      "partTitle": "ACID: The Database Safety Net",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Database Internals • Part 1 of 5",
+          "headline": "Why does your database roll back perfectly valid writes?",
+          "highlightWord": "roll back",
+          "subline": "It isn't a bug—it is the ACID guarantee keeping your financial data sane.",
+          "narration": "Ever wonder why a database rejects a perfectly valid update? It is likely an ACID constraint. If your code crashes mid-transaction, you need a guarantee that money doesn't just vanish into thin air.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Transaction Lifecycle",
+          "subtitle": "From BEGIN to COMMIT",
+          "nodes": [
+            {
+              "label": "BEGIN",
+              "detail": "Starts the atomic boundary",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Constraints",
+              "detail": "CHECK/FK/UNIQUE validation",
+              "tag": "Safety",
+              "accent": "amber"
+            },
+            {
+              "label": "WAL/fsync",
+              "detail": "Durability via Write-Ahead Log",
+              "tag": "Persistence",
+              "accent": "purple"
+            },
+            {
+              "label": "COMMIT",
+              "detail": "Visibility to other readers",
+              "tag": "Final",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Atomicity means all-or-nothing. Consistency enforces schema rules like CHECK constraints. Isolation manages concurrency, and Durability uses a Write-Ahead Log to ensure your data survives even a total power loss.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-sql",
+          "kind": "code-spotlight",
+          "title": "Schema-Level Invariants",
+          "filename": "schema.sql",
+          "code": "CREATE TABLE accounts (\n    id bigint PRIMARY KEY,\n    balance numeric(12, 2) NOT NULL CHECK (balance >= 0)\n);\n\nBEGIN;\nUPDATE accounts SET balance = balance - 250.00 WHERE id = 101;\nUPDATE accounts SET balance = balance + 250.00 WHERE id = 202;\nCOMMIT;",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "CHECK constraint",
+              "explanation": "The database rejects the update before it hits disk if the balance drops below zero.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8
+              ],
+              "badge": "Atomic Block",
+              "explanation": "If the second update fails, the first is rolled back automatically.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Never trust the application layer to enforce business rules alone. By putting a CHECK constraint directly in the schema, you prevent invalid states even if your Java code has a logic bug.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Isolation Levels",
+          "top": {
+            "label": "Read Committed",
+            "badge": "Default",
+            "tone": "neutral",
+            "code": "SELECT * FROM orders;",
+            "points": [
+              "Standard performance",
+              "Prevents dirty reads"
+            ]
+          },
+          "bottom": {
+            "label": "Serializable",
+            "badge": "Strict",
+            "tone": "good",
+            "code": "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;",
+            "points": [
+              "Total data integrity",
+              "Higher risk of retries"
+            ]
+          },
+          "narration": "Most engines default to Read Committed, which is fast. But for complex multi-row financial invariants, you might need Serializable isolation to prevent subtle race conditions.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "ACID = Atomicity, Consistency, Isolation, Durability",
+            "Schema constraints are your first line of defense",
+            "WAL ensures data survives crashes"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why 3NF isn't always the right choice →",
+          "narration": "That's the ACID foundation. In Part 2, we tackle normalization and why denormalizing historical facts is actually a best practice.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-normalization",
+      "partTitle": "Normalization vs. Denormalization",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Data Modeling • Part 2 of 5",
+          "headline": "Is your database schema causing silent data corruption?",
+          "highlightWord": "silent corruption",
+          "subline": "Over-normalization is a trap. Here is when to break the rules.",
+          "narration": "Normalization prevents anomalies, but it can also ruin your historical reporting. If you join to current prices for past orders, you are corrupting your own financial records.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-norm",
+          "kind": "code-spotlight",
+          "title": "The Historical Fact Pattern",
+          "filename": "orders.sql",
+          "code": "CREATE TABLE order_items (\n    order_id bigint,\n    product_id bigint,\n    unit_price_at_purchase numeric(12, 2) NOT NULL,\n    PRIMARY KEY (order_id, product_id)\n);",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Snapshotting",
+              "explanation": "Store the price at the moment of purchase. Never rely on the current product catalog price.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This is a deliberate denormalization. By saving the unit price at purchase, you ensure that even if the product price changes tomorrow, your historical order totals remain accurate.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Normalization Stages",
+          "top": {
+            "label": "1NF (Atomic)",
+            "badge": "Basic",
+            "tone": "neutral",
+            "code": "product_ids = '10,42,88'",
+            "points": [
+              "No delimited lists",
+              "Primary key required"
+            ]
+          },
+          "bottom": {
+            "label": "3NF (Clean)",
+            "badge": "Recommended",
+            "tone": "good",
+            "code": "postal_codes(zip, city, state)",
+            "points": [
+              "No transitive dependencies",
+              "Eliminates update anomalies"
+            ]
+          },
+          "narration": "1NF requires atomic values. 3NF removes transitive dependencies—like storing a city and state based on a zip code. 3NF is your default, but always snapshot historical facts.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "When to Denormalize",
+          "subtitle": "Performance vs. Consistency",
+          "nodes": [
+            {
+              "label": "Read Latency",
+              "detail": "Aggregations are too slow",
+              "tag": "Trigger",
+              "accent": "sky"
+            },
+            {
+              "label": "Materialized View",
+              "detail": "Cached summary table",
+              "tag": "Solution",
+              "accent": "amber"
+            },
+            {
+              "label": "Sync Logic",
+              "detail": "Triggers or app-level updates",
+              "tag": "Cost",
+              "accent": "purple"
+            }
+          ],
+          "narration": "If your dashboard queries are timing out, denormalize by creating a materialized view. The cost is maintenance—you must keep that data in sync with the source of truth.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "3NF is the standard for data integrity",
+            "Always snapshot prices for historical orders",
+            "Denormalize only for read performance"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): B-Tree internals and the Leftmost Prefix Rule →",
+          "narration": "That covers modeling. In Part 3, we dive into B-Trees and why your composite index might be completely ignored by the query planner.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-indexing",
+      "partTitle": "B-Tree Internals & Indexing",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Query Tuning • Part 3 of 5",
+          "headline": "Why is your composite index being ignored?",
+          "highlightWord": "ignored",
+          "subline": "It's the Leftmost Prefix Rule. If you miss the first column, the index is dead.",
+          "narration": "You built a composite index, but the query planner is still doing a sequential scan. It's likely you violated the Leftmost Prefix Rule. Let's see how B-Trees actually traverse your data.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "B-Tree Traversal",
+          "subtitle": "O(log n) search efficiency",
+          "nodes": [
+            {
+              "label": "Root Page",
+              "detail": "High-level key ranges",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Branch Page",
+              "detail": "Narrowing the search",
+              "tag": "Path",
+              "accent": "amber"
+            },
+            {
+              "label": "Leaf Page",
+              "detail": "Pointer to row heap",
+              "tag": "Data",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "B-Trees keep keys sorted. The root narrows the range, branches refine it, and leaves point to the actual row. If your query doesn't start with the first indexed column, the engine can't use the tree.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-idx",
+          "kind": "code-spotlight",
+          "title": "Composite Index Strategy",
+          "filename": "index.sql",
+          "code": "CREATE INDEX idx_orders_tenant_status_created\n    ON orders (tenant_id, status, created_at DESC);",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Leftmost Prefix",
+              "explanation": "Must filter by tenant_id first. status and created_at only work if tenant_id is included.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Equality First",
+              "explanation": "Put equality columns before range columns for maximum selectivity.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always put equality columns before range columns. If you filter by created_at first, the B-Tree loses its ability to group status values, forcing a scan.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Index Optimizations",
+          "top": {
+            "label": "Covering Index",
+            "badge": "INCLUDE",
+            "tone": "good",
+            "code": "... INCLUDE (total_amount)",
+            "points": [
+              "Index-only scan",
+              "No heap access"
+            ]
+          },
+          "bottom": {
+            "label": "Partial Index",
+            "badge": "WHERE",
+            "tone": "good",
+            "code": "... WHERE status = 'PENDING'",
+            "points": [
+              "Tiny footprint",
+              "Faster writes"
+            ]
+          },
+          "narration": "Covering indexes let you fetch data directly from the index leaf. Partial indexes are even better—they only index the rows you actually care about, keeping the tree small and fast.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Leftmost prefix is mandatory for B-Trees",
+            "Equality columns go before range columns",
+            "Partial indexes save RAM and write I/O"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Reading EXPLAIN ANALYZE plans →",
+          "narration": "That's indexing. In Part 4, we stop guessing and start reading EXPLAIN ANALYZE plans to see exactly why a query is slow.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-explain-analyze",
+      "partTitle": "Decoding Query Plans",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Performance Tuning • Part 4 of 5",
+          "headline": "Why is your query slow even with an index?",
+          "highlightWord": "slow",
+          "subline": "Stop guessing. EXPLAIN ANALYZE reveals the truth behind the execution plan.",
+          "narration": "You added an index, but the query is still slow. EXPLAIN ANALYZE is your only source of truth. Let's decode the plan and find the bottleneck.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-term",
+          "kind": "terminal",
+          "title": "Reading the Plan",
+          "caption": "The 4 signals that matter",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "EXPLAIN (ANALYZE, BUFFERS) SELECT ..."
+            },
+            {
+              "kind": "output",
+              "text": "Index Scan using idx_orders on orders"
+            },
+            {
+              "kind": "output",
+              "text": "  Filter: (status = 'PAID')"
+            },
+            {
+              "kind": "output",
+              "text": "  Rows Removed by Filter: 95000"
+            },
+            {
+              "kind": "success",
+              "text": "Buffers: shared hit=4 read=850"
+            }
+          ],
+          "narration": "If you see 'Rows Removed by Filter', your index is failing to narrow the search. High 'shared read' counts mean you're hitting the disk, not the RAM cache.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Scan Types",
+          "subtitle": "Choosing the right strategy",
+          "nodes": [
+            {
+              "label": "Seq Scan",
+              "detail": "Full table read",
+              "tag": "Slow",
+              "accent": "amber"
+            },
+            {
+              "label": "Index Scan",
+              "detail": "B-Tree + Heap fetch",
+              "tag": "Good",
+              "accent": "sky"
+            },
+            {
+              "label": "Index Only",
+              "detail": "Leaf page only",
+              "tag": "Fast",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Seq Scans are fine for small tables, but deadly for large ones. Index Only Scans are the gold standard—they never touch the main table heap.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Planner Estimates",
+          "top": {
+            "label": "Good Estimate",
+            "badge": "Accurate",
+            "tone": "good",
+            "code": "rows=10 (est) vs rows=10 (act)",
+            "points": [
+              "Planner is confident",
+              "Optimal join path"
+            ]
+          },
+          "bottom": {
+            "label": "Bad Estimate",
+            "badge": "Stale Stats",
+            "tone": "bad",
+            "code": "rows=5 (est) vs rows=400k (act)",
+            "points": [
+              "Planner picks wrong join",
+              "Run ANALYZE table_name"
+            ]
+          },
+          "narration": "If estimates are way off, the planner will choose a terrible join strategy. Run ANALYZE to refresh column histograms and keep your plans efficient.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "EXPLAIN ANALYZE executes the query",
+            "Buffers: shared hit = RAM, shared read = Disk",
+            "Stale stats lead to poor join paths"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): CTEs and Window Functions →",
+          "narration": "That's performance profiling. In Part 5, we wrap up with CTEs and Window Functions for complex analytical reporting.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-analytical-sql",
+      "partTitle": "CTEs & Window Functions",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Advanced SQL • Part 5 of 5",
+          "headline": "Stop writing nested subqueries from hell.",
+          "highlightWord": "nested subqueries",
+          "subline": "CTEs and Window Functions make your analytics readable and performant.",
+          "narration": "Nested subqueries are unreadable. CTEs let you define a clear pipeline, and Window Functions compute aggregates without collapsing your rows. Let's finish the series.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code-cte",
+          "kind": "code-spotlight",
+          "title": "Pipeline with CTEs",
+          "filename": "report.sql",
+          "code": "WITH monthly_revenue AS (\n    SELECT tenant_id, SUM(total_amount) as rev\n    FROM orders GROUP BY tenant_id\n)\nSELECT * FROM monthly_revenue WHERE rev > 1000;",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "badge": "WITH clause",
+              "explanation": "Names the intermediate step, creating a readable top-to-bottom flow.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "CTEs turn complex logic into a readable pipeline. In modern PostgreSQL, they are inlined by default, so you get the readability of a subquery with the performance of a join.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-code-win",
+          "kind": "code-spotlight",
+          "title": "Window Functions",
+          "filename": "analytics.sql",
+          "code": "SELECT \n    salary,\n    RANK() OVER (PARTITION BY dept ORDER BY salary DESC) as rnk\nFROM employees;",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "RANK()",
+              "explanation": "Computes the rank per department without collapsing the rows into a single group.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Window functions are powerful. They calculate rankings or running totals while keeping every row in your result set. Use PARTITION BY to reset the calculation per group.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-compare",
+          "kind": "compare",
+          "title": "Ranking Ties",
+          "top": {
+            "label": "RANK()",
+            "badge": "Skips",
+            "tone": "neutral",
+            "code": "1, 2, 2, 4",
+            "points": [
+              "Leaves gaps after ties"
+            ]
+          },
+          "bottom": {
+            "label": "DENSE_RANK()",
+            "badge": "Continuous",
+            "tone": "good",
+            "code": "1, 2, 2, 3",
+            "points": [
+              "No gaps in ranking"
+            ]
+          },
+          "narration": "Use RANK when you need to respect gaps, and DENSE_RANK when you want a continuous sequence. Both are essential for top-N reporting.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "CTEs improve readability via pipelines",
+            "Window functions keep rows intact",
+            "DENSE_RANK handles ties without gaps"
+          ],
+          "command": "git checkout topic/level-7/relational-database-fundamentals-advanced-sql",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered relational fundamentals. Checkout the branch in the description to run the labs yourself. See you in Level 8.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
