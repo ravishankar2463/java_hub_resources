@@ -1,0 +1,529 @@
+{
+  "chapterId": "level-0/arrays-2d-matrices",
+  "level": "level-0",
+  "levelLabel": "Level 0",
+  "slug": "arrays-2d-matrices",
+  "chapterTitle": "Arrays & 2D Matrices",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-0/arrays-2d-matrices",
+  "branchName": "topic/level-0/arrays-2d-matrices",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-heap-memory-and-indexing",
+      "partTitle": "How Java Array Memory & Indexing Actually Work",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Arrays & Memory • Part 1 of 4",
+          "headline": "Array index lookups run in O(1) time regardless of array size.",
+          "highlightWord": "O(1) time",
+          "subline": "That constant speed isn't magic. It comes down to contiguous memory and instant address math.",
+          "narration": "Array index lookups run in O(1) constant time whether your array has ten items or ten million. That speed isn't magic. It's precise Heap memory layout and simple address math.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Heap Memory Anatomy of int[]",
+          "subtitle": "Header metadata followed by contiguous primitive elements",
+          "nodes": [
+            {
+              "label": "Thread Stack",
+              "detail": "int[] scores reference variable holding Heap address 0x5000",
+              "tag": "Stack",
+              "accent": "sky"
+            },
+            {
+              "label": "Array Object Header",
+              "detail": "16-Byte HotSpot header: Mark Word + Klass Pointer + length field",
+              "tag": "Header",
+              "accent": "amber"
+            },
+            {
+              "label": "Contiguous Data Block",
+              "detail": "scores[0] at 0x5010, scores[1] at 0x5014, scores[2] at 0x5018",
+              "tag": "Heap Payload",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When you allocate an int array on the Heap, HotSpot creates a sixteen byte object header containing lock metadata, a class pointer, and array length, followed immediately by contiguous element bytes.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-math",
+          "kind": "code-spotlight",
+          "title": "O(1) Address Calculation & Size Limits",
+          "filename": "ArrayMemory.java",
+          "code": "int[] scores = new int[4];\nscores[0] = 95;\nscores[3] = 100;\n// baseAddress + (index * elementSizeInBytes)\n// 0x5010 + (3 * 4) = 0x501C\nint maxAllowed = Integer.MAX_VALUE - 8;",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Contiguous Heap Block",
+              "explanation": "Memory allocated in one block. Length is stored inside the 16-byte header.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "O(1) Direct Offset Math",
+              "explanation": "No scanning needed. CPU calculates exact memory address instantly.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Signed 32-bit Limit",
+              "explanation": "Array length is a 32-bit int. HotSpot caps max length slightly below Integer.MAX_VALUE.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Because memory is contiguous, Java computes an element address instantly by multiplying the index by element size. Since length is a signed thirty-two bit integer, array length is capped just under two billion elements.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Primitive Arrays vs. Reference Arrays",
+          "top": {
+            "label": "int[] (Primitive Array)",
+            "badge": "Cache Line Friendly",
+            "tone": "good",
+            "code": "int[] nums = {10, 20, 30, 40};\n// Heap layout: [ 10 | 20 | 30 | 40 ]",
+            "points": [
+              "Raw values sit side-by-side in memory",
+              "CPU pulls contiguous numbers into L1 cache"
+            ]
+          },
+          "bottom": {
+            "label": "Customer[] (Reference Array)",
+            "badge": "Pointer Dereference Cost",
+            "tone": "neutral",
+            "code": "Customer[] users = new Customer[4];\n// Heap layout: [ ptrA | ptrB | ptrC | ptrD ]",
+            "points": [
+              "Array holds object memory addresses only",
+              "Objects reside at scattered heap locations"
+            ]
+          },
+          "narration": "Primitive arrays store raw numbers directly inside the array block, so reading them pulls contiguous values right into CPU L1 cache. Reference arrays store object pointers, forcing extra pointer dereferences across scattered Heap memory.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Heap array object header takes 16 bytes on HotSpot",
+            "Index lookups use direct O(1) offset math",
+            "Primitive arrays optimize L1 CPU cache locality"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Fast array copying & index out of bounds traps →",
+          "narration": "That is the memory layout foundation. In Part 2, we explore fast array copying with System dot arraycopy and four critical index out of bounds bugs.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-copying-and-bounds-pitfalls",
+      "partTitle": "Fast Array Copying & Spotting Index Out of Bounds Bugs",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Array Operations • Part 2 of 4",
+          "headline": "System.arraycopy is faster than any hand-rolled Java loop.",
+          "highlightWord": "faster",
+          "subline": "JVM intrinsics copy native memory blocks directly without bytecode overhead.",
+          "narration": "System dot arraycopy is faster than any hand-rolled Java for loop you can write. Here is why the JVM built-in leaves standard manual copy loops in the dust.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-copy",
+          "kind": "code-spotlight",
+          "title": "High-Performance Array Copying",
+          "filename": "ArrayCopyDemo.java",
+          "code": "int[] source = {10, 20, 30, 40, 50};\n// Fast resizer (delegates to System.arraycopy)\nint[] expanded = Arrays.copyOf(source, 8);\n// Low-level JVM intrinsic memory copy\nint[] destination = new int[5];\nSystem.arraycopy(source, 0, destination, 0, source.length);\n// Shallow copy warning for object references!\nCustomer[] copy = Arrays.copyOf(customers, customers.length);",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Arrays.copyOf",
+              "explanation": "Creates a new expanded array filled with default zeros for extra slots.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "System.arraycopy Intrinsic",
+              "explanation": "Native HotSpot routine copies memory blocks directly without element-by-element bytecode loops.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "Shallow Copy Trap",
+              "explanation": "Copies object pointers, not object instances. Modifying object fields affects both arrays.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Arrays dot copyOf calls System dot arraycopy under the hood. In HotSpot, it runs as a native JVM intrinsic that copies raw memory blocks in hardware. But remember, for reference arrays, it copies pointers, not objects.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-term-exception",
+          "kind": "terminal",
+          "title": "Modern Exception Diagnostic Messages",
+          "caption": "Java 11+ details exact bad indices",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Attempting to access past array boundary"
+            },
+            {
+              "kind": "command",
+              "text": "java com.javahub.arrays.BoundsBug"
+            },
+            {
+              "kind": "error",
+              "text": "Exception in thread \"main\" java.lang.ArrayIndexOutOfBoundsException:"
+            },
+            {
+              "kind": "error",
+              "text": "    Index 4 out of bounds for length 4"
+            },
+            {
+              "kind": "output",
+              "text": "    at com.javahub.arrays.BoundsBug.main(BoundsBug.java:8)"
+            }
+          ],
+          "narration": "Java checks bounds on every array access to prevent memory corruption. If your index hits negative numbers or equals array length, Java eleven prints the exact failing index and valid size right in the stack trace.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare-bugs",
+          "kind": "compare",
+          "title": "Top Bounds Bugs: Off-By-One vs. Safe Access",
+          "top": {
+            "label": "Dangerous Patterns",
+            "badge": "❌ CRASHES",
+            "tone": "bad",
+            "code": "for (int i = 0; i <= arr.length; i++) { ... }\nint item = emptyArr[0];\nint val = arr[Arrays.binarySearch(arr, key)];",
+            "points": [
+              "i <= arr.length accesses length index",
+              "binarySearch returns negative values when key is missing"
+            ]
+          },
+          "bottom": {
+            "label": "Guarded Safe Patterns",
+            "badge": "✅ SAFE",
+            "tone": "good",
+            "code": "for (int i = 0; i < arr.length; i++) { ... }\nif (emptyArr.length > 0) { ... }\nint idx = Arrays.binarySearch(arr, key);\nif (idx >= 0) { int val = arr[idx]; }",
+            "points": [
+              "Strict less-than boundary check",
+              "Verify index is non-negative before array access"
+            ]
+          },
+          "narration": "Four bugs trigger out of bounds crashes: writing less-than-or-equal in loop bounds, accessing index zero on empty arrays, ignoring negative index returns from binary search, and assuming jagged matrices have uniform row lengths.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Complete",
+          "takeaways": [
+            "System.arraycopy runs as a fast JVM intrinsic",
+            "Array copies on reference arrays are shallow",
+            "Java 11+ reports exact failing index in stack trace"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): 2D jagged matrices & CPU cache line hits →",
+          "narration": "Now you can copy arrays safely. In Part 3, we dive into 2D matrices, jagged array shapes, and why row-major traversal destroys column-major traversal in benchmark speed.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-2d-matrices-and-cpu-cache",
+      "partTitle": "Java 2D Matrices: Memory Architecture & Cache Locality",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "2D Matrices • Part 3 of 4",
+          "headline": "Java does not have true flat multidimensional arrays.",
+          "highlightWord": "no true flat",
+          "subline": "Every 2D array in Java is an array of references pointing to separate 1D row arrays.",
+          "narration": "Java does not have true flat multidimensional arrays. What looks like a 2D matrix in Java is actually an array of pointers to completely separate row arrays.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow-2d",
+          "kind": "flow-diagram",
+          "title": "Java 2D Matrix Memory Architecture",
+          "subtitle": "Outer array of row references pointing to heap row instances",
+          "nodes": [
+            {
+              "label": "Stack Reference",
+              "detail": "int[][] matrix variable pointing to outer array object",
+              "tag": "Stack",
+              "accent": "sky"
+            },
+            {
+              "label": "Outer Row Array",
+              "detail": "Holds row pointers: [ matrix[0] | matrix[1] | matrix[2] ]",
+              "tag": "Outer Array",
+              "accent": "amber"
+            },
+            {
+              "label": "Independent Row Arrays",
+              "detail": "Row 0: [ 1, 2 ] | Row 1: [ 3, 4, 5, 6 ] | Row 2: [ 7 ]",
+              "tag": "Jagged Rows",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The outer array reference points to a row array of pointers on the Heap. Each row array is an independent object. This allows jagged matrix shapes where every row can have a different column length.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-jagged",
+          "kind": "code-spotlight",
+          "title": "Jagged Array Initialization & Null Traps",
+          "filename": "JaggedMatrix.java",
+          "code": "int[][] triangle = new int[3][]; // row pointers start null\n// triangle[0][0] = 5; // Throws NullPointerException!\ntriangle[0] = new int[1]; // Row 0 has 1 column\ntriangle[1] = new int[2]; // Row 1 has 2 columns\ntriangle[2] = new int[3]; // Row 2 has 3 columns\nfor (int r = 0; r < triangle.length; r++) {\n    for (int c = 0; c < triangle[r].length; c++) {\n        triangle[r][c] = r + c;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Uninitialized Rows",
+              "explanation": "Leaves triangle[0], triangle[1], and triangle[2] containing null pointers.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3,
+                4,
+                5
+              ],
+              "badge": "Explicit Row Allocations",
+              "explanation": "Each row array allocated independently with custom column counts.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Safe Jagged Traversal",
+              "explanation": "Always bound inner loop by triangle[r].length, never triangle[0].length.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "When creating jagged arrays, allocating only the outer row dimension leaves all row slots containing null. Attempting to read column zero before assigning a row object throws NullPointerException, not Array Index Out Of Bounds.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-cache",
+          "kind": "compare",
+          "title": "Row-Major vs. Column-Major Cache Locality",
+          "top": {
+            "label": "Row-Major Traversal (Sequential)",
+            "badge": "⚡ HIGH SPEED",
+            "tone": "good",
+            "code": "for (int r = 0; r < matrix.length; r++) {\n    for (int c = 0; c < matrix[r].length; c++) {\n        sum += matrix[r][c];\n    }\n}",
+            "points": [
+              "Reads elements sequentially inside row memory",
+              "Hits 64-byte L1 CPU cache lines efficiently"
+            ]
+          },
+          "bottom": {
+            "label": "Column-Major Traversal (Strided)",
+            "badge": "🐌 CACHE MISSES",
+            "tone": "bad",
+            "code": "for (int c = 0; c < cols; c++) {\n    for (int r = 0; r < matrix.length; r++) {\n        sum += matrix[r][c];\n    }\n}",
+            "points": [
+              "Jumps across different row pointers on every step",
+              "Triggers frequent L1/L2 cache misses on large matrices"
+            ]
+          },
+          "narration": "Iterating rows sequentially processes contiguous memory inside each row, hitting L1 cache constantly. Iterating column-first jumps across row arrays on every step, wasting cache lines and running up to five times slower on large matrices.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "2D arrays are arrays of independent row arrays",
+            "Uninitialized jagged rows hold null references",
+            "Row-major traversal maximizes L1 cache hits"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): java.util.Arrays utilities, sorting secrets & fill bug trap →",
+          "narration": "Now you understand 2D memory architecture. In Part 4, we examine java dot util dot Arrays utilities, sorting performance secrets, and the fill reference trap.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-javautil-arrays-and-sorting",
+      "partTitle": "java.util.Arrays Secrets: Sorting, Equivalence & Bug Traps",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Arrays Utilities • Part 4 of 4",
+          "headline": "Printing an array directly outputs unreadable hash codes.",
+          "highlightWord": "unreadable hash",
+          "subline": "System.out.println(myArray) prints class name and identity hash code because arrays inherit Object.toString().",
+          "narration": "Printing a Java array with System dot out dot println displays useless text like bracket I at hex hash. Here is how to handle array utilities properly without falling into hidden bug traps.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-utils",
+          "kind": "code-spotlight",
+          "title": "Printing & Deep Equivalence Checks",
+          "filename": "ArraysUtilsDemo.java",
+          "code": "int[] numbers = {42, 12, 88};\nSystem.out.println(numbers);                  // [I@5f184fc6\nSystem.out.println(Arrays.toString(numbers)); // [42, 12, 88]\nint[][] grid1 = {{1, 2}, {3, 4}};\nint[][] grid2 = {{1, 2}, {3, 4}};\nSystem.out.println(Arrays.toString(grid1));     // Prints row hashes!\nSystem.out.println(Arrays.deepToString(grid1)); // [[1, 2], [3, 4]]\nSystem.out.println(Arrays.equals(grid1, grid2));     // false (row ==)\nSystem.out.println(Arrays.deepEquals(grid1, grid2)); // true",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "1D Printing",
+              "explanation": "Arrays inherit Object.toString(). Use Arrays.toString() for 1D primitive and reference arrays.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "2D Deep Printing",
+              "explanation": "Arrays.deepToString() recursively inspects nested row arrays for display.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                8,
+                9
+              ],
+              "badge": "Deep Comparison",
+              "explanation": "Arrays.equals checks row pointers. Use Arrays.deepEquals for nested structure equality.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use Arrays dot toString for one dimensional arrays and deepToString for nested matrices. Similarly, double equals and Object dot equals only compare reference identity, while Arrays dot equals and deepEquals compare nested element values.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare-sort",
+          "kind": "compare",
+          "title": "Arrays.sort Mechanics: Primitives vs. Objects",
+          "top": {
+            "label": "Primitive Sorting (Dual-Pivot Quicksort)",
+            "badge": "⚡ Unstable & Fast",
+            "tone": "neutral",
+            "code": "int[] values = {42, 12, 88, 5, 23};\nArrays.sort(values);",
+            "points": [
+              "O(n log n) average time, minimal memory overhead",
+              "Unstable sorting is fine because raw numbers are identical"
+            ]
+          },
+          "bottom": {
+            "label": "Object Sorting (TimSort)",
+            "badge": "✅ Stable Hybrid",
+            "tone": "good",
+            "code": "Order[] orders = getOrders();\nArrays.sort(orders, comparator);",
+            "points": [
+              "Hybrid merge-sort and insertion-sort algorithm",
+              "Stable sort preserves original relative order for equal keys"
+            ]
+          },
+          "narration": "Arrays dot sort uses Dual-Pivot Quicksort for primitives because stability doesn't matter for raw numbers. For object arrays, it uses TimSort to guarantee a stable sort that preserves original ordering for equal elements.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-code-fillbug",
+          "kind": "code-spotlight",
+          "title": "The Arrays.fill Reference Duplication Trap",
+          "filename": "FillTrapDemo.java",
+          "code": "int[][] board = new int[3][];\n// BUG: Passes same single int[3] reference to all rows!\nArrays.fill(board, new int[3]);\nboard[0][0] = 9; // board[1][0] and board[2][0] become 9 too!\n// SAFE FIX: Allocate distinct instances per row\nfor (int r = 0; r < board.length; r++) {\n    board[r] = new int[3];\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Arrays.fill Trap",
+              "explanation": "Evaluates new int[3] once and copies the SAME array pointer into every slot.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8
+              ],
+              "badge": "Independent Allocation",
+              "explanation": "Explicit loop or Arrays.setAll allocates distinct array objects per row.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Calling Arrays dot fill with new int brackets four is a major bug trap. It evaluates new array once and copies that single reference into every row, making all rows modify the exact same heap memory.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Mastery Achieved! Run the Lab",
+          "takeaways": [
+            "Use deepToString and deepEquals for 2D arrays",
+            "Primitives use Quicksort; Object arrays use TimSort",
+            "Arrays.fill duplicates references, not objects"
+          ],
+          "command": "git checkout topic/level-0/arrays-2d-matrices",
+          "nextPartTeaser": "Full roadmap & JUnit tests at ravishankar2463.github.io/java_hub",
+          "narration": "You just mastered Java 1D and 2D arrays from heap memory to sorting algorithms. Checkout the companion branch in java hub to run verified array labs and test suites.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
