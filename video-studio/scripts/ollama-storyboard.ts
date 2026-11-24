@@ -132,22 +132,37 @@ async function callOllamaJson(
   label: string
 ): Promise<string> {
   const startedAt = Date.now();
-  const res = await fetch(`${OLLAMA_URL}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      prompt,
-      format: "json",
-      stream: true,
-      options: {
-        temperature: 0.45,
-        num_ctx: 12288,
-      },
-    }),
-  });
+  let gotFirstToken = false;
+  const prefillTicker = setInterval(() => {
+    if (!gotFirstToken) {
+      const sec = ((Date.now() - startedAt) / 1000).toFixed(0);
+      console.log(`[Ollama] ${label} | prefilling prompt on GPU... (${sec}s)`);
+    }
+  }, 5000);
+
+  let res: Response;
+  try {
+    res = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        prompt,
+        format: "json",
+        stream: true,
+        options: {
+          temperature: 0.45,
+          num_ctx: 6144,
+        },
+      }),
+    });
+  } catch (err) {
+    clearInterval(prefillTicker);
+    throw err;
+  }
 
   if (!res.ok || !res.body) {
+    clearInterval(prefillTicker);
     const text = await res.text();
     throw new Error(`Ollama API error (${res.status}): ${text}`);
   }
@@ -159,31 +174,42 @@ async function callOllamaJson(
   let tokenCount = 0;
   let lastLogAt = Date.now();
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      const chunk = JSON.parse(trimmed) as { response?: string; done?: boolean };
-      if (chunk.response) {
-        fullResponse += chunk.response;
-        tokenCount++;
-      }
-      const now = Date.now();
-      if (now - lastLogAt >= 3000) {
-        const elapsedSec = ((now - startedAt) / 1000).toFixed(1);
-        const tokPerSec = (tokenCount / Math.max(0.1, (now - startedAt) / 1000)).toFixed(1);
-        console.log(
-          `[Ollama] ${label} | ${tokenCount} tokens | ${elapsedSec}s | ${tokPerSec} tok/s`
-        );
-        lastLogAt = now;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const chunk = JSON.parse(trimmed) as { response?: string; done?: boolean };
+        if (chunk.response) {
+          if (!gotFirstToken) {
+            gotFirstToken = true;
+            clearInterval(prefillTicker);
+            const ttft = ((Date.now() - startedAt) / 1000).toFixed(1);
+            console.log(`[Ollama] ${label} | first token in ${ttft}s — streaming...`);
+            lastLogAt = Date.now();
+          }
+          fullResponse += chunk.response;
+          tokenCount++;
+        }
+        const now = Date.now();
+        if (gotFirstToken && now - lastLogAt >= 3000) {
+          const elapsedSec = ((now - startedAt) / 1000).toFixed(1);
+          const tokPerSec = (tokenCount / Math.max(0.1, (now - startedAt) / 1000)).toFixed(1);
+          console.log(
+            `[Ollama] ${label} | ${tokenCount} tokens | ${elapsedSec}s | ${tokPerSec} tok/s`
+          );
+          lastLogAt = now;
+        }
       }
     }
+  } finally {
+    clearInterval(prefillTicker);
   }
 
   const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
@@ -249,8 +275,8 @@ export async function generateStoryboardWithOllama(params: {
     2
   );
 
-  // Truncate very long chapters safely to stay within 12k context while keeping all major sections
-  const maxMdChars = 16000;
+  // Keep prompt compact so qwen2.5:7b + 6144 context stays on RTX 2060 6GB GPU
+  const maxMdChars = 9500;
   const mdSnippet =
     markdown.length > maxMdChars
       ? `${markdown.slice(0, maxMdChars)}\n\n[...truncated for context window...]`
