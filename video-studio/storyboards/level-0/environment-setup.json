@@ -32,10 +32,10 @@
           "subtitle": "Always install a JDK — it bundles everything",
           "nodes": [
             {
-              "label": "JDK (Java Development Kit)",
-              "detail": "Adds dev tools: javac compiler, javap, jar, javadoc & jdb",
-              "tag": "Build",
-              "accent": "amber"
+              "label": "JVM (Java Virtual Machine)",
+              "detail": "Class Loader, Bytecode Verifier, Execution Engine, JIT & GC",
+              "tag": "Engine",
+              "accent": "emerald"
             },
             {
               "label": "JRE (Java Runtime Environment)",
@@ -44,10 +44,10 @@
               "accent": "sky"
             },
             {
-              "label": "JVM (Java Virtual Machine)",
-              "detail": "Class Loader, Bytecode Verifier, Execution Engine, JIT & GC",
-              "tag": "Engine",
-              "accent": "emerald"
+              "label": "JDK (Java Development Kit)",
+              "detail": "Adds dev tools: javac compiler, javap, jar, javadoc & jdb",
+              "tag": "Build",
+              "accent": "amber"
             }
           ],
           "narration": "At the core sits the JVM, which verifies bytecode, executes it, and runs garbage collection. Wrap it with standard libraries like List and HashMap, and you get the JRE. Add javac and dev tools on top—that's the JDK. Always install a JDK.",
