@@ -235,7 +235,17 @@ async function main(): Promise<void> {
     }
   }
 
-  let nextStoryboardPromise: Promise<string> | null = ensureStoryboard(queue[0], opts);
+  type PrefetchResult = { ok: true; path: string } | { ok: false; error: string };
+  const safePrefetch = (id: string): Promise<PrefetchResult> =>
+    ensureStoryboard(id, opts)
+      .then((p): PrefetchResult => ({ ok: true, path: p }))
+      .catch((err): PrefetchResult => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[Prefetch Error] ${id}: ${msg}`);
+        return { ok: false, error: msg };
+      });
+
+  let nextStoryboardPromise: Promise<PrefetchResult> | null = safePrefetch(queue[0]);
   let succeeded = 0;
   const failed: Array<{ chapterId: string; error: string }> = [];
 
@@ -248,15 +258,15 @@ async function main(): Promise<void> {
     console.log(`============================================================`);
 
     try {
-      await nextStoryboardPromise;
+      const sbRes = nextStoryboardPromise
+        ? await nextStoryboardPromise
+        : await safePrefetch(chapterId);
 
-      if (nextChapterId) {
-        nextStoryboardPromise = ensureStoryboard(nextChapterId, opts).catch((err) => {
-          console.error(`[Prefetch Error] ${nextChapterId}:`, err);
-          throw err;
-        });
-      } else {
-        nextStoryboardPromise = null;
+      // Start prefetching Chapter N+1 IN PARALLEL (never rejects unhandled!)
+      nextStoryboardPromise = nextChapterId ? safePrefetch(nextChapterId) : null;
+
+      if (!sbRes.ok) {
+        throw new Error(sbRes.error);
       }
 
       await runNpmAsync(
@@ -272,7 +282,7 @@ async function main(): Promise<void> {
       console.error(`[FAILED] ${chapterId}: ${msg}`);
       failed.push({ chapterId, error: msg });
       if (nextChapterId && !nextStoryboardPromise) {
-        nextStoryboardPromise = ensureStoryboard(nextChapterId, opts);
+        nextStoryboardPromise = safePrefetch(nextChapterId);
       }
     }
   }

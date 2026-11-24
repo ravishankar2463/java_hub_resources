@@ -136,9 +136,18 @@ function sanitizeAndValidateBundle(
       }
 
       if (beat.kind === "code-spotlight") {
-        const lines = (beat.code || "").split("\n");
-        if (!beat.code || lines.length > 12) {
-          errors.push(`${tag}: code-spotlight code must be 1–12 lines (got ${lines.length}).`);
+        let codeStr = (beat.code || "").replace(/\r\n/g, "\n").trim();
+        let lines = codeStr.split("\n");
+        if (lines.length > 14) {
+          lines = lines.filter((l, idx) => l.trim() !== "" || (idx > 0 && idx < lines.length - 1));
+          if (lines.length > 14) {
+            lines = [...lines.slice(0, 13), "    // ..."];
+          }
+          codeStr = lines.join("\n");
+        }
+        beat.code = codeStr;
+        if (!beat.code) {
+          errors.push(`${tag}: code-spotlight code must be non-empty.`);
         }
         if (/^[^\n]+\n\s*import\s+/m.test(beat.code || "")) {
           errors.push(`${tag}: invalid Java — import statement must appear at the top of the file.`);
@@ -150,9 +159,9 @@ function sanitizeAndValidateBundle(
             st.explanation = stripBackticks(st.explanation || "");
             st.badge = stripBackticks(st.badge || "");
             if (Array.isArray(st.lines)) {
-              st.lines = st.lines.map((n) =>
-                Math.max(1, Math.min(lines.length, Number(n) || 1))
-              );
+              st.lines = st.lines
+                .map((n) => Math.max(1, Math.min(lines.length, Number(n) || 1)))
+                .filter((v, i, arr) => arr.indexOf(v) === i);
             }
           });
         }
