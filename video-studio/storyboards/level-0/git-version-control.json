@@ -1,0 +1,338 @@
+{
+  "chapterId": "level-0/git-version-control",
+  "level": "level-0",
+  "levelLabel": "Level 0",
+  "slug": "git-version-control",
+  "chapterTitle": "Git & Version Control",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-0/git-version-control",
+  "branchName": "topic/level-0/git-version-control",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-snapshots-and-four-areas",
+      "partTitle": "Why Git Uses Snapshots & 4 Areas (Not Deltas)",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Git Internals • Part 1 of 3",
+          "headline": "Stop naming folders project-final-v2.",
+          "highlightWord": "project-final-v2",
+          "subline": "Git isn't cryptic once you see its snapshot model and 4-area map.",
+          "narration": "If your desktop has project-final-actually-final folders, you need Git. Memorizing commands feels cryptic, until you see the dead-simple snapshot model underneath it.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "File Deltas vs. Git Snapshots",
+          "top": {
+            "label": "Older VCS (SVN)",
+            "badge": "File Deltas",
+            "tone": "bad",
+            "points": [
+              "Stores incremental file-by-file diffs",
+              "Replays 50 patches just to build v50",
+              "Slow branching on big codebases"
+            ]
+          },
+          "bottom": {
+            "label": "Git",
+            "badge": "Full Snapshots",
+            "tone": "good",
+            "points": [
+              "Every commit snapshots the entire project",
+              "Deduplicates unchanged files via links",
+              "Instant branch switching & full offline history"
+            ]
+          },
+          "narration": "Older tools like Subversion store incremental file diffs. Git takes a full project snapshot on every commit, and simply links to unchanged files instead of copying them. That's why branching and history stay blazing fast.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Four Areas of Git",
+          "subtitle": "Every Git command moves changes between these 4 zones",
+          "nodes": [
+            {
+              "label": "Working Directory",
+              "detail": "Files you edit in your IDE — not in Git history yet",
+              "tag": "Disk",
+              "accent": "sky"
+            },
+            {
+              "label": "Staging Area (Index)",
+              "detail": "Prep list in .git/index — split bugfixes from typos cleanly",
+              "tag": "git add",
+              "accent": "amber"
+            },
+            {
+              "label": "Local Repository (.git)",
+              "detail": "Full offline history of commits, branches & tags",
+              "tag": "git commit",
+              "accent": "emerald"
+            },
+            {
+              "label": "Remote Repository",
+              "detail": "Shared team server on GitHub, GitLab, or Bitbucket",
+              "tag": "git push/pull",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Almost every Git command moves code across four areas: your Working Directory on disk, the Staging Area where you pick exact files for a clean commit, your Local Repo in dot git offline, and your Remote Repo on GitHub.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code",
+          "kind": "code-spotlight",
+          "title": "Inside .git/objects: Blobs, Trees & Commits",
+          "filename": "git cat-file -p <hash>",
+          "code": "# 3 core objects inside .git/objects:\n# Blob   -> compressed file content (40-char SHA-1)\n# Tree   -> folder listing (filenames -> blobs/trees)\ntree   92b8b694fc1102c64b22cbb24250325492d24263\nparent 12a14e9f3ebc7512d506d8705a2e6f49e4198124\nauthor Ada Lovelace <ada@example.com>\n\nfeat: add customer balance calculation service",
+          "steps": [
+            {
+              "lines": [2, 3],
+              "badge": "Blob & Tree",
+              "explanation": "Blobs store deduplicated file content by SHA-1 hash; Trees map filenames and permissions.",
+              "accent": "sky"
+            },
+            {
+              "lines": [4, 5, 8],
+              "badge": "Immutable Commit",
+              "explanation": "Hash includes tree + parent hash—editing old history always creates brand-new commit objects.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Peek inside dot git objects and you'll find three building blocks: Blobs hold compressed content, Trees map filenames, and Commits link a root tree to its parent hash. Change any older commit, and every hash after it changes.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Git stores deduplicated snapshots, not file diffs",
+            "4 areas: Working Dir → Staging → Local → Remote",
+            "Staging splits unrelated edits into focused commits"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Daily Git workflow, fetch vs. pull & Java .gitignore →",
+          "narration": "Now Git's mental model makes total sense. In Part 2, we run the daily workflow, compare fetch versus pull, and lock down a Java dot gitignore.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-daily-workflow-and-habits",
+      "partTitle": "Daily Git Workflow, fetch vs. pull & Java Habits",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Daily Workflow • Part 2 of 3",
+          "headline": "Stop running git add . blindly.",
+          "highlightWord": "git add .",
+          "subline": "Master the 6 commands you'll use every single day—plus Java repo hygiene.",
+          "narration": "Blindly running git add dot and pushing vague messages like 'fix' wrecks team history. Here's the clean daily workflow senior Java devs rely on.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-terminal",
+          "kind": "terminal",
+          "title": "The Daily Local Loop",
+          "caption": "Configure identity once, then check → stage → commit",
+          "lines": [
+            { "kind": "comment", "text": "# One-time setup: name, email & default main branch" },
+            { "kind": "command", "text": "git config --global init.defaultBranch main" },
+            { "kind": "command", "text": "git status && git diff" },
+            { "kind": "command", "text": "git add src/PaymentService.java" },
+            { "kind": "command", "text": "git commit -m \"fix: guard null address in OrderService\"" },
+            { "kind": "command", "text": "git log --oneline --graph --decorate" }
+          ],
+          "narration": "Start with git config for your name, email, and default main branch. Before committing, run git status and git diff to inspect changes. Stage specific files, write a Conventional Commit like fix or feat, and visualize history with git log.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "git fetch vs. git pull",
+          "top": {
+            "label": "git fetch origin",
+            "badge": "100% Safe Preview",
+            "tone": "good",
+            "code": "git fetch origin",
+            "points": [
+              "Downloads remote commits into .git",
+              "Updates origin/main pointer only",
+              "Never touches your working files"
+            ]
+          },
+          "bottom": {
+            "label": "git pull",
+            "badge": "Fetch + Merge",
+            "tone": "neutral",
+            "code": "git pull  # = git fetch + git merge",
+            "points": [
+              "Immediately merges into your current branch",
+              "Can trigger conflicts mid-work",
+              "Use git push -u origin main on first push"
+            ]
+          },
+          "narration": "Know the difference between fetch and pull. Git fetch safely downloads remote commits without touching your working files, so you can inspect them first. Git pull runs fetch and immediately merges into your current branch.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code",
+          "kind": "code-spotlight",
+          "title": "Java .gitignore & Clean Commits",
+          "filename": ".gitignore",
+          "code": "# Compiled bytecode & build outputs\n*.class\n*.jar\ntarget/\nbuild/\nout/\n# IDE & OS metadata\n.idea/\n.vscode/\n.DS_Store",
+          "steps": [
+            {
+              "lines": [2, 3, 4, 5, 6],
+              "badge": "No Bytecode or Build",
+              "explanation": "Never commit .class, .jar, target/, or build/—they bloat history and trigger constant conflicts.",
+              "accent": "rose"
+            },
+            {
+              "lines": [8, 9, 10],
+              "badge": "No Personal IDE Files",
+              "explanation": "Ignore .idea/, .vscode/, and .DS_Store so teammates on Mac, Linux, and Windows never clash.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "In every Java repo, add a dot gitignore on day one. Keep compiled dot class files, jars, target and build folders, plus dot idea and dot vscode out of Git so you never bloat history or clash across laptops.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Daily Workflow Mastered",
+          "takeaways": [
+            "Stage targeted files + Conventional Commits (feat/fix)",
+            "git fetch previews safely; git pull fetches & merges",
+            "Always ignore *.class, target/, build/ & .idea/"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Branches, rebase traps, merge conflicts & git reflog →",
+          "narration": "Your daily loop is rock solid. In Part 3, we tackle branching, the rebase rule you must never break, merge conflicts, and rescuing lost commits with reflog.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-branching-conflicts-and-reflog",
+      "partTitle": "Branching, Merge vs. Rebase, Conflicts & git reflog",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Branches & Rescue • Part 3 of 3",
+          "headline": "A Git branch is just 41 bytes.",
+          "highlightWord": "41 bytes",
+          "subline": "Zero file copying—just a tiny pointer. Here's how to branch, merge, and recover safely.",
+          "narration": "Creating a Git branch doesn't copy your project—it's literally a 41-byte file holding one commit hash, while HEAD tracks where you are right now.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "git merge vs. git rebase",
+          "top": {
+            "label": "git merge (Safe for Shared)",
+            "badge": "Preserves History",
+            "tone": "good",
+            "code": "git switch main\ngit merge feature/discount-rules",
+            "points": [
+              "Fast-forward if main didn't move; else 3-way merge commit",
+              "Never rewrites existing commit hashes",
+              "Safe for shared branches & Pull Requests"
+            ]
+          },
+          "bottom": {
+            "label": "git rebase (Private Branches Only!)",
+            "badge": "⚠️ Rewrites Hashes",
+            "tone": "bad",
+            "code": "git switch -c feature/login\ngit rebase main",
+            "points": [
+              "Replays commits linearly with brand-new hashes",
+              "NEVER rebase commits already pushed to teammates!"
+            ]
+          },
+          "narration": "Use git switch dash c to branch. Merging fast-forwards if main hasn't moved, or creates a three-way merge commit without changing hashes. Rebase replays commits linearly with brand-new hashes—great on private branches, but never rebase commits you already pushed to teammates.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "Resolving Merge Conflicts Cleanly",
+          "filename": "PaymentGateway.java",
+          "code": "public void processPayment(double amount) {\n<<<<<<< HEAD\n    auditLogger.log(\"Processing: \" + amount);\n    stripeClient.charge(amount);\n=======\n    payPalClient.executeWithRetry(amount, 3);\n>>>>>>> feature-paypal-v2\n}",
+          "steps": [
+            {
+              "lines": [2, 3, 4],
+              "badge": "<<<<<<< HEAD",
+              "explanation": "Your current branch's version—everything between <<<<<<< HEAD and =======.",
+              "accent": "sky"
+            },
+            {
+              "lines": [5, 6, 7],
+              "badge": ">>>>>>> incoming",
+              "explanation": "Incoming branch's version. Keep one or combine both, delete all 3 markers, compile & test, then git add + commit!",
+              "accent": "rose"
+            }
+          ],
+          "narration": "When two branches edit the same lines, Git inserts conflict markers: top is HEAD, bottom is incoming. Keep what you need, delete all three markers, compile and test, then git add and commit—or bail with git merge dash dash abort.",
+          "durationSec": 15,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "Rescuing Lost Commits with git reflog",
+          "caption": "Accidental git reset --hard? Committed snapshots survive ~30 days!",
+          "lines": [
+            { "kind": "error", "text": "git reset --hard HEAD~2   # Oops! Commits vanished?" },
+            { "kind": "command", "text": "git reflog" },
+            { "kind": "output", "text": "3a1b2c4 HEAD@{0}: reset: moving to HEAD~2" },
+            { "kind": "success", "text": "8f9e0d1 HEAD@{1}: commit: finish order validation" },
+            { "kind": "comment", "text": "# Restore into a new branch (also saves Detached HEAD!)" },
+            { "kind": "command", "text": "git switch -c recovered-work 8f9e0d1" }
+          ],
+          "narration": "Accidentally ran git reset dash dash hard? Don't panic. Git keeps committed snapshots in dot git objects for around thirty days. Run git reflog to find the old hash, then run git switch dash c to rescue it into a fresh branch.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Try the Lab",
+          "takeaways": [
+            "Branch = 41-byte pointer; never rebase shared commits",
+            "Conflicts: edit, remove markers, test, add & commit",
+            "git reflog rescues committed work (commit small & often!)"
+          ],
+          "command": "git checkout topic/level-0/git-version-control",
+          "nextPartTeaser": "Full guide + exercises at ravishankar2463.github.io/java_hub",
+          "narration": "You've got the full Git mental model—from snapshots to reflog rescues. Checkout the companion branch in java hub resources to practice the hands-on lab yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
