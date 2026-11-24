@@ -1,0 +1,484 @@
+{
+  "chapterId": "level-6/creational-patterns",
+  "level": "level-6",
+  "levelLabel": "Level 6",
+  "slug": "creational-patterns",
+  "chapterTitle": "Creational Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-6/creational-patterns",
+  "branchName": "topic/level-6/creational-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-singleton-and-di",
+      "partTitle": "Singleton: DI vs. Manual",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Creational Patterns • Part 1 of 4",
+          "headline": "Stop writing manual Singletons.",
+          "highlightWord": "Stop",
+          "subline": "Global state is a testing nightmare. Here is how modern Java handles shared instances.",
+          "narration": "Stop writing manual singletons. Global state is a testing nightmare. If you are using Spring, let the container manage your beans. If you are not, here is how to do it safely.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Manual vs. Container Managed",
+          "top": {
+            "label": "Manual Singleton",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "public static getInstance() {\n    if (instance == null) ...\n}",
+            "points": [
+              "Hides dependencies",
+              "Leaks state into tests"
+            ]
+          },
+          "bottom": {
+            "label": "Spring DI",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "@Component\npublic class Registry { ... }",
+            "points": [
+              "Constructor injection",
+              "Isolated test instances"
+            ]
+          },
+          "narration": "Manual singletons hide dependencies and leak state between unit tests. Spring beans allow constructor injection, meaning every test gets a fresh, isolated instance.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-enum",
+          "kind": "code-spotlight",
+          "title": "The Enum Singleton",
+          "filename": "AppMetrics.java",
+          "code": "public enum AppMetrics {\n    INSTANCE;\n\n    private final Map<String, Long> counters = new ConcurrentHashMap<>();\n\n    public void increment(String key) {\n        counters.compute(key, (k, v) -> (v == null ? 1 : v + 1));\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Enum Constant",
+              "explanation": "The JVM guarantees this is initialized exactly once, even with multithreading.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Reflect-proof",
+              "explanation": "Java serialization and reflection explicitly block creating new enum instances.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "For standalone tools, use an enum. The JVM guarantees thread-safe initialization, and it is immune to reflection hacks or deserialization bugs that plague traditional singleton patterns.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Singleton Decision Tree",
+          "nodes": [
+            {
+              "label": "Need Singleton?",
+              "detail": "Identify the scope",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Use DI Container",
+              "detail": "Spring/Micronaut/Guice",
+              "tag": "Best",
+              "accent": "emerald"
+            },
+            {
+              "label": "Enum Singleton",
+              "detail": "Standalone library",
+              "tag": "Safe",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always prefer DI containers first. If you are building a standalone library without a container, the Enum singleton is your safest, most robust choice.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "DI containers are the default",
+            "Enums block reflection hacks",
+            "Avoid static getInstance()"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Factory Methods and Abstract Factories →",
+          "narration": "That covers singletons. In Part 2, we look at Factory Methods and Abstract Factories to decouple object creation from your business logic.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-factories",
+      "partTitle": "Factory Patterns Decoupled",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Creational Patterns • Part 2 of 4",
+          "headline": "Stop hardcoding your dependencies.",
+          "highlightWord": "hardcoding",
+          "subline": "Creating objects directly with 'new' locks you into concrete implementations.",
+          "narration": "Stop hardcoding dependencies. Using 'new' directly locks your service to a specific implementation. Factories let you swap behavior without touching your business logic.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-factory",
+          "kind": "code-spotlight",
+          "title": "Factory Method Pattern",
+          "filename": "Dispatcher.java",
+          "code": "public abstract class Dispatcher {\n    protected abstract Transport create();\n\n    public void send(String msg) {\n        create().deliver(msg);\n    }\n}\n\n// Usage: new EmailDispatcher()",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Factory Method",
+              "explanation": "Subclasses decide which concrete transport to instantiate.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "Workflow",
+              "explanation": "The business logic remains agnostic of the specific transport implementation.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Factory Method defines an abstract creation hook. Your business logic calls the hook, but subclasses decide if they want to send an email, SMS, or push notification.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Abstract Factory: Families",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Needs related objects",
+              "tag": "User",
+              "accent": "sky"
+            },
+            {
+              "label": "CloudFactory",
+              "detail": "Interface for family",
+              "tag": "Abstract",
+              "accent": "purple"
+            },
+            {
+              "label": "AwsFactory",
+              "detail": "S3 + EC2",
+              "tag": "Concrete",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use Abstract Factory when you need a family of related objects. AWS S3 and EC2 belong together; mixing them with Azure blobs is a recipe for disaster.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Factory vs. Supplier",
+          "top": {
+            "label": "Abstract Factory",
+            "badge": "Heavy",
+            "tone": "neutral",
+            "code": "class AwsFactory implements Factory",
+            "points": [
+              "Requires class hierarchy",
+              "Good for complex suites"
+            ]
+          },
+          "bottom": {
+            "label": "Supplier<T>",
+            "badge": "Light",
+            "tone": "good",
+            "code": "new Service(Aws::new)",
+            "points": [
+              "Functional approach",
+              "Zero boilerplate"
+            ]
+          },
+          "narration": "Don't over-engineer. For simple cases, just pass a Supplier or a method reference. Only reach for Abstract Factory when you have a massive, related suite of objects.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Factory Method defers instantiation",
+            "Abstract Factory keeps families consistent",
+            "Use Supplier<T> for simple cases"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Builders vs. Records →",
+          "narration": "That is factories handled. In Part 3, we look at the Builder pattern and why Java records might make your custom builders obsolete.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-builders",
+      "partTitle": "Builders vs. Records",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Creational Patterns • Part 3 of 4",
+          "headline": "Your Builder class is probably bloated.",
+          "highlightWord": "bloated",
+          "subline": "If you are writing 50 lines of boilerplate for a simple config object, stop.",
+          "narration": "Your builder class is probably bloated. If you are writing 50 lines of boilerplate for a simple configuration object, you are doing it wrong. Let's look at the modern alternative.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Builder vs. Record",
+          "top": {
+            "label": "Manual Builder",
+            "badge": "Verbose",
+            "tone": "bad",
+            "code": "new Builder().setA(1).setB(2).build();",
+            "points": [
+              "Massive boilerplate",
+              "Hard to maintain"
+            ]
+          },
+          "bottom": {
+            "label": "Java Record",
+            "badge": "Concise",
+            "tone": "good",
+            "code": "record Config(int a, int b) {}",
+            "points": [
+              "Immutable by default",
+              "Compact constructor"
+            ]
+          },
+          "narration": "If your object has only a few fields, a Java record is all you need. It gives you immutability and validation out of the box without the builder overhead.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-builder",
+          "kind": "code-spotlight",
+          "title": "Fluent Step Builder",
+          "filename": "UserBuilder.java",
+          "code": "public interface EmailStep {\n    PasswordStep email(String e);\n}\n\n// Enforces order at compile time!",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Step Interface",
+              "explanation": "Forces the user to provide mandatory fields in the correct order.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Compile Safety",
+              "explanation": "The builder won't even compile if a mandatory step is skipped.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When you have complex, mandatory steps, use a Step Builder. By returning interfaces, you force the caller to provide data in the exact order you define.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "When to use what?",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1-4 fields?"
+            },
+            {
+              "kind": "output",
+              "text": "Use a Java Record."
+            },
+            {
+              "kind": "comment",
+              "text": "# 5+ optional fields?"
+            },
+            {
+              "kind": "output",
+              "text": "Use a standard Builder."
+            },
+            {
+              "kind": "comment",
+              "text": "# Strict order required?"
+            },
+            {
+              "kind": "output",
+              "text": "Use a Step Builder."
+            }
+          ],
+          "narration": "Keep it simple. Records for data, Builders for complex optional configurations, and Step Builders only when you need to enforce a specific construction flow.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Records replace simple builders",
+            "Step builders enforce order",
+            "Don't over-engineer simple POJOs"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Prototype and Final Summary →",
+          "narration": "Builders are powerful but often misused. In Part 4, we wrap up with the Prototype pattern and a final summary of when to use which pattern.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-prototype-summary",
+      "partTitle": "Prototype & Final Recap",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Creational Patterns • Part 4 of 4",
+          "headline": "Cloneable is a design mistake.",
+          "highlightWord": "design mistake",
+          "subline": "Avoid the built-in clone() method. Here is the modern way to duplicate objects.",
+          "narration": "The built-in Cloneable interface is a historical mistake. It is fragile and unsafe. Here is how to handle object duplication in modern Java.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-copy",
+          "kind": "code-spotlight",
+          "title": "Modern Copying",
+          "filename": "Copy.java",
+          "code": "public record Snapshot(List<String> data) {\n    public Snapshot { data = List.copyOf(data); }\n\n    public Snapshot withData(List<String> next) {\n        return new Snapshot(next);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Defensive Copy",
+              "explanation": "List.copyOf ensures your internal state remains immutable.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Wither Method",
+              "explanation": "Returns a new instance with a modified field—cleaner than cloning.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use copy constructors or record 'with' methods. They are explicit, type-safe, and handle deep copies of mutable collections much better than the legacy clone method ever could.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Creational Cheat Sheet",
+          "nodes": [
+            {
+              "label": "Singleton",
+              "detail": "Shared state",
+              "tag": "Enum/DI",
+              "accent": "sky"
+            },
+            {
+              "label": "Factory",
+              "detail": "Decouple creation",
+              "tag": "Supplier",
+              "accent": "amber"
+            },
+            {
+              "label": "Builder",
+              "detail": "Complex config",
+              "tag": "Record/Step",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Stick to this roadmap. Use DI or Enums for singletons, Suppliers for factories, and Records or Builders for object construction. Keep it simple and readable.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Master the Patterns",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-6/creational-patterns"
+            },
+            {
+              "kind": "output",
+              "text": "Branch switched to 'creational-patterns'"
+            },
+            {
+              "kind": "comment",
+              "text": "# Run the lab and check the docs"
+            },
+            {
+              "kind": "success",
+              "text": "https://ravishankar2463.github.io/java_hub/roadmap/level-6/creational-patterns"
+            }
+          ],
+          "narration": "Grab the source code now. Check out the creational patterns branch to run the labs and see these patterns in action within a real codebase.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Avoid Cloneable interface",
+            "Use copy constructors for snapshots",
+            "DI containers are your best friend"
+          ],
+          "nextPartTeaser": "Level 7: Structural Patterns incoming →",
+          "narration": "You have mastered creational patterns. Keep your code clean, your dependencies loose, and I will see you in the next chapter on structural patterns.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
