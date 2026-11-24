@@ -214,40 +214,60 @@ async function callGeminiJson(
   prompt: string,
   label: string
 ): Promise<string> {
-  const startedAt = Date.now();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const maxRetries = 5;
+  for (let retry = 0; retry <= maxRetries; retry++) {
+    const startedAt = Date.now();
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+      model
+    )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  console.log(`[Gemini:${model}] Requesting ${label}...`);
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.45,
-        responseMimeType: "application/json",
-      },
-    }),
-  });
+    console.log(
+      `[Gemini:${model}] Requesting ${label}${retry > 0 ? ` (retry ${retry}/${maxRetries})` : ""}...`
+    );
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.45,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error (${res.status}): ${errText.slice(0, 400)}`);
+    if (res.status === 429 || res.status === 500 || res.status === 503) {
+      const errText = await res.text();
+      if (retry < maxRetries) {
+        const waitSec = 5 * Math.pow(2, retry);
+        console.warn(
+          `[Gemini:${model}] Transient ${res.status} — retrying in ${waitSec}s...`
+        );
+        await new Promise((r) => setTimeout(r, waitSec * 1000));
+        continue;
+      }
+      throw new Error(`Gemini API error (${res.status}): ${errText.slice(0, 400)}`);
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini API error (${res.status}): ${errText.slice(0, 400)}`);
+    }
+
+    const payload = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+    console.log(`[Gemini:${model}] Received ${label} in ${elapsed}s`);
+
+    if (!text) {
+      throw new Error("Gemini returned empty response.");
+    }
+    return text;
   }
 
-  const payload = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-  const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-  console.log(`[Gemini:${model}] Received ${label} in ${elapsed}s`);
-
-  if (!text) {
-    throw new Error("Gemini returned empty response.");
-  }
-  return text;
+  throw new Error("Gemini request exhausted retries.");
 }
 
 export async function generateStoryboardWithGemini(params: {
