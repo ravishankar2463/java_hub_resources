@@ -1,0 +1,513 @@
+{
+  "chapterId": "level-1/classes-and-objects",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "classes-and-objects",
+  "chapterTitle": "Classes and Objects",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/classes-and-objects",
+  "branchName": "topic/level-1/classes-and-objects",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-class-vs-instance-memory",
+      "partTitle": "How JVM Memory Distinguishes Classes from Objects",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Classes & Heap • Part 1 of 4",
+          "headline": "Does new copy your class bytecode every time?",
+          "highlightWord": "copy your class",
+          "subline": "Allocating a thousand objects does not duplicate method code in memory.",
+          "narration": "When you instantiate a class a thousand times, does the JVM duplicate your method bytecode a thousand times on the Heap? Let us trace how HotSpot splits class metadata from instance state.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "HotSpot JVM Memory Layout",
+          "subtitle": "Native Metaspace vs Garbage-Collected Heap",
+          "nodes": [
+            {
+              "label": "BankAccount.java",
+              "detail": "Source compiled by javac into class bytecode",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Metaspace (Native)",
+              "detail": "Stores method bytecode, symbols & vtables once",
+              "tag": "Metadata",
+              "accent": "amber"
+            },
+            {
+              "label": "Heap Class Mirror",
+              "detail": "java.lang.Class instance holding static fields",
+              "tag": "Static",
+              "accent": "purple"
+            },
+            {
+              "label": "Heap Instances",
+              "detail": "Independent memory blocks for alice & bob fields",
+              "tag": "Heap",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "HotSpot loads class bytecode into native Metaspace, storing method tables exactly once. The JVM then creates a class mirror on the Heap, while every new call allocates fresh heap memory for instance fields.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Metaspace Blueprint vs Heap Allocation",
+          "top": {
+            "label": "Metaspace (Class Level)",
+            "badge": "Native Memory",
+            "tone": "neutral",
+            "code": "public class BankAccount {\n    private final String accountNumber;\n    private long balanceCents;\n    // Bytecode stored once\n}",
+            "points": [
+              "Loaded once by ClassLoader",
+              "Holds method bytecode & symbol tables"
+            ]
+          },
+          "bottom": {
+            "label": "Heap (Instance Level)",
+            "badge": "Per Object",
+            "tone": "good",
+            "code": "BankAccount alice = new BankAccount(\"ACC-101\", 50_000);\nBankAccount bob = new BankAccount(\"ACC-202\", 12_000);",
+            "points": [
+              "Allocated per new keyword",
+              "Holds independent accountNumber & balance"
+            ]
+          },
+          "narration": "Class definitions reside in native Metaspace. Calling new allocates a distinct memory block on the Java Heap, holding only its own field state while sharing the underlying bytecode.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Default Initialization vs Local Variables",
+          "filename": "ConnectionConfig.java",
+          "code": "public class ConnectionConfig {\n    private String host;     // Defaults to null\n    private int port;        // Defaults to 0\n    private boolean useTls;  // Defaults to false\n\n    public void printSummary() {\n        int retries;\n        // System.out.println(retries); // Compile error!\n        retries = 3;\n        System.out.println(host + \":\" + port + \" retries=\" + retries);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3,
+                4
+              ],
+              "badge": "Instance Fields",
+              "explanation": "Automatically zero-initialized during object allocation (null, 0, false).",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                7,
+                8
+              ],
+              "badge": "Local Variables",
+              "explanation": "No default values! Reading uninitialized locals causes compile-time errors.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Instance fields get automatic default values like null, false, or zero when allocated. But local variables inside methods receive no defaults at all, making uninitialized reads a strict compile time error.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Class metadata resides once in Metaspace",
+            "Heap instances store individual field state",
+            "Instance fields auto-initialize; locals do not"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why adding one constructor breaks existing code →",
+          "narration": "Now you understand object layout in JVM memory. In Part 2, see why adding a custom constructor silently destroys your compiler-generated default constructor.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-constructors-and-builders",
+      "partTitle": "Constructors, Default Rules & Builder Pattern",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Constructors & Builders • Part 2 of 4",
+          "headline": "Why does adding one constructor break your callers?",
+          "highlightWord": "break your callers",
+          "subline": "The silent default constructor vanishes the moment you declare a custom constructor.",
+          "narration": "You write a parameterized constructor to enforce validation, and suddenly callers using the default constructor fail to compile. Here is the strict compiler rule governing Java constructors.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The Vanishing Default Constructor",
+          "filename": "Product.java",
+          "code": "public class Product {\n    private final String sku;\n    private final long priceCents;\n\n    // Adding this removes compiler-generated default constructor!\n    public Product(String sku, long priceCents) {\n        this.sku = sku;\n        this.priceCents = priceCents;\n    }\n}\n\n// Product p = new Product(); // Compile error: expected (String, long)",
+          "steps": [
+            {
+              "lines": [
+                6,
+                7,
+                8,
+                9
+              ],
+              "badge": "Custom Constructor",
+              "explanation": "Declaring any constructor stops javac from synthesizing public Product().",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                12
+              ],
+              "badge": "Call Site Error",
+              "explanation": "Callers expecting a no-args constructor now fail to compile.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "When a class defines zero constructors, javac synthesizes a default parameterless constructor. But the exact instant you declare any parameterized constructor, that automatic default constructor disappears completely.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Telescoping vs Builder Pattern",
+          "top": {
+            "label": "Telescoping Constructors",
+            "badge": "❌ Easy to Swap Args",
+            "tone": "bad",
+            "code": "new HttpClientConfig(\"https://api.com\", 3000, 10000, 2);",
+            "points": [
+              "Consecutive int parameters lead to call site bugs",
+              "Requires checking signature to understand flags"
+            ]
+          },
+          "bottom": {
+            "label": "Fluent Builder Pattern",
+            "badge": "✅ Clear & Immutable",
+            "tone": "good",
+            "code": "new HttpClientConfig.Builder(\"https://api.com\")\n        .connectTimeoutMs(2_000)\n        .readTimeoutMs(8_000)\n        .build();",
+            "points": [
+              "Self-documenting method calls",
+              "Preserves object immutability safely"
+            ]
+          },
+          "narration": "Passing consecutive integer arguments into overloaded constructors leads to subtle parameter order bugs. A static inner Builder makes optional configuration self-documenting, explicit, and safe.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The Silent Void Constructor Trap",
+          "filename": "Task.java",
+          "code": "public class Task {\n    private String title;\n\n    // BUG: Accidental void return type makes this a METHOD!\n    public void Task(String title) {\n        this.title = title;\n    }\n}\n\n// Task t = new Task(); // Compiles! Default constructor still generated.\n// t.title remains null!",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Accidental Void",
+              "explanation": "Adding void turns a constructor into a normal instance method.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                10
+              ],
+              "badge": "Silent Failure",
+              "explanation": "javac generates default constructor; title is left as null.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "If you accidentally add void to a constructor signature, Java treats it as a standard instance method. The compiler still synthesizes a default constructor, leaving your object fields completely uninitialized.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Custom constructors remove default constructors",
+            "Never put return types like void on constructors",
+            "Use Builders for complex optional arguments"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The dangerous this escape race condition →",
+          "narration": "That is constructor design done right. In Part 3, we reveal why leaking this inside a constructor can expose uninitialized final fields to concurrent threads.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-this-keyword-and-escapes",
+      "partTitle": "The `this` Keyword & The Deadly `this` Escape Bug",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "This Keyword & Escapes • Part 3 of 4",
+          "headline": "Leaking this in a constructor bypasses final guarantees!",
+          "highlightWord": "bypasses final guarantees",
+          "subline": "Concurrent threads can read null from a final field before construction finishes.",
+          "narration": "You marked a field final so it could never be null. But passing this to an event listener inside your constructor creates a race condition that exposes null anyway.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Field Shadowing & Constructor Chaining",
+          "filename": "ServerEndpoint.java",
+          "code": "public class ServerEndpoint {\n    private final String host;\n    private final int port;\n\n    public ServerEndpoint(String host) {\n        this(host, 8080); // Constructor chaining\n    }\n\n    public ServerEndpoint(String host, int port) {\n        this.host = host; // Disambiguate shadowed field\n        this.port = port;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                6
+              ],
+              "badge": "this(...)",
+              "explanation": "Delegates to canonical constructor. Must be the first statement.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                10,
+                11
+              ],
+              "badge": "this.field",
+              "explanation": "Disambiguates parameter host from instance field this.host.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use this dot to disambiguate parameters that shadow instance fields. To chain constructors, call this with arguments as your very first statement to centralize field assignment logic.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "The Hazardous this Escape Bug",
+          "top": {
+            "label": "Constructor Listener Registration",
+            "badge": "❌ NULL POINTER RISK",
+            "tone": "bad",
+            "code": "public OrderHandler(EventBus bus) {\n    bus.register(this); // Escapes before final field set!\n    this.name = \"processor\";\n}",
+            "points": [
+              "Event bus thread invokes methods immediately",
+              "Reads final field as null before assignment"
+            ]
+          },
+          "bottom": {
+            "label": "Safe Static Factory Pattern",
+            "badge": "✅ THREAD SAFE",
+            "tone": "good",
+            "code": "private OrderHandler() { this.name = \"processor\"; }\n\npublic static OrderHandler create(EventBus bus) {\n    OrderHandler h = new OrderHandler();\n    bus.register(h);\n    return h;\n}",
+            "points": [
+              "Construction finishes completely before publication",
+              "Guarantees memory visibility for final fields"
+            ]
+          },
+          "narration": "Registering an object with an event bus inside its constructor allows external threads to invoke methods on a partially constructed object. Always separate object initialization from listener registration.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Safe Publication with Static Factories",
+          "filename": "OrderEventHandler.java",
+          "code": "public class OrderEventHandler {\n    private final String handlerName;\n\n    private OrderEventHandler() {\n        this.handlerName = \"order-processor\";\n    }\n\n    public static OrderEventHandler createAndRegister(EventBus bus) {\n        OrderEventHandler handler = new OrderEventHandler();\n        bus.register(handler);\n        return handler;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "Private Constructor",
+              "explanation": "Ensures all final fields are initialized before external access.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                8,
+                9,
+                10,
+                11,
+                12
+              ],
+              "badge": "Static Factory",
+              "explanation": "Publishes fully constructed object safely to external listeners.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Instead of registering inside the constructor, complete object construction first. Use a static factory method to instantiate the object cleanly before handing its reference to external services.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "this. disambiguates shadowed parameters",
+            "this(...) must execute first in constructor chaining",
+            "Never pass this to listeners during construction"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Object initialization order & overload resolution →",
+          "narration": "You just protected your immutable objects. In Part 4, we examine exact initialization sequence and the compiler rules for method overload resolution.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-initialization-and-overloading",
+      "partTitle": "Object Initialization Sequence & Overload Resolution",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Lifecycle & Overloads • Part 4 of 4",
+          "headline": "Which initializer block executes first when an object is born?",
+          "highlightWord": "executes first",
+          "subline": "Static blocks, super constructors, and instance initializers follow a strict sequence.",
+          "narration": "If a class contains static blocks, instance fields, and a constructor, in what exact order does the JVM execute them? Let us trace object creation step by step.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Object Initialization Pipeline",
+          "subtitle": "Deterministic sequence defined by Java Language Spec",
+          "nodes": [
+            {
+              "label": "1. Static Initializers",
+              "detail": "Runs once when class is loaded into JVM",
+              "tag": "Class Level",
+              "accent": "amber"
+            },
+            {
+              "label": "2. Super Constructor",
+              "detail": "Parent class constructor completes via super()",
+              "tag": "Parent",
+              "accent": "sky"
+            },
+            {
+              "label": "3. Instance Initializers",
+              "detail": "Field initializers & { } blocks run top-to-bottom",
+              "tag": "Fields",
+              "accent": "purple"
+            },
+            {
+              "label": "4. Constructor Body",
+              "detail": "Custom validation & field assignment executes last",
+              "tag": "Constructor",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Static blocks execute once when the class initializes. When calling new, the JVM completes the superclass constructor first, runs instance field initializers next, and finally executes your constructor body.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Method Overload Resolution Ladder",
+          "subtitle": "How javac picks the matching signature",
+          "nodes": [
+            {
+              "label": "Step 1: Exact Match",
+              "detail": "Direct type match like log(int)",
+              "tag": "Exact",
+              "accent": "emerald"
+            },
+            {
+              "label": "Step 2: Widening",
+              "detail": "Primitive widening like int to long or double",
+              "tag": "Widening",
+              "accent": "sky"
+            },
+            {
+              "label": "Step 3: Autoboxing",
+              "detail": "Box primitive to wrapper like int to Integer",
+              "tag": "Boxing",
+              "accent": "amber"
+            },
+            {
+              "label": "Step 4: Varargs",
+              "detail": "Array conversion fallback like log(int...)",
+              "tag": "Varargs",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When resolving overloaded methods, javac evaluates signatures in four strict stages: exact match first, followed by primitive widening, autoboxing, and finally varargs fallbacks.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Primitive Widening vs Autoboxing",
+          "filename": "OverloadDemo.java",
+          "code": "public class OverloadDemo {\n    static void log(long value)    { System.out.println(\"long: \" + value); }\n    static void log(Integer value) { System.out.println(\"Integer: \" + value); }\n    static void log(int... values) { System.out.println(\"varargs\"); }\n\n    public static void main(String[] args) {\n        log(5); // Output: long: 5\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "log(long) Selected!",
+              "explanation": "Primitive widening (int to long) takes priority over autoboxing (int to Integer).",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Fallback Options",
+              "explanation": "Autoboxing and varargs are evaluated only if no widened overload matches.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Calling log with integer five matches log long before log Integer. Primitive widening beats autoboxing because widening was introduced in Java 1.0, preserving backward compatibility.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Static initializers run once per class loading",
+            "Instance fields initialize before constructor body",
+            "Primitive widening beats autoboxing in overload resolution"
+          ],
+          "command": "git checkout topic/level-1/classes-and-objects",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub/roadmap/level-1/classes-and-objects",
+          "narration": "You have mastered classes, objects, JVM memory layout, and initialization order. Checkout the companion branch to run the interactive Java 21 lab and test suite.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
