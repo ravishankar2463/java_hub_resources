@@ -361,9 +361,26 @@ ${slice}`;
       try {
         const parsed = JSON.parse(lastRaw) as PartPayload;
         parsed.partNumber = partNumber;
-        // Normalize beat defaults & clamp minor out-of-range line numbers cleanly
+        // Normalize common LLM key aliases (type -> kind, wrapped beats, line bounds)
         if (Array.isArray(parsed.beats)) {
-          parsed.beats.forEach((b, idx) => {
+          parsed.beats = parsed.beats.map((rawBeat: unknown, idx: number) => {
+            let obj = (rawBeat && typeof rawBeat === "object" ? { ...(rawBeat as Record<string, unknown>) } : {}) as Record<string, unknown>;
+            const keys = Object.keys(obj);
+            if (keys.length === 1 && VALID_KINDS.has(keys[0]) && obj[keys[0]] && typeof obj[keys[0]] === "object") {
+              obj = { kind: keys[0], ...(obj[keys[0]] as Record<string, unknown>) };
+            }
+            if (!obj.kind && typeof obj.type === "string" && VALID_KINDS.has(obj.type)) {
+              obj.kind = obj.type;
+            }
+            if (!obj.kind) {
+              if ("headline" in obj) obj.kind = "hook";
+              else if ("code" in obj && "steps" in obj) obj.kind = "code-spotlight";
+              else if ("nodes" in obj) obj.kind = "flow-diagram";
+              else if ("lines" in obj) obj.kind = "terminal";
+              else if ("top" in obj && "bottom" in obj) obj.kind = "compare";
+              else if ("takeaways" in obj) obj.kind = "cta";
+            }
+            const b = obj as unknown as StoryboardBeat;
             if (!b.id) b.id = `p${partNumber}-b${idx + 1}-${b.kind || "beat"}`;
             if (typeof b.durationSec !== "number") b.durationSec = 10;
             if (!b.sfx || !VALID_SFX.has(b.sfx)) b.sfx = "whoosh";
@@ -386,6 +403,7 @@ ${slice}`;
             if (b.kind === "terminal" && Array.isArray(b.lines) && b.lines.length > 10) {
               b.lines = b.lines.slice(0, 10);
             }
+            return b;
           });
         }
         lastErrors = validatePart(parsed, partNumber);
