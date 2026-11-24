@@ -1,0 +1,454 @@
+{
+  "chapterId": "level-4/optional-api",
+  "level": "level-4",
+  "levelLabel": "Level 4",
+  "slug": "optional-api",
+  "chapterTitle": "Optional API",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-4/optional-api",
+  "branchName": "topic/level-4/optional-api",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-optional-basics",
+      "partTitle": "Why Optional Beats Null",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Optional API • Part 1 of 4",
+          "headline": "Stop returning null from your repository methods.",
+          "highlightWord": "Stop returning null",
+          "subline": "NullPointerExceptions are the silent killer of production stability.",
+          "narration": "Stop returning null from your repository methods. It forces callers to guess, read docs, or write fragile null checks. Java Optional makes the absence of a value a first-class contract.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Null vs. Optional",
+          "top": {
+            "label": "Legacy Null",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "public User findById(String id) { ... }\n// Caller: if (user != null) { ... }",
+            "points": [
+              "Implicit contract",
+              "High risk of NPE"
+            ]
+          },
+          "bottom": {
+            "label": "Java Optional",
+            "badge": "Explicit",
+            "tone": "good",
+            "code": "public Optional<User> findById(String id) { ... }\n// Caller: user.ifPresent(...) ",
+            "points": [
+              "Forces null-check",
+              "Cleaner API design"
+            ]
+          },
+          "narration": "Returning null is an implicit contract that developers forget. Optional forces the compiler to make you acknowledge the empty case. It is not just syntax; it is a safety net.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-factories",
+          "kind": "code-spotlight",
+          "title": "The 3 Factory Methods",
+          "filename": "OptionalFactory.java",
+          "code": "Optional<String> a = Optional.of(\"data\");\nOptional<String> b = Optional.ofNullable(val);\nOptional<String> c = Optional.empty();",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Optional.of",
+              "explanation": "Throws NPE if value is null. Use only when null is a bug.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Optional.ofNullable",
+              "explanation": "Safe wrapper for legacy APIs or Map lookups.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Optional.empty",
+              "explanation": "The explicit way to signal nothing was found.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use of for strict requirements, ofNullable for legacy data, and empty for explicit absence. Never return null from a method that returns an Optional.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-consume",
+          "kind": "code-spotlight",
+          "title": "Consuming Safely",
+          "filename": "Consumer.java",
+          "code": "repo.findById(id)\n    .ifPresentOrElse(\n        user -> log(user),\n        () -> logMissing()\n    );",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "ifPresentOrElse",
+              "explanation": "Java 9+ method to handle both present and empty states cleanly.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Avoid get() or isPresent() checks. Use ifPresentOrElse to handle both branches in a single, readable chain. It keeps your logic flow linear and safe.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Optional signals absence in type system",
+            "Use ofNullable for legacy data",
+            "Prefer ifPresentOrElse over manual checks"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): The orElse vs orElseGet performance trap →",
+          "narration": "That is the baseline. In Part 2, we tackle the most common performance bug: orElse versus orElseGet.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-performance-traps",
+      "partTitle": "orElse vs. orElseGet Performance",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Optional Performance • Part 2 of 4",
+          "headline": "Your orElse call is killing performance.",
+          "highlightWord": "killing performance",
+          "subline": "It executes even when the value is already present.",
+          "narration": "Your orElse call might be killing performance. Java evaluates all arguments eagerly, meaning your expensive fallback logic runs every single time—even when the value is already there.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Eager vs. Lazy Fallbacks",
+          "nodes": [
+            {
+              "label": "orElse(compute())",
+              "detail": "Runs compute() every time regardless of presence",
+              "tag": "Eager",
+              "accent": "amber"
+            },
+            {
+              "label": "orElseGet(() -> compute())",
+              "detail": "Runs compute() only if value is missing",
+              "tag": "Lazy",
+              "accent": "emerald"
+            },
+            {
+              "label": "Result",
+              "detail": "Choose Lazy for I/O or heavy allocation",
+              "tag": "Best Practice",
+              "accent": "sky"
+            }
+          ],
+          "narration": "orElse is for constants like empty strings. orElseGet takes a supplier, executing logic only when needed. If your fallback involves database calls or heavy objects, always use orElseGet.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-comparison",
+          "kind": "code-spotlight",
+          "title": "The Performance Bug",
+          "filename": "Performance.java",
+          "code": "// BAD: Expensive call runs every time\nuser.orElse(db.fetchDefault());\n\n// GOOD: Runs only if user is empty\nuser.orElseGet(() -> db.fetchDefault());",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "orElse",
+              "explanation": "The db.fetchDefault() method is invoked before orElse even sees the Optional.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "orElseGet",
+              "explanation": "The lambda defers execution until the Optional is confirmed empty.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The difference is massive. orElse is for cheap literals. orElseGet is for anything involving I/O or object allocation. Don't waste CPU cycles on discarded results.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-throw",
+          "kind": "terminal",
+          "title": "Throwing Exceptions",
+          "caption": "Use orElseThrow for clear intent",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "opt.orElseThrow();"
+            },
+            {
+              "kind": "comment",
+              "text": "# Throws NoSuchElementException"
+            },
+            {
+              "kind": "command",
+              "text": "opt.orElseThrow(() -> new NotFound());"
+            },
+            {
+              "kind": "comment",
+              "text": "# Throws Custom Exception"
+            }
+          ],
+          "narration": "When absence is an error, use orElseThrow. It is clearer than get() and explicitly communicates that this path is a failure point in your business logic.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "orElse is for constants",
+            "orElseGet is for computations",
+            "Use orElseThrow for required values"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Monadic chaining with map and flatMap →",
+          "narration": "Now you know how to handle fallbacks. In Part 3, we master map and flatMap to chain transformations without ever writing a nested if-statement.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-monadic-chaining",
+      "partTitle": "Chaining with map and flatMap",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Monadic Chaining • Part 3 of 4",
+          "headline": "Stop nesting if-statements to extract data.",
+          "highlightWord": "Stop nesting",
+          "subline": "Map and flatMap turn messy logic into a clean pipeline.",
+          "narration": "Stop nesting if-statements just to extract a nested property. Map and flatMap let you transform data through a pipeline, automatically skipping steps if a value is missing.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-map",
+          "kind": "code-spotlight",
+          "title": "Transforming with map",
+          "filename": "Chain.java",
+          "code": "String city = repo.findById(id)\n    .filter(User::isActive)\n    .map(User::getAddress)\n    .map(Address::getCity)\n    .orElse(\"Unknown\");",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "filter",
+              "explanation": "Returns empty if predicate fails.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "map",
+              "explanation": "Transforms the value if present, wraps result in Optional.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "If the user is inactive or the address is null, the chain short-circuits. You get a clean result with zero null checks. It is functional programming at its finest.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-flatmap",
+          "kind": "code-spotlight",
+          "title": "The flatMap Difference",
+          "filename": "FlatMap.java",
+          "code": "// map produces Optional<Optional<T>>\n// flatMap flattens the result\nOptional<String> email = repo.findById(id)\n    .flatMap(service::getBackupEmail);",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "flatMap",
+              "explanation": "Use when the mapper returns an Optional to avoid double-wrapping.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use map for plain values, flatMap when the transformation returns an Optional. It prevents the dreaded Optional inside an Optional mess.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-code-stream",
+          "kind": "code-spotlight",
+          "title": "Optional to Stream",
+          "filename": "StreamBridge.java",
+          "code": "ids.stream()\n   .map(repo::findById)\n   .flatMap(Optional::stream)\n   .toList();",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Optional::stream",
+              "explanation": "Converts Optional to a 0 or 1 element stream, filtering empty results.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Java 9 added Optional dot stream. It is the cleanest way to filter and unwrap a collection of Optionals in one pass. No more filter(isPresent) boilerplate.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "map for simple transformations",
+            "flatMap for Optional-returning methods",
+            "Optional::stream for collection processing"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Why fields and params should avoid Optional →",
+          "narration": "You are now a master of chaining. In Part 4, we define the boundaries: why Optional is for returns only, and why using it for fields is a mistake.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-anti-patterns",
+      "partTitle": "Optional Anti-Patterns",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Anti-Patterns • Part 4 of 4",
+          "headline": "Optional is not for class fields.",
+          "highlightWord": "not for class fields",
+          "subline": "It breaks serialization and bloats your heap memory.",
+          "narration": "Optional is not for class fields. It breaks serialization, adds heap overhead, and confuses framework mappers. Keep fields nullable and use Optional only in getters.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare-fields",
+          "kind": "compare",
+          "title": "Field Usage",
+          "top": {
+            "label": "Optional Field",
+            "badge": "Avoid",
+            "tone": "bad",
+            "code": "private Optional<String> name;",
+            "points": [
+              "Not Serializable",
+              "Extra heap object"
+            ]
+          },
+          "bottom": {
+            "label": "Nullable Field",
+            "badge": "Standard",
+            "tone": "good",
+            "code": "private String name;\npublic Optional<String> getName() { ... }",
+            "points": [
+              "Framework compatible",
+              "Cleaner serialization"
+            ]
+          },
+          "narration": "Optional is not Serializable. Using it as a field breaks JPA and JSON libraries. Use a private nullable field and expose an Optional getter to give callers the ergonomics they need.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-params",
+          "kind": "code-spotlight",
+          "title": "Avoid Optional Parameters",
+          "filename": "Params.java",
+          "code": "// Avoid this:\npublic void search(Optional<String> query)\n\n// Use this:\npublic void search(String query) { ... }\npublic void search() { search(null); }",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Optional param",
+              "explanation": "Forces callers to wrap values unnecessarily.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Overloading",
+              "explanation": "Cleaner API for the caller.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Optional parameters force callers to wrap every argument. It is noisy and unnecessary. Use method overloading to handle optional inputs instead.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-code-primitives",
+          "kind": "code-spotlight",
+          "title": "Primitive Specializations",
+          "filename": "Primitives.java",
+          "code": "OptionalInt score = IntStream.of(1, 2).max();\nint val = score.orElse(0);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "OptionalInt",
+              "explanation": "Avoids boxing overhead of Optional<Integer>.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "For numbers, use OptionalInt, OptionalLong, or OptionalDouble. They prevent expensive boxing and keep your memory footprint low. It is a small change with a big impact.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Optional is for return types only",
+            "Use OptionalInt for primitives",
+            "Never use Optional for fields or params"
+          ],
+          "command": "git checkout topic/level-4/optional-api",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered the Optional API. Checkout the branch in the description to run the lab and explore the full documentation. Keep your code clean and your nulls contained.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
