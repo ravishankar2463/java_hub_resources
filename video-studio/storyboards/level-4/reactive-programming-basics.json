@@ -1,0 +1,489 @@
+{
+  "chapterId": "level-4/reactive-programming-basics",
+  "level": "level-4",
+  "levelLabel": "Level 4",
+  "slug": "reactive-programming-basics",
+  "chapterTitle": "Reactive Programming Basics",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-4/reactive-programming-basics",
+  "branchName": "topic/level-4/reactive-programming-basics",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-observer-to-reactive",
+      "partTitle": "Why Reactive Streams Exist",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reactive Basics • Part 1 of 4",
+          "headline": "Why does a fast producer crash your JVM?",
+          "highlightWord": "crash your JVM",
+          "subline": "Classic Observer patterns lack backpressure, leading to OOM errors under heavy load.",
+          "narration": "Classic Observer patterns are great for UI, but they fail at scale. If your producer emits 50k events per second and your consumer only handles 1k, your memory will explode. Reactive Streams fixes this.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Observer vs. Reactive Streams",
+          "top": {
+            "label": "Classic Observer",
+            "badge": "Pure Push",
+            "tone": "bad",
+            "code": "void update(T item);",
+            "points": [
+              "No completion signal",
+              "No error handling",
+              "Unbounded memory usage"
+            ]
+          },
+          "bottom": {
+            "label": "Reactive Streams",
+            "badge": "Pull-Push",
+            "tone": "good",
+            "code": "onNext(T item);\nonComplete();\nonError(Throwable t);",
+            "points": [
+              "Explicit flow control",
+              "Terminal signals",
+              "Backpressure support"
+            ]
+          },
+          "narration": "Classic observers just push data blindly. Reactive Streams adds terminal signals for completion and errors, plus a Subscription channel that lets the consumer request only what it can handle.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Reactive Signal Protocol",
+          "subtitle": "How demand controls the data flow",
+          "nodes": [
+            {
+              "label": "Publisher",
+              "detail": "Emits items upon request",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Subscription",
+              "detail": "The control channel bridge",
+              "tag": "Bridge",
+              "accent": "amber"
+            },
+            {
+              "label": "Subscriber",
+              "detail": "Calls request(n) for flow",
+              "tag": "Consumer",
+              "accent": "purple"
+            },
+            {
+              "label": "Processor",
+              "detail": "Transforms stream signals",
+              "tag": "Middleware",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The handshake is strict. First, the subscriber gets a subscription. Then, it calls request(n). Only then does the publisher send items. This pull-push mechanism is the heart of backpressure.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-sub",
+          "kind": "code-spotlight",
+          "title": "Manual Backpressure Control",
+          "filename": "Subscriber.java",
+          "code": "public void hookOnSubscribe(Subscription s) {\n    request(5); // Ask for 5 items\n}\npublic void hookOnNext(Integer value) {\n    process(value);\n    if (batchDone) request(5); // Ask for more\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "request(n)",
+              "explanation": "Explicitly tells the publisher how much data we are ready to process.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Flow Control",
+              "explanation": "We only request more once the current batch is finished.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "You rarely write this manually, but it shows the power. By requesting fixed batches, you prevent the producer from overwhelming your system. Next, we look at Mono and Flux.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Observer pattern lacks backpressure",
+            "Reactive Streams = onNext + onComplete + onError",
+            "request(n) is the key to flow control"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Mono vs Flux and the Assembly Phase →",
+          "narration": "You've got the theory. In Part 2, we dive into Project Reactor's Mono and Flux, and why your pipeline won't run until you subscribe.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-mono-flux-assembly",
+      "partTitle": "Mono, Flux & The Lazy Pipeline",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Reactor • Part 2 of 4",
+          "headline": "Why is your reactive code doing nothing?",
+          "highlightWord": "doing nothing",
+          "subline": "Reactive pipelines are lazy blueprints. They don't execute until you subscribe.",
+          "narration": "You wrote a complex reactive pipeline, but no database call fired. Why? Because reactive pipelines are just blueprints. Nothing happens until you call subscribe.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Mono vs. Flux",
+          "top": {
+            "label": "Mono<T>",
+            "badge": "0 or 1",
+            "tone": "neutral",
+            "code": "Mono.just(\"User\");",
+            "points": [
+              "Async Optional/Future",
+              "Single HTTP response",
+              "Fire-and-complete"
+            ]
+          },
+          "bottom": {
+            "label": "Flux<T>",
+            "badge": "0 to N",
+            "tone": "good",
+            "code": "Flux.range(1, 10);",
+            "points": [
+              "Streams of data",
+              "WebSockets/Kafka",
+              "Infinite sequences"
+            ]
+          },
+          "narration": "Mono is for single results, like a database lookup. Flux is for streams, like a Kafka feed. Both are publishers, but their intent is different.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-lazy",
+          "kind": "code-spotlight",
+          "title": "Assembly vs. Execution",
+          "filename": "Pipeline.java",
+          "code": "Flux<String> pipeline = Flux.just(\"A\", \"B\")\n    .map(String::toLowerCase);\n\n// Nothing has happened yet!\n\npipeline.subscribe(System.out::println);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Assembly",
+              "explanation": "Constructing the operator chain. No logic runs here.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Execution",
+              "explanation": "Subscribe triggers the upstream flow and demand.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The assembly phase is just configuration. The execution phase only starts when subscribe is called. If you forget to subscribe, your code is effectively dead.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-overflow",
+          "kind": "terminal",
+          "title": "Handling Overflow",
+          "caption": "What happens when the producer is too fast?",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "flux.onBackpressureDrop(dropped -> log(dropped));"
+            },
+            {
+              "kind": "command",
+              "text": "flux.onBackpressureLatest();"
+            },
+            {
+              "kind": "command",
+              "text": "flux.onBackpressureBuffer(100);"
+            },
+            {
+              "kind": "comment",
+              "text": "# Choose your strategy based on business needs"
+            }
+          ],
+          "narration": "When you can't slow the producer, use overflow strategies. Drop items, keep only the latest for telemetry, or buffer them. Choose wisely to avoid OOM.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Mono = 0-1 item, Flux = 0-N items",
+            "Pipelines are lazy; subscribe() triggers execution",
+            "Use backpressure operators for hot sources"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Schedulers and Threading Rules →",
+          "narration": "Assembly is just the start. In Part 3, we master Schedulers to ensure your event-loop threads never block.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-schedulers-threading",
+      "partTitle": "Mastering Schedulers & Threading",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Threading Rules • Part 3 of 4",
+          "headline": "One blocking call can freeze your entire server.",
+          "highlightWord": "freeze your server",
+          "subline": "Blocking an event-loop thread is the cardinal sin of reactive programming.",
+          "narration": "Reactive systems rely on non-blocking threads. If you call a blocking JDBC driver on an event-loop thread, you freeze every other request on that thread. Don't do it.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Threading Control",
+          "subtitle": "Where does the code run?",
+          "nodes": [
+            {
+              "label": "subscribeOn",
+              "detail": "Sets thread for source emission",
+              "tag": "Upstream",
+              "accent": "amber"
+            },
+            {
+              "label": "publishOn",
+              "detail": "Switches thread for downstream",
+              "tag": "Downstream",
+              "accent": "purple"
+            },
+            {
+              "label": "Scheduler",
+              "detail": "The thread pool provider",
+              "tag": "Executor",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use subscribeOn to control the source thread. Use publishOn to switch threads mid-pipeline. This keeps your heavy processing off the main event loop.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-blocking",
+          "kind": "code-spotlight",
+          "title": "Offloading Blocking Calls",
+          "filename": "Blocking.java",
+          "code": "public Mono<User> getUser(String id) {\n    return Mono.fromCallable(() -> db.find(id))\n        .subscribeOn(Schedulers.boundedElastic());\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "fromCallable",
+              "explanation": "Wraps blocking logic into a reactive Mono.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "boundedElastic",
+              "explanation": "Offloads blocking work to a separate thread pool.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use boundedElastic for legacy blocking code. It prevents your reactive event loop from stalling, keeping your application responsive under high concurrency.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Scheduler Selection",
+          "top": {
+            "label": "Schedulers.parallel()",
+            "badge": "CPU Bound",
+            "tone": "good",
+            "points": [
+              "Fixed pool size",
+              "For non-blocking tasks",
+              "High throughput"
+            ]
+          },
+          "bottom": {
+            "label": "Schedulers.boundedElastic()",
+            "badge": "I/O Bound",
+            "tone": "neutral",
+            "points": [
+              "Dynamic pool size",
+              "For legacy blocking I/O",
+              "Prevents thread starvation"
+            ]
+          },
+          "narration": "Use parallel for CPU-heavy tasks. Use boundedElastic for I/O. Mixing these up is the most common cause of performance degradation in reactive systems.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Never block the event loop",
+            "subscribeOn = source thread",
+            "publishOn = downstream thread",
+            "Use boundedElastic for blocking I/O"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Reactive vs Virtual Threads →",
+          "narration": "Threading is hard, but essential. In the final part, we compare reactive programming with Java 21's new Virtual Threads.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-reactive-vs-virtual-threads",
+      "partTitle": "Reactive vs. Virtual Threads",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Java • Part 4 of 4",
+          "headline": "Are Virtual Threads killing Reactive Programming?",
+          "highlightWord": "killing Reactive",
+          "subline": "Java 21 changed the game. Here is when you still need WebFlux.",
+          "narration": "With Java 21 Virtual Threads, you can write simple, blocking code that scales. Does this make Reactive Programming obsolete? Not exactly.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Virtual Threads vs. Reactive",
+          "top": {
+            "label": "Virtual Threads",
+            "badge": "Imperative",
+            "tone": "good",
+            "code": "try { ... } catch { ... }",
+            "points": [
+              "Readable stack traces",
+              "Standard blocking code",
+              "Easier to debug"
+            ]
+          },
+          "bottom": {
+            "label": "Reactive (WebFlux)",
+            "badge": "Declarative",
+            "tone": "neutral",
+            "code": "mono.flatMap(...);",
+            "points": [
+              "True backpressure",
+              "Complex stream operators",
+              "Continuous event handling"
+            ]
+          },
+          "narration": "Virtual threads win for standard REST APIs. But if you need complex stream processing, windowing, or strict backpressure, Reactive is still the king.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "When to Choose Which",
+          "subtitle": "The decision matrix",
+          "nodes": [
+            {
+              "label": "REST API",
+              "detail": "Use Virtual Threads",
+              "tag": "Standard",
+              "accent": "sky"
+            },
+            {
+              "label": "Data Streams",
+              "detail": "Use Reactive",
+              "tag": "Complex",
+              "accent": "emerald"
+            },
+            {
+              "label": "Backpressure",
+              "detail": "Use Reactive",
+              "tag": "FlowControl",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Choose Virtual Threads for CRUD and request-response. Choose Reactive for WebSockets, Kafka, and telemetry where you need rich temporal operators.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-term-summary",
+          "kind": "terminal",
+          "title": "Final Verdict",
+          "caption": "The modern stack choice",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "Virtual Threads: Simplicity, Debugging, Scaling"
+            },
+            {
+              "kind": "success",
+              "text": "Reactive: Backpressure, Streams, Composition"
+            },
+            {
+              "kind": "comment",
+              "text": "# Use the right tool for the stream"
+            }
+          ],
+          "narration": "Don't force Reactive if you don't need it. But don't abandon it if you're building high-performance event-driven pipelines. Both have their place in modern Java.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Virtual Threads for standard REST",
+            "Reactive for complex event streams",
+            "Backpressure is the reactive differentiator"
+          ],
+          "command": "git checkout topic/level-4/reactive-programming-basics",
+          "nextPartTeaser": "Explore the full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered reactive basics. Checkout the branch for labs and check the roadmap for the next level. Keep building.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
