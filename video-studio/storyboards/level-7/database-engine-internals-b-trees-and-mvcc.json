@@ -1,0 +1,592 @@
+{
+  "chapterId": "level-7/database-engine-internals-b-trees-and-mvcc",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "database-engine-internals-b-trees-and-mvcc",
+  "chapterTitle": "Database Engine Internals: B-Trees and MVCC",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/database-engine-internals-b-trees-and-mvcc",
+  "branchName": "topic/level-7/database-engine-internals-b-trees-and-mvcc",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-storage-engine-basics",
+      "partTitle": "Why Databases Don't Write to Disk Instantly",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Engine Internals • Part 1 of 5",
+          "headline": "Why does a 4ms query suddenly take 4 seconds?",
+          "highlightWord": "4 seconds",
+          "subline": "It is not your code. It is the storage engine fighting disk latency.",
+          "narration": "When your Spring Data query spikes from milliseconds to seconds, the bottleneck resides below the JVM. Databases do not write to disk on every commit; they use buffer pools and slotted pages to survive.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Mutation Pipeline",
+          "subtitle": "Memory is fast, Disk is slow",
+          "nodes": [
+            {
+              "label": "App Query",
+              "detail": "SQL Update/Select",
+              "tag": "Request",
+              "accent": "sky"
+            },
+            {
+              "label": "Buffer Pool",
+              "detail": "RAM-based page cache",
+              "tag": "Memory",
+              "accent": "amber"
+            },
+            {
+              "label": "WAL Buffer",
+              "detail": "Sequential log append",
+              "tag": "Durability",
+              "accent": "purple"
+            },
+            {
+              "label": "Data Pages",
+              "detail": "8KB/16KB disk blocks",
+              "tag": "Storage",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Updates hit the Buffer Pool and WAL buffer first. The engine marks pages as dirty in RAM, then flushes them to disk asynchronously. This prevents random disk I/O from killing your throughput.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-term-pages",
+          "kind": "terminal",
+          "title": "Slotted Page Anatomy",
+          "caption": "How rows sit inside a fixed 8KB block",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "Page Header: LSN, Checksum, Flags"
+            },
+            {
+              "kind": "output",
+              "text": "Slot Array: [Offset 1] [Offset 2] [Offset 3]"
+            },
+            {
+              "kind": "comment",
+              "text": "--- Free Space ---"
+            },
+            {
+              "kind": "output",
+              "text": "Tuple 3: Data..."
+            },
+            {
+              "kind": "output",
+              "text": "Tuple 1: Data..."
+            }
+          ],
+          "narration": "Pages are fixed-size blocks. Tuples grow upward from the bottom, while the slot array grows downward from the header. This allows the engine to compact space without breaking external index pointers.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "B+ Trees vs LSM-Trees",
+          "top": {
+            "label": "B+ Tree (Postgres/InnoDB)",
+            "badge": "Mutable",
+            "tone": "neutral",
+            "points": [
+              "In-place updates",
+              "High read speed"
+            ]
+          },
+          "bottom": {
+            "label": "LSM-Tree (RocksDB/Cassandra)",
+            "badge": "Append-Only",
+            "tone": "good",
+            "points": [
+              "Sequential writes",
+              "High write throughput"
+            ]
+          },
+          "narration": "Relational engines use B+ Trees for balanced lookups. LSM-Trees, used in distributed stores, trade read latency for massive write ingestion by using immutable files and background compaction.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Pages are fixed-size 8KB/16KB blocks",
+            "Buffer pools avoid random disk writes",
+            "LSM-Trees prioritize write throughput"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why InnoDB secondary indexes need two lookups →",
+          "narration": "That is the storage foundation. In Part 2, we compare Postgres heap tables versus InnoDB clustered indexes to see why secondary index lookups might be slower than expected.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-postgres-vs-innodb-indexes",
+      "partTitle": "Why InnoDB Secondary Indexes Need Two Lookups",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Indexing Internals • Part 2 of 5",
+          "headline": "Why does MySQL need two tree walks for one row?",
+          "highlightWord": "two tree walks",
+          "subline": "It is the cost of clustered indexes. Here is how to fix it with covering indexes.",
+          "narration": "Why does a simple email lookup in MySQL often perform two B-Tree traversals? Because InnoDB stores the primary key in every secondary index. Let us break down the performance cost.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "InnoDB Bookmark Lookup",
+          "subtitle": "Secondary Index → Primary Key → Row Data",
+          "nodes": [
+            {
+              "label": "Secondary Index",
+              "detail": "Stores [email, PK]",
+              "tag": "Level 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Clustered Index",
+              "detail": "Stores [PK, Row Data]",
+              "tag": "Level 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Row Data",
+              "detail": "The actual tuple",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "InnoDB secondary indexes do not point to disk offsets. They store the primary key. So you traverse the secondary tree to get the ID, then traverse the clustered tree to get the row.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-sql",
+          "kind": "code-spotlight",
+          "title": "Optimizing with Covering Indexes",
+          "filename": "queries.sql",
+          "code": "-- Slow: Index Scan + Heap/Clustered Fetch\nCREATE INDEX idx_email ON users (email);\n\n-- Fast: Index Only Scan\nCREATE INDEX idx_email_covering\n    ON users (email) INCLUDE (status);\n\nEXPLAIN (ANALYZE, BUFFERS)\nSELECT status FROM users WHERE email = 'a@b.com';",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Standard",
+              "explanation": "Requires a second lookup to fetch the status column.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Covering",
+              "explanation": "Includes status in the index leaf, avoiding the second lookup.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "By using INCLUDE in your index, you store the status column right in the leaf page. The database satisfies the query entirely from the index, dropping heap fetches to zero.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Postgres vs InnoDB",
+          "top": {
+            "label": "Postgres (Heap)",
+            "badge": "Direct Pointers",
+            "tone": "good",
+            "points": [
+              "Indexes store (page, slot)",
+              "Direct jump to heap"
+            ]
+          },
+          "bottom": {
+            "label": "InnoDB (Clustered)",
+            "badge": "PK-Based",
+            "tone": "neutral",
+            "points": [
+              "Indexes store PK",
+              "Bookmark lookup required"
+            ]
+          },
+          "narration": "Postgres indexes store physical pointers. This makes lookups faster but makes updates expensive because every index must be updated if the row moves. InnoDB's clustered design favors sequential inserts.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "InnoDB secondary indexes store PKs",
+            "Covering indexes eliminate bookmark lookups",
+            "Postgres indexes store physical ctid pointers"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Why WAL is the heartbeat of ACID durability →",
+          "narration": "Indexing is about trade-offs. In Part 3, we look at Write-Ahead Logging—the reason your data survives a power outage and how it keeps your database consistent.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-wal-and-crash-recovery",
+      "partTitle": "Write-Ahead Logging: The ACID Heartbeat",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Durability • Part 3 of 5",
+          "headline": "Why does the database log before it writes?",
+          "highlightWord": "before it writes",
+          "subline": "It is the only way to guarantee ACID durability without destroying disk performance.",
+          "narration": "If a power outage hits, your RAM is wiped. How does the database ensure your committed transaction is not lost? It relies on the WAL—the Write-Ahead Log.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The WAL Rule",
+          "subtitle": "Log first, flush later",
+          "nodes": [
+            {
+              "label": "Transaction",
+              "detail": "User commit",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "WAL Append",
+              "detail": "Sequential write",
+              "tag": "Durability",
+              "accent": "amber"
+            },
+            {
+              "label": "Dirty Page",
+              "detail": "Async flush",
+              "tag": "Data",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The WAL rule is strict: no data page can flush to disk until its corresponding log record is safely persisted. This turns random page writes into fast, sequential log appends.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-term-recovery",
+          "kind": "terminal",
+          "title": "ARIES Recovery Phases",
+          "caption": "How the engine restarts after a crash",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "1. Analysis: Scan WAL for dirty pages"
+            },
+            {
+              "kind": "comment",
+              "text": "2. Redo: Replay changes to match state"
+            },
+            {
+              "kind": "comment",
+              "text": "3. Undo: Roll back uncommitted transactions"
+            }
+          ],
+          "narration": "On restart, the engine performs ARIES recovery. It analyzes the log, redoes committed changes to restore the state, and undoes partial transactions to maintain atomicity.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "WAL vs Data Pages",
+          "top": {
+            "label": "WAL (Redo Log)",
+            "badge": "Sequential",
+            "tone": "good",
+            "points": [
+              "Append-only",
+              "Fast fsync()"
+            ]
+          },
+          "bottom": {
+            "label": "Data Pages",
+            "badge": "Random",
+            "tone": "neutral",
+            "points": [
+              "Scattered on disk",
+              "Expensive to sync"
+            ]
+          },
+          "narration": "WAL is your performance hero. By logging compact deltas sequentially, the database avoids the massive overhead of flushing entire pages to random disk locations on every commit.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "WAL rule: Log before data flush",
+            "Sequential I/O is faster than random",
+            "ARIES recovery restores state via log replay"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): MVCC—how readers and writers coexist →",
+          "narration": "WAL is the backbone of durability. In Part 4, we explore MVCC, the magic that lets your reporting queries run without blocking concurrent updates.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-mvcc-and-isolation",
+      "partTitle": "MVCC: Readers Don't Block Writers",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Concurrency • Part 4 of 5",
+          "headline": "Why don't your reports block your transactions?",
+          "highlightWord": "don't block",
+          "subline": "MVCC creates snapshots. Every transaction sees a private view of the world.",
+          "narration": "In older databases, a long report would lock tables and stop all updates. Modern engines use MVCC to keep multiple versions of a row, so readers and writers never clash.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "MVCC Versioning",
+          "subtitle": "Multiple versions, one snapshot",
+          "nodes": [
+            {
+              "label": "Tx 101",
+              "detail": "Snapshot: 100",
+              "tag": "Reader",
+              "accent": "sky"
+            },
+            {
+              "label": "Row V1",
+              "detail": "Value: 100",
+              "tag": "Committed",
+              "accent": "amber"
+            },
+            {
+              "label": "Row V2",
+              "detail": "Value: 250",
+              "tag": "Uncommitted",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When Tx 102 updates a row, it creates a new version. Tx 101, holding an older snapshot, simply ignores the new version and continues reading the old one. No locks required.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-term-inspect",
+          "kind": "terminal",
+          "title": "Inspecting Postgres MVCC",
+          "caption": "Watch tuple versioning in real-time",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "SELECT ctid, xmin, xmax, balance FROM accounts;"
+            },
+            {
+              "kind": "output",
+              "text": "(0,1) | 742 | 0 | 100.00"
+            },
+            {
+              "kind": "command",
+              "text": "UPDATE accounts SET balance = 250.00;"
+            },
+            {
+              "kind": "output",
+              "text": "(0,2) | 743 | 0 | 250.00"
+            }
+          ],
+          "narration": "Postgres adds new tuples on update. The old tuple stays at (0,1) until VACUUM cleans it up. You can see the xmin transaction IDs changing as new versions are created.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Postgres vs InnoDB MVCC",
+          "top": {
+            "label": "Postgres",
+            "badge": "Heap Tuples",
+            "tone": "neutral",
+            "points": [
+              "New tuple on update",
+              "Needs VACUUM"
+            ]
+          },
+          "bottom": {
+            "label": "InnoDB",
+            "badge": "Undo Logs",
+            "tone": "good",
+            "points": [
+              "In-place update",
+              "Undo log reconstruction"
+            ]
+          },
+          "narration": "Postgres creates new heap tuples on update, requiring autovacuum to reclaim space. InnoDB updates in-place and uses undo logs to reconstruct older versions for concurrent readers.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "MVCC allows lock-free reads",
+            "Postgres uses heap versioning + VACUUM",
+            "InnoDB uses in-place updates + Undo logs"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Avoiding Write Skew and Bloat →",
+          "narration": "MVCC is the key to high concurrency. In Part 5, we wrap up with production pitfalls like Write Skew and how to prevent table bloat from killing your performance.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-production-pitfalls",
+      "partTitle": "Write Skew, Bloat & Wraparound",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Production • Part 5 of 5",
+          "headline": "Your database is bloating—and you do not know why.",
+          "highlightWord": "bloating",
+          "subline": "Long-running transactions are the silent killers of database performance.",
+          "narration": "A single idle transaction can stop autovacuum, causing your table to bloat from gigabytes to tens of gigabytes. Here is how to diagnose and prevent the most common production disasters.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Bloat Cycle",
+          "subtitle": "Idle transactions pin the snapshot horizon",
+          "nodes": [
+            {
+              "label": "Idle Tx",
+              "detail": "4 hours old",
+              "tag": "Blocker",
+              "accent": "sky"
+            },
+            {
+              "label": "Autovacuum",
+              "detail": "Cannot clean dead tuples",
+              "tag": "Stalled",
+              "accent": "amber"
+            },
+            {
+              "label": "Table Bloat",
+              "detail": "Slow sequential scans",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When a transaction stays open, the database cannot reclaim dead tuples. They pile up, forcing the engine to scan through gigabytes of garbage just to find a few live rows.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-term-fix",
+          "kind": "terminal",
+          "title": "Defensive Monitoring",
+          "caption": "Catch bloat before it kills performance",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "SELECT pid, now() - xact_start AS age FROM pg_stat_activity;"
+            },
+            {
+              "kind": "comment",
+              "text": "-- Alert if age > 30s"
+            },
+            {
+              "kind": "command",
+              "text": "SELECT relname, n_dead_tup FROM pg_stat_user_tables;"
+            },
+            {
+              "kind": "comment",
+              "text": "-- Alert if n_dead_tup is high"
+            }
+          ],
+          "narration": "Set statement timeouts to kill idle transactions automatically. Monitor dead tuple counts and transaction age to ensure autovacuum has the room it needs to keep your tables lean.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-compare",
+          "kind": "compare",
+          "title": "Write Skew Prevention",
+          "top": {
+            "label": "Repeatable Read",
+            "badge": "Anomalies",
+            "tone": "bad",
+            "points": [
+              "Allows Write Skew",
+              "Snapshot isolated"
+            ]
+          },
+          "bottom": {
+            "label": "Serializable",
+            "badge": "Safe",
+            "tone": "good",
+            "points": [
+              "Detects RW dependencies",
+              "Abort on conflict"
+            ]
+          },
+          "narration": "Repeatable Read does not prevent Write Skew. Use Serializable isolation or SELECT FOR UPDATE to lock your read set, and always implement a retry loop for serialization failures.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Idle transactions cause table bloat",
+            "Monitor dead tuples and tx age",
+            "Use Serializable + retry for Write Skew"
+          ],
+          "command": "git checkout topic/level-7/database-engine-internals-b-trees-and-mvcc",
+          "nextPartTeaser": "Full internals guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered database internals. Check out the roadmap for the full deep dive into transaction isolation and performance tuning. Keep building.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
