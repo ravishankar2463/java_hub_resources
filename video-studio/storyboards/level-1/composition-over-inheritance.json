@@ -1,0 +1,505 @@
+{
+  "chapterId": "level-1/composition-over-inheritance",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "composition-over-inheritance",
+  "chapterTitle": "Composition over Inheritance",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/composition-over-inheritance",
+  "branchName": "topic/level-1/composition-over-inheritance",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-isa-hasa-cando",
+      "partTitle": "Stop Using extends for Code Reuse",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Composition vs Inheritance • Part 1 of 4",
+          "headline": "Why is extends the most dangerous keyword in Java?",
+          "highlightWord": "most dangerous",
+          "subline": "Implementation inheritance is the tightest coupling in Java and breaks API invariants.",
+          "narration": "Early object-oriented textbooks told you to extend classes whenever you needed code reuse. In real production systems, implementation inheritance is the tightest coupling in Java and breaks your code in unexpected ways.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Modeling Relationships in Java",
+          "subtitle": "Choose the right coupling level for your architecture",
+          "nodes": [
+            {
+              "label": "Is-A (extends)",
+              "detail": "Subtyping with inherited implementation, fixed at compile time",
+              "tag": "Rigid",
+              "accent": "amber"
+            },
+            {
+              "label": "Has-A (composition)",
+              "detail": "Holding reference to another object, swappable at runtime",
+              "tag": "Flexible",
+              "accent": "emerald"
+            },
+            {
+              "label": "Can-Do (implements)",
+              "detail": "Fulfilling behavioral interface contract without shared state",
+              "tag": "Modular",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Always ask what relationship you are modeling. Is-A extends implementation rigidly at compile time. Has-A composes references that swap at runtime. Can-Do implements interface contracts cleanly without shared internal state.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "SportsCar: Inheritance vs. Composition",
+          "top": {
+            "label": "Tightly Coupled Inheritance",
+            "badge": "❌ BAD",
+            "tone": "bad",
+            "code": "public class SportsCar extends CombustionEngine {\n    // Exposes engine maintenance methods on SportsCar!\n    // Locked to combustion engines forever.\n}",
+            "points": [
+              "Exposes engine internals on Car API",
+              "Impossible to switch to electric at runtime"
+            ]
+          },
+          "bottom": {
+            "label": "Flexible Composition",
+            "badge": "✅ GOOD",
+            "tone": "good",
+            "code": "public class SportsCar {\n    private Engine engine;\n    public SportsCar(Engine engine) {\n        this.engine = Objects.requireNonNull(engine);\n    }\n    public void drive() { engine.deliverTorque(); }\n}",
+            "points": [
+              "Inject V8, Electric, or Mock engines dynamically",
+              "Clean public API with zero leaked methods"
+            ]
+          },
+          "narration": "Extending CombustionEngine locks your SportsCar to petrol forever and leaks maintenance methods. Composing an Engine interface lets you swap in V8, Electric, or test double engines dynamically while keeping your API clean.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code-leak",
+          "kind": "code-spotlight",
+          "title": "API Leakage in Standard Java Properties",
+          "filename": "PropertiesBug.java",
+          "code": "// java.util.Properties extends Hashtable<Object, Object>\nProperties props = new Properties();\n\n// Put accepts an Integer because Hashtable exposes put(Object, Object)\nprops.put(\"timeout\", 30);\n\n// getProperty expects String values—silently returns null!\nString timeout = props.getProperty(\"timeout\");\nSystem.out.println(timeout); // null!",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Inheritance Flaw",
+              "explanation": "Properties extends Hashtable, inheriting put(Object, Object) and breaking its own String-only contract.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "API Leakage",
+              "explanation": "Callers bypass Properties validation by invoking raw inherited Hashtable methods.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                8,
+                9
+              ],
+              "badge": "Silent Bug",
+              "explanation": "getProperty returns null because an Integer was stored, creating silent production failures.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Here is a real JDK mistake: Properties extends Hashtable. Because Hashtable accepts Object keys and values, callers can put an Integer timeout. Later, getProperty silently returns null because it expects a String.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "extends creates rigid compile-time coupling",
+            "Composition keeps public APIs clean and swappable",
+            "Properties extending Hashtable is a classic JDK leak"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): The silent double-counting bug in HashSet →",
+          "narration": "That is why inheritance leaks. In Part 2, we inspect Joshua Bloch's classic double-counting bug in HashSet to see how superclass self-use breaks subclasses.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-fragile-base-class-bug",
+      "partTitle": "The Silent Double-Counting Bug in HashSet",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Fragile Base Class • Part 2 of 4",
+          "headline": "How can addAll turn 3 items into 6?",
+          "highlightWord": "3 items into 6",
+          "subline": "Internal superclass self-use creates silent dynamic dispatch bugs.",
+          "narration": "Extending a concrete class looks completely innocent until internal self-use destroys your state. This classic Effective Java bug doubles every item added to a custom set without throwing a single error.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-bug",
+          "kind": "code-spotlight",
+          "title": "InstrumentedHashSet Double-Counting Bug",
+          "filename": "InstrumentedHashSet.java",
+          "code": "public class InstrumentedHashSet<E> extends HashSet<E> {\n    private int addCount = 0;\n\n    @Override\n    public boolean add(E e) {\n        addCount++;\n        return super.add(e);\n    }\n\n    @Override\n    public boolean addAll(Collection<? extends E> c) {\n        addCount += c.size();\n        return super.addAll(c);\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "add() Counter",
+              "explanation": "Increments addCount by 1 and calls super.add(e).",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                11,
+                12
+              ],
+              "badge": "addAll() Counter",
+              "explanation": "Increments addCount by collection size, then delegates to super.addAll(c).",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Look at this InstrumentedHashSet class. It overrides add to increment a counter, and overrides addAll to add the collection size. When you pass a list of three items to addAll, you expect addCount to be three.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow-dispatch",
+          "kind": "flow-diagram",
+          "title": "Dynamic Dispatch Double-Counting Flow",
+          "subtitle": "How superclass self-use triggers duplicate counting",
+          "nodes": [
+            {
+              "label": "Caller invokes addAll",
+              "detail": "InstrumentedHashSet adds 3 to addCount (count = 3)",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "super.addAll executed",
+              "detail": "AbstractCollection loops and invokes this.add(e)",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Dynamic Dispatch Hook",
+              "detail": "JVM dispatches this.add back into InstrumentedHashSet",
+              "tag": "Step 3",
+              "accent": "purple"
+            },
+            {
+              "label": "Secondary Increment",
+              "detail": "addCount increments 3 more times (final count = 6)",
+              "tag": "Bug",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Instead, it prints six! Why? Because AbstractCollection implements addAll by looping and calling this dot add. Dynamic dispatch routes those self-calls right back into your overridden add method, counting every element twice.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-term-bug",
+          "kind": "terminal",
+          "title": "Execution & JDK Dependency Trap",
+          "caption": "Why removing addAll overrides still breaks in future JDKs",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Run test adding 3 elements via addAll"
+            },
+            {
+              "kind": "command",
+              "text": "java com.javahub.InstrumentedHashSetTest"
+            },
+            {
+              "kind": "error",
+              "text": "Expected addCount: 3 | Actual addCount: 6"
+            },
+            {
+              "kind": "comment",
+              "text": "# Removing addAll override binds you to hidden HashSet internals!"
+            },
+            {
+              "kind": "output",
+              "text": "If future JDK updates skip this.add(), your counter silently drops bulk additions!"
+            }
+          ],
+          "narration": "If you fix this by deleting the addAll override, you tie your correctness to an undocumented implementation detail. If a future JDK update optimizes HashSet to insert entries directly without calling add, your counter breaks silently.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "The Fragile Base Trap",
+          "takeaways": [
+            "Concrete extension relies on hidden self-use details",
+            "Dynamic dispatch routes superclass calls back to subclasses",
+            "Fragile base classes break under JDK upgrades"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The Forwarding Class Decorator pattern solution →",
+          "narration": "That is the Fragile Base Class problem in action. In Part 3, we build the clean Forwarding Class pattern that fixes this bug permanently.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-forwarding-class-pattern",
+      "partTitle": "The Forwarding Class Pattern Solution",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Forwarding & Decorators • Part 3 of 4",
+          "headline": "How do you wrap any class without fragile inheritance?",
+          "highlightWord": "wrap any class",
+          "subline": "Combine interfaces and forwarding delegates to build bulletproof decorators.",
+          "narration": "Instead of subclassing concrete collections, implement the Set interface and forward calls to a private delegate. This Decorator pattern decouples your metrics, logging, and validation completely from superclass internals.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-forwarding",
+          "kind": "code-spotlight",
+          "title": "Reusable ForwardingSet Base",
+          "filename": "ForwardingSet.java",
+          "code": "public class ForwardingSet<E> implements Set<E> {\n    private final Set<E> delegate;\n\n    public ForwardingSet(Set<E> delegate) {\n        this.delegate = Objects.requireNonNull(delegate);\n    }\n\n    @Override public boolean add(E e) { return delegate.add(e); }\n    @Override public boolean addAll(Collection<? extends E> c) {\n        return delegate.addAll(c);\n    }\n    @Override public int size() { return delegate.size(); }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "implements Set",
+              "explanation": "Implements the behavioral interface while holding a private delegate reference.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                8,
+                9,
+                10
+              ],
+              "badge": "Pure Forwarding",
+              "explanation": "Forwards all method calls directly to delegate without modifying behavior.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "First, write a reusable ForwardingSet class that implements Set and forwards every method call to an internal delegate. You only write this tedious forwarding boilerplate once for your entire codebase.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-instrumented",
+          "kind": "code-spotlight",
+          "title": "Bulletproof InstrumentedSet Wrapper",
+          "filename": "InstrumentedSet.java",
+          "code": "public class InstrumentedSet<E> extends ForwardingSet<E> {\n    private int addCount = 0;\n\n    public InstrumentedSet(Set<E> delegate) {\n        super(delegate);\n    }\n\n    @Override\n    public boolean add(E e) {\n        addCount++;\n        return super.add(e);\n    }\n\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                1,
+                5
+              ],
+              "badge": "Extends ForwardingSet",
+              "explanation": "Only overrides methods needing custom logic; delegates handle the rest.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                14
+              ],
+              "badge": "No Double-Counting",
+              "explanation": "delegate.addAll executes inside wrapped HashSet, so internal calls stay inside HashSet.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Now extend ForwardingSet in InstrumentedSet. When addAll runs super dot addAll, delegate dot addAll executes inside the wrapped set. Any internal self-use stays inside the delegate, keeping your addCount exact.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-wrapper",
+          "kind": "compare",
+          "title": "Inheritance vs. Wrapper Flexibility",
+          "top": {
+            "label": "Rigid Inheritance",
+            "badge": "❌ HashSet Only",
+            "tone": "bad",
+            "code": "Set<String> set = new InstrumentedHashSet<>();\n// Only works with HashSet!",
+            "points": [
+              "Bound to a single concrete class",
+              "Susceptible to fragile base class bugs"
+            ]
+          },
+          "bottom": {
+            "label": "Universal Forwarding Decorator",
+            "badge": "✅ Any Set Implementation",
+            "tone": "good",
+            "code": "Set<String> hash = new InstrumentedSet<>(new HashSet<>());\nSet<String> tree = new InstrumentedSet<>(new TreeSet<>());\nSet<String> linked = new InstrumentedSet<>(new LinkedHashSet<>());",
+            "points": [
+              "Wraps HashSet, TreeSet, or LinkedHashSet seamlessly",
+              "Safe against superclass implementation shifts"
+            ]
+          },
+          "narration": "Even better, your decorator isn't tied to HashSet anymore. You can wrap a HashSet, a TreeSet, or a LinkedHashSet with zero code changes, stacking logging, metrics, or immutability guards at runtime.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Forwarding Mastered",
+          "takeaways": [
+            "ForwardingSet isolates delegating boilerplate once",
+            "Wrappers remain unaffected by superclass internal self-use",
+            "Decorators wrap any set implementation at runtime"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Memory layouts, the SELF problem & safe inheritance rules →",
+          "narration": "That is how you design resilient decorators. In Part 4, we evaluate JVM memory layout trade-offs, the SELF problem trap, and exact rules for safe inheritance.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-memory-self-problem-and-rules",
+      "partTitle": "Memory Trade-Offs, The SELF Problem & Safe Rules",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Trade-offs & Rules • Part 4 of 4",
+          "headline": "Does object composition make your Java code slower?",
+          "highlightWord": "make code slower",
+          "subline": "Evaluating low-level memory indirection, callback traps, and safe inheritance guidelines.",
+          "narration": "Wrapper objects create extra pointer references and small heap headers. Let me inspect the JVM memory layout, explore the hidden SELF problem trap, and outline when inheritance is actually valid.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow-memory",
+          "kind": "flow-diagram",
+          "title": "JVM Heap Memory Layout Comparison",
+          "subtitle": "Single allocation vs pointer indirection",
+          "nodes": [
+            {
+              "label": "Inheritance Allocation",
+              "detail": "Object header plus parent and subclass fields in one contiguous block",
+              "tag": "Cache Friendly",
+              "accent": "sky"
+            },
+            {
+              "label": "Composition Outer Object",
+              "detail": "Wrapper object residing in heap holding reference to delegate",
+              "tag": "Pointer 1",
+              "accent": "amber"
+            },
+            {
+              "label": "Composition Inner Object",
+              "detail": "Delegate object holding actual state with secondary header",
+              "tag": "Pointer 2",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Inheritance places parent and child fields in one contiguous heap allocation. Composition uses two heap objects, adding object header overhead and pointer indirection. However, HotSpot JIT easily inlines forwarding calls in standard business code.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-compare-self",
+          "kind": "compare",
+          "title": "The Callback SELF Problem Trap",
+          "top": {
+            "label": "Callback Bypass Issue",
+            "badge": "⚠️ SELF Problem",
+            "tone": "bad",
+            "code": "public class InnerComponent {\n    public void register(EventListener listener) {\n        listener.onEvent(this); // Passes inner reference!\n    }\n}",
+            "points": [
+              "Inner object registers itself via this",
+              "Future callbacks bypass wrapper completely"
+            ]
+          },
+          "bottom": {
+            "label": "Safe Inheritance Rule",
+            "badge": "✅ Valid Use Cases",
+            "tone": "good",
+            "code": "public final class OrderService {\n    // Final prevents unsafe subclassing\n}\npublic class CustomList extends AbstractList<String> {\n    // Abstract base class designed for extension\n}",
+            "points": [
+              "Mark concrete classes final unless designed for extension",
+              "Subclass skeletal abstract classes (like AbstractList) safely"
+            ]
+          },
+          "narration": "Beware of the SELF problem: if a wrapped object registers this with callbacks, external notifications bypass your wrapper entirely. Reserve extends for skeletal abstract classes designed for extension, and mark concrete classes final by default.",
+          "durationSec": 13,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b4-term-jit",
+          "kind": "terminal",
+          "title": "JIT Optimization & Best Practices",
+          "caption": "HotSpot inlines forwarding wrappers automatically",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# HotSpot JIT automatically inlines forwarding calls"
+            },
+            {
+              "kind": "command",
+              "text": "java -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining Main"
+            },
+            {
+              "kind": "output",
+              "text": "@ 12 ForwardingSet::add (5 bytes) inline (hot)"
+            },
+            {
+              "kind": "success",
+              "text": "Indirection overhead is negligible in standard Java applications"
+            }
+          ],
+          "narration": "Profiling shows HotSpot JIT routinely inlines simple forwarding methods on hot paths. Unless you are writing ultra-low-latency high-frequency trading loops, favoring composition gives you massive modularity with zero observable performance loss.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "HotSpot JIT inlines simple wrapper forwarding methods",
+            "Watch out for callbacks bypassing wrappers via the self problem",
+            "Mark classes final unless designed and documented for extension"
+          ],
+          "command": "git checkout topic/level-1/composition-over-inheritance",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered composition over inheritance. Checkout the companion branch in java hub resources to run the verified Java 21 lab and JUnit 5 tests yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
