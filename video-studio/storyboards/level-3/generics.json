@@ -1,0 +1,591 @@
+{
+  "chapterId": "level-3/generics",
+  "level": "level-3",
+  "levelLabel": "Level 3",
+  "slug": "generics",
+  "chapterTitle": "Generics",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-3/generics",
+  "branchName": "topic/level-3/generics",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-erasure-and-invariance",
+      "partTitle": "Why Generics Are Invariant",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Generics • Part 1 of 5",
+          "headline": "Why does Java reject List<Integer> as a List<Number>?",
+          "highlightWord": "reject",
+          "subline": "It isn't a bug—it's a critical safety feature to prevent heap pollution.",
+          "narration": "If Java allowed you to treat a List of Integers as a List of Numbers, you could silently insert a Double into that list. Generics are invariant to stop this at compile time.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Arrays vs. Generics",
+          "top": {
+            "label": "Arrays (Covariant)",
+            "badge": "Unsafe",
+            "tone": "bad",
+            "code": "Dog[] dogs = new Dog[1];\nAnimal[] animals = dogs;\nanimals[0] = new Cat(); // Runtime Error!",
+            "points": [
+              "Reified runtime types",
+              "Allows invalid writes"
+            ]
+          },
+          "bottom": {
+            "label": "Generics (Invariant)",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "List<Dog> dogs = new ArrayList<>();\n// List<Animal> animals = dogs;\n// Compile-time error!",
+            "points": [
+              "Type erasure",
+              "Prevents invalid writes"
+            ]
+          },
+          "narration": "Arrays are covariant and reified, meaning they know their type at runtime, which leads to crashes. Generics are invariant and erased, stopping the error before you even run the code.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Erasure Pipeline",
+          "subtitle": "How javac strips type safety",
+          "nodes": [
+            {
+              "label": "Source",
+              "detail": "List<String> (Checked)",
+              "tag": "Java",
+              "accent": "sky"
+            },
+            {
+              "label": "Erasure",
+              "detail": "Replaces T with Object/Bound",
+              "tag": "javac",
+              "accent": "amber"
+            },
+            {
+              "label": "Bytecode",
+              "detail": "List (Raw) + checkcast",
+              "tag": "JVM",
+              "accent": "purple"
+            }
+          ],
+          "narration": "During compilation, javac enforces your types, then erases them. It replaces T with its bound, like Object, and inserts checkcast instructions to keep your runtime safe.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-bridge",
+          "kind": "code-spotlight",
+          "title": "Synthetic Bridge Methods",
+          "filename": "StringNode.java",
+          "code": "public class StringNode extends Node<String> {\n    @Override\n    public void setData(String data) { ... }\n}\n// Generated Bridge:\n// public void setData(Object data) { setData((String)data); }",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Subclassing",
+              "explanation": "Extending a generic class requires bridge methods.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Bridge",
+              "explanation": "javac adds this to keep virtual dispatch working.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Because of erasure, the parent expects Object, but the child expects String. javac silently injects a bridge method to bridge the gap and maintain polymorphism.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Generics are invariant to ensure safety",
+            "Type erasure removes T at runtime",
+            "Bridge methods preserve polymorphism"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Mastering PECS and Wildcards →",
+          "narration": "That's the foundation. In Part 2, we decode the PECS mnemonic to stop fighting the compiler when using wildcards.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-wildcards-pecs",
+      "partTitle": "PECS: Producer Extends, Consumer Super",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Wildcards • Part 2 of 5",
+          "headline": "Why does List<? extends Number> forbid adding numbers?",
+          "highlightWord": "forbid adding",
+          "subline": "It’s not a compiler bug—it’s a guarantee against heap corruption.",
+          "narration": "You can read from a List of extends Number, but you can't add to it. Why? Because the compiler can't guarantee the list isn't actually a List of Doubles.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "PECS Mnemonic",
+          "subtitle": "The golden rule for variance",
+          "nodes": [
+            {
+              "label": "Producer",
+              "detail": "Reads data out",
+              "tag": "? extends T",
+              "accent": "emerald"
+            },
+            {
+              "label": "Consumer",
+              "detail": "Writes data in",
+              "tag": "? super T",
+              "accent": "amber"
+            },
+            {
+              "label": "Exact",
+              "detail": "Both read & write",
+              "tag": "T",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Remember PECS. If your method produces values, use extends. If it consumes values, use super. If it does both, stick to an exact type.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-pecs",
+          "kind": "code-spotlight",
+          "title": "Applying PECS",
+          "filename": "Utils.java",
+          "code": "public static void copy(\n    List<? super T> dest,\n    List<? extends T> src\n) { ... }",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Consumer",
+              "explanation": "Dest receives data, so we use super.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Producer",
+              "explanation": "Src provides data, so we use extends.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Collections copy method is the perfect example. It copies from a producer source to a consumer destination, using both wildcards to maximize flexibility.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-error",
+          "kind": "terminal",
+          "title": "The Write-Only Trap",
+          "caption": "Why List<? extends Number> is read-only",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "List<? extends Number> list = new ArrayList<Double>();"
+            },
+            {
+              "kind": "error",
+              "text": "list.add(10); // Compile Error!"
+            },
+            {
+              "kind": "comment",
+              "text": "# Compiler blocks this to prevent adding"
+            },
+            {
+              "kind": "comment",
+              "text": "# an Integer to a List<Double>."
+            }
+          ],
+          "narration": "The compiler blocks writes here because it doesn't know the specific subtype. If it allowed an Integer add, you'd crash the JVM with a ClassCastException later.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "PECS: Producer Extends, Consumer Super",
+            "Extends = Read-only (mostly)",
+            "Super = Write-safe"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Bounded Types & Recursive Bounds →",
+          "narration": "PECS is your best friend. In Part 3, we look at bounded type parameters and how to handle recursive bounds like Comparable.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-bounds",
+      "partTitle": "Bounded Type Parameters",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Bounds • Part 3 of 5",
+          "headline": "Why is <T extends Comparable<? super T>> so common?",
+          "highlightWord": "so common",
+          "subline": "It's the secret to making your generic collections truly flexible.",
+          "narration": "Ever wonder why the max method in collections is so complex? It’s because simple bounds fail when you use inheritance. Let's break down recursive bounds.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-bound",
+          "kind": "code-spotlight",
+          "title": "Multiple Bounds",
+          "filename": "Logic.java",
+          "code": "<T extends Number & Comparable<T> & Serializable>\nT clamp(T value) { ... }",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Multiple Bounds",
+              "explanation": "Use & to require multiple interfaces.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Class First",
+              "explanation": "The class must always come before interfaces.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "You can enforce multiple bounds with the ampersand. Just remember: the class must be listed first, or the compiler will reject your code.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Recursive Bound Flexibility",
+          "top": {
+            "label": "Strict Bound",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "<T extends Comparable<T>>",
+            "points": [
+              "Fails with inheritance",
+              "Too rigid"
+            ]
+          },
+          "bottom": {
+            "label": "Flexible Bound",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "<T extends Comparable<? super T>>",
+            "points": [
+              "Works with subclasses",
+              "Standard API pattern"
+            ]
+          },
+          "narration": "The flexible bound allows a class to compare itself against a supertype. This is why it's the standard for library APIs—it just works with inheritance.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Erasure with Bounds",
+          "subtitle": "What happens to T?",
+          "nodes": [
+            {
+              "label": "<T extends Number>",
+              "detail": "Erased to Number",
+              "tag": "Erasure",
+              "accent": "sky"
+            },
+            {
+              "label": "Method Call",
+              "detail": "Compiler inserts cast",
+              "tag": "Bytecode",
+              "accent": "amber"
+            },
+            {
+              "label": "Runtime",
+              "detail": "Number methods used",
+              "tag": "Execution",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When you bound a type, erasure doesn't go to Object. It goes to your leftmost bound. The compiler inserts casts to ensure you can safely call methods on that type.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Class must be the first bound",
+            "Use & for multiple constraints",
+            "Comparable super T is the standard"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Heap Pollution & @SafeVarargs →",
+          "narration": "Bounds keep your generics predictable. In Part 4, we tackle heap pollution and the dangerous world of varargs.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-heap-pollution",
+      "partTitle": "Heap Pollution & @SafeVarargs",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Safety • Part 4 of 5",
+          "headline": "Can a List<String> contain an Integer?",
+          "highlightWord": "contain an Integer",
+          "subline": "Yes, through heap pollution. And it will crash your app at runtime.",
+          "narration": "Heap pollution is the silent killer of type safety. By mixing raw types and generics, you can bypass the compiler and store the wrong type in a list.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b2-code-pollution",
+          "kind": "code-spotlight",
+          "title": "The Pollution Path",
+          "filename": "Pollute.java",
+          "code": "List<String> strings = new ArrayList<>();\nList raw = strings; // Raw type bypass\nraw.add(42);        // Heap is now polluted\nString s = strings.get(0); // ClassCastException!",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Raw Type",
+              "explanation": "This drops all compile-time checks.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Crash",
+              "explanation": "The cast happens here, not at the add.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Using raw types is the primary way to pollute the heap. The compiler can't stop you, but the JVM will throw a ClassCastException when you try to read the data.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-varargs",
+          "kind": "code-spotlight",
+          "title": "Why @SafeVarargs?",
+          "filename": "Lists.java",
+          "code": "@SafeVarargs\npublic static <T> List<T> of(T... items) {\n    return Arrays.asList(items);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Annotation",
+              "explanation": "Promises the method won't corrupt the array.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Varargs",
+              "explanation": "Varargs are just arrays under the hood.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Varargs are just arrays. Since arrays are covariant, they can be unsafe. Use @SafeVarargs only if you promise not to write to or leak that array.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Varargs Safety",
+          "top": {
+            "label": "Unsafe Varargs",
+            "badge": "Warning",
+            "tone": "bad",
+            "code": "static <T> void leak(T... items) {\n    Object[] arr = items;\n    arr[0] = \"oops\";\n}",
+            "points": [
+              "Leaks array reference",
+              "Causes heap pollution"
+            ]
+          },
+          "bottom": {
+            "label": "Safe Varargs",
+            "badge": "Verified",
+            "tone": "good",
+            "code": "@SafeVarargs\nstatic <T> void read(T... items) {\n    for (T item : items) { ... }\n}",
+            "points": [
+              "Only reads from array",
+              "No pollution possible"
+            ]
+          },
+          "narration": "If you leak the array or write to it, you're creating a trap. Only mark methods as SafeVarargs if they strictly read the input.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Raw types cause heap pollution",
+            "Varargs are arrays (covariant)",
+            "@SafeVarargs is a developer promise"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Super Type Tokens →",
+          "narration": "Safety first. In Part 5, we see how libraries like Jackson recover generic types at runtime using Super Type Tokens.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-super-type-tokens",
+      "partTitle": "Super Type Tokens",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reflection • Part 5 of 5",
+          "headline": "How does Jackson know you want a List<User>?",
+          "highlightWord": "List<User>",
+          "subline": "Generics are erased, but the metadata is still hiding in the class file.",
+          "narration": "If generics are erased at runtime, how do JSON libraries deserialize into specific types? It’s a clever trick called Super Type Tokens.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code-token",
+          "kind": "code-spotlight",
+          "title": "The Magic Trick",
+          "filename": "App.java",
+          "code": "new TypeReference<List<User>>() {};",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Anonymous Subclass",
+              "explanation": "The {} creates a subclass with metadata.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Baked-in Type",
+              "explanation": "The generic type is stored in the class signature.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "By using an anonymous subclass, the generic type information is baked into the class signature, which reflection can read at runtime.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Recovering Types",
+          "subtitle": "How reflection reads the signature",
+          "nodes": [
+            {
+              "label": "Anonymous Class",
+              "detail": "Stores Signature",
+              "tag": "Bytecode",
+              "accent": "sky"
+            },
+            {
+              "label": "getGenericSuperclass",
+              "detail": "Reads the type",
+              "tag": "Reflection",
+              "accent": "amber"
+            },
+            {
+              "label": "ParameterizedType",
+              "detail": "Extracts List<User>",
+              "tag": "Runtime",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Reflection reads the superclass signature from the bytecode. It finds the ParameterizedType, allowing it to extract the exact generic arguments you provided.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b4-term-limit",
+          "kind": "terminal",
+          "title": "When It Fails",
+          "caption": "The limitation of tokens",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "new TypeReference<T>() {}; // Fails!"
+            },
+            {
+              "kind": "comment",
+              "text": "# T is a variable, not a concrete type."
+            },
+            {
+              "kind": "comment",
+              "text": "# Reflection only sees the variable T."
+            }
+          ],
+          "narration": "This only works if the type is concrete. If you try it with a generic type variable, you'll just get the variable back, not the actual runtime class.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Super Type Tokens store types in signatures",
+            "Anonymous subclasses preserve generic metadata",
+            "git checkout topic/level-3/generics"
+          ],
+          "narration": "You've mastered Java Generics. Check out the branch below to run the labs and see these concepts in action. Keep building.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
