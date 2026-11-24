@@ -1,0 +1,475 @@
+{
+  "chapterId": "level-5/project-loom-virtual-threads",
+  "level": "level-5",
+  "levelLabel": "Level 5",
+  "slug": "project-loom-virtual-threads",
+  "chapterTitle": "Project Loom (Virtual Threads)",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-5/project-loom-virtual-threads",
+  "branchName": "topic/level-5/project-loom-virtual-threads",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-virtual-threads-architecture",
+      "partTitle": "Virtual Threads vs Platform Threads",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Loom • Part 1 of 4",
+          "headline": "Why are platform threads killing your memory?",
+          "highlightWord": "killing your memory",
+          "subline": "OS threads are expensive. Virtual threads are cheap. Let's see why.",
+          "narration": "Platform threads wrap OS threads, each hogging a megabyte of stack. If you have ten thousand concurrent requests, you're wasting gigabytes of RAM just on thread stacks. Enter Project Loom.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Scaling Limits",
+          "top": {
+            "label": "Platform Threads",
+            "badge": "1:1 Mapping",
+            "tone": "bad",
+            "code": "Thread-per-request model",
+            "points": [
+              "1 MB stack per thread",
+              "Kernel context-switch overhead"
+            ]
+          },
+          "bottom": {
+            "label": "Virtual Threads",
+            "badge": "M:N Mapping",
+            "tone": "good",
+            "code": "Task-per-request model",
+            "points": [
+              "Heap-based stack chunks",
+              "Millions of threads possible"
+            ]
+          },
+          "narration": "Platform threads are a one-to-one mapping to the kernel. Virtual threads are managed by the JVM, multiplexing millions of tasks onto a small pool of carrier threads.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "M:N Scheduling Internals",
+          "subtitle": "How tasks move between carriers",
+          "nodes": [
+            {
+              "label": "Virtual Threads",
+              "detail": "Heap-resident continuations",
+              "tag": "Tasks",
+              "accent": "sky"
+            },
+            {
+              "label": "Carrier Pool",
+              "detail": "ForkJoinPool (Platform Threads)",
+              "tag": "Executors",
+              "accent": "amber"
+            },
+            {
+              "label": "OS Kernel",
+              "detail": "Hardware execution",
+              "tag": "CPU",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When a task blocks, the JVM unmounts the virtual thread, saving its stack to the heap. The carrier thread then immediately picks up another ready task. The CPU never sits idle.",
+          "durationSec": 12,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b4-code",
+          "kind": "code-spotlight",
+          "title": "Spawning Virtual Threads",
+          "filename": "VTExample.java",
+          "code": "try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {\n    for (int i = 0; i < 50_000; i++) {\n        executor.submit(() -> {\n            Thread.sleep(100);\n            return \"done\";\n        });\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Executor",
+              "explanation": "Creates one virtual thread per task. No manual pooling needed.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Blocking",
+              "explanation": "Thread.sleep unmounts the thread, freeing the carrier.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Notice the executor. It spawns a new virtual thread for every single task. Because they are lightweight heap objects, fifty thousand tasks won't crash your JVM.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Platform threads = 1MB native stack",
+            "Virtual threads = heap-based chunks",
+            "Use newVirtualThreadPerTaskExecutor"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): The hidden danger of Thread Pinning →",
+          "narration": "That's the architecture. In Part 2, we tackle Thread Pinning—the silent performance killer that can stall your entire carrier pool.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-thread-pinning",
+      "partTitle": "Thread Pinning & Synchronization",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Loom • Part 2 of 4",
+          "headline": "Why does a synchronized block stall your thread?",
+          "highlightWord": "synchronized block",
+          "subline": "Pinning prevents unmounting. Here is how to keep your carriers free.",
+          "narration": "Virtual threads are supposed to unmount when they block. But if they're pinned, the carrier thread gets stuck too. This is the primary performance trap in Java 21.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Pinning vs Clean Unmounting",
+          "top": {
+            "label": "Synchronized (Java 21)",
+            "badge": "Pinned",
+            "tone": "bad",
+            "code": "synchronized(lock) { io(); }",
+            "points": [
+              "Carrier thread is locked",
+              "Cannot unmount virtual thread"
+            ]
+          },
+          "bottom": {
+            "label": "ReentrantLock",
+            "badge": "Unpinned",
+            "tone": "good",
+            "code": "lock.lock(); try { io(); }",
+            "points": [
+              "Carrier thread stays free",
+              "Virtual thread unmounts"
+            ]
+          },
+          "narration": "On Java 21, blocking inside a synchronized block pins the carrier. Use ReentrantLock instead; it's designed to cooperate with the virtual thread scheduler.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term",
+          "kind": "terminal",
+          "title": "Detecting Pinning",
+          "caption": "Spot pinning before it hits production",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Run with trace flag to see pinning"
+            },
+            {
+              "kind": "command",
+              "text": "java -Djdk.tracePinnedThreads=full MyApp"
+            },
+            {
+              "kind": "output",
+              "text": "Thread[#21,VirtualThread,5,main] pinned!"
+            },
+            {
+              "kind": "output",
+              "text": "    at MyClass.method(MyClass.java:10)"
+            },
+            {
+              "kind": "output",
+              "text": "    at MyClass.run(MyClass.java:5)"
+            }
+          ],
+          "narration": "Use the tracePinnedThreads flag to dump stack traces when a thread pins. It's the fastest way to find legacy synchronized blocks causing bottlenecks.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code",
+          "kind": "code-spotlight",
+          "title": "Java 24+ Evolution",
+          "filename": "JEP491.java",
+          "code": "// Java 24+ allows unmounting inside synchronized\npublic synchronized void handle() {\n    // No longer pins the carrier thread!\n    socket.read();\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "JEP 491",
+              "explanation": "Object monitors are now virtual-thread aware.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Great news: Java 24 fixed this. The JVM now allows unmounting inside synchronized blocks. If you're on a modern JDK, pinning is mostly a thing of the past.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Pinning = carrier thread blocked",
+            "Avoid synchronized on Java 21",
+            "Java 24+ handles monitors natively"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Structured Concurrency →",
+          "narration": "Pinning is solved. In Part 3, we look at Structured Concurrency—the new way to manage complex parent-child thread lifecycles.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-structured-concurrency",
+      "partTitle": "Structured Concurrency",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Loom • Part 3 of 4",
+          "headline": "Are your background threads leaking?",
+          "highlightWord": "leaking",
+          "subline": "Orphan threads are a nightmare. Structured concurrency fixes the lifecycle.",
+          "narration": "When threads are cheap, you spawn more of them. But if a parent fails, children often keep running, burning resources. Structured concurrency forces a clean hierarchy.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "StructuredTaskScope",
+          "subtitle": "Parent-child lifecycle enforcement",
+          "nodes": [
+            {
+              "label": "Parent Request",
+              "detail": "Wait for children",
+              "tag": "Scope",
+              "accent": "sky"
+            },
+            {
+              "label": "Child A",
+              "detail": "Task 1",
+              "tag": "Fork",
+              "accent": "amber"
+            },
+            {
+              "label": "Child B",
+              "detail": "Task 2",
+              "tag": "Fork",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The scope ensures that all child threads finish before the parent continues. If one fails, the scope shuts down the others automatically.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "ShutdownOnFailure Pattern",
+          "filename": "OrderLoader.java",
+          "code": "try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {\n    var user = scope.fork(() -> fetchUser());\n    var inv = scope.fork(() -> fetchInv());\n    scope.join();\n    scope.throwIfFailed();\n    return new Result(user.get(), inv.get());\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Scope",
+              "explanation": "Guarantees all children are cleaned up.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Join",
+              "explanation": "Wait for completion or failure signal.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This pattern is bulletproof. If fetchUser fails, the scope cancels fetchInv immediately. No orphan threads, no resource leaks, just clean code.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Old vs New Concurrency",
+          "top": {
+            "label": "ExecutorService",
+            "badge": "Unstructured",
+            "tone": "bad",
+            "code": "Future<?> f = executor.submit(...);",
+            "points": [
+              "Hard to cancel children",
+              "Risk of orphan threads"
+            ]
+          },
+          "bottom": {
+            "label": "StructuredTaskScope",
+            "badge": "Structured",
+            "tone": "good",
+            "code": "try (scope) { scope.fork(...); }",
+            "points": [
+              "Automatic cleanup",
+              "Clear ownership"
+            ]
+          },
+          "narration": "ExecutorService is great for background jobs, but for request-response flows, StructuredTaskScope is the new gold standard.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Structured scopes bind lifecycles",
+            "ShutdownOnFailure cancels siblings",
+            "No more orphan threads"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Scoped Values →",
+          "narration": "Structured concurrency is the future of Java flow control. In Part 4, we replace the messy ThreadLocal with Scoped Values.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-scoped-values",
+      "partTitle": "Scoped Values",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Loom • Part 4 of 4",
+          "headline": "Why ThreadLocal is a memory leak waiting to happen.",
+          "highlightWord": "memory leak",
+          "subline": "Scoped values are immutable, bounded, and perfect for virtual threads.",
+          "narration": "ThreadLocal is a global variable in disguise. It's mutable, hard to track, and leaks memory when threads are reused. Scoped values fix this for good.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "ThreadLocal vs ScopedValue",
+          "top": {
+            "label": "ThreadLocal",
+            "badge": "Mutable",
+            "tone": "bad",
+            "code": "tl.set(val); ... tl.remove();",
+            "points": [
+              "Requires manual cleanup",
+              "Mutable global state"
+            ]
+          },
+          "bottom": {
+            "label": "ScopedValue",
+            "badge": "Immutable",
+            "tone": "good",
+            "code": "ScopedValue.where(key, val).run(...);",
+            "points": [
+              "Automatic binding/unbinding",
+              "Immutable by design"
+            ]
+          },
+          "narration": "Scoped values are lexically bounded. Once the block ends, the value is gone. No remove calls, no leaks, and it works perfectly with child threads.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code",
+          "kind": "code-spotlight",
+          "title": "Using Scoped Values",
+          "filename": "TenantContext.java",
+          "code": "public static final ScopedValue<String> TENANT = ScopedValue.newInstance();\n\npublic void handle(String id) {\n    ScopedValue.where(TENANT, id).run(() -> {\n        process();\n    });\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Static",
+              "explanation": "Final, immutable key.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Binding",
+              "explanation": "Value exists only inside this block.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The value is bound to the current thread and any children it forks. It's immutable, making it thread-safe and incredibly efficient for passing context.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term",
+          "kind": "terminal",
+          "title": "Final Recap",
+          "caption": "Project Loom Summary",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "Virtual Threads: Scale I/O"
+            },
+            {
+              "kind": "success",
+              "text": "Pinning: Avoid synchronized"
+            },
+            {
+              "kind": "success",
+              "text": "Structured: Bound lifecycles"
+            },
+            {
+              "kind": "success",
+              "text": "Scoped: Immutable context"
+            }
+          ],
+          "narration": "Virtual threads, pinning fixes, structured concurrency, and scoped values. You're now equipped to build the next generation of high-concurrency Java apps.",
+          "durationSec": 9,
+          "sfx": "success"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Level 5 Complete",
+          "takeaways": [
+            "ScopedValue = immutable context",
+            "No manual cleanup required",
+            "Works with StructuredTaskScope"
+          ],
+          "command": "git checkout topic/level-5/project-loom-virtual-threads",
+          "nextPartTeaser": "Deep dive at ravishankar2463.github.io/java_hub",
+          "narration": "Mastered Loom. Grab the code on the branch below and check the roadmap for the next deep dive. Keep building.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
