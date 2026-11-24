@@ -297,11 +297,6 @@ export async function generateStoryboardWithOllama(params: {
   const titleMatch = markdown.match(/^title:\s*["']?(.+?)["']?\s*$/m);
   const chapterTitle = titleMatch ? titleMatch[1].trim() : slug.replace(/-/g, " ");
 
-  const refBundle = JSON.parse(
-    fs.readFileSync(referenceStoryboardPath, "utf-8")
-  ) as ChapterStoryboardBundle;
-  const partSchemaExample = JSON.stringify(refBundle.parts[0], null, 2);
-
   const slices = splitMarkdownIntoPartSlices(markdown, complexity.recommendedParts);
   const parts: PartPayload[] = [];
 
@@ -315,26 +310,34 @@ export async function generateStoryboardWithOllama(params: {
     const slice = slices[pIdx];
 
     const basePrompt = `You are a senior Java engineer scripting ONE 9:16 YouTube Short (Part ${partNumber} of ${complexity.recommendedParts}) for JavaHub chapter "${chapterTitle}" (${levelLabel}).
-Output ONLY a single JSON object matching the exact Part schema below (no wrapper, no markdown fences).
+Output ONLY a single JSON object (no wrapper, no markdown fences).
+
+Top-level fields:
+{
+  "partNumber": ${partNumber},
+  "partSlug": "part-${partNumber}-<short-kebab-slug>",
+  "partTitle": "<crisp title>",
+  "beats": [ ...EXACTLY 5 beats... ]
+}
+
+EXACT schema for each beat kind (use these EXACT property names):
+1. "hook": {"id":"p${partNumber}-b1-hook","kind":"hook","eyebrow":"${chapterTitle} • Part ${partNumber}/${complexity.recommendedParts}","headline":"...","highlightWord":"...","subline":"...","narration":"...","durationSec":9,"sfx":"pop"}
+2. "code-spotlight": {"id":"...","kind":"code-spotlight","title":"...","filename":"Example.java","code":"line1\\nline2","steps":[{"lines":[1],"badge":"...","explanation":"...","accent":"emerald"}],"narration":"...","durationSec":13,"sfx":"keyclick"}
+3. "flow-diagram": {"id":"...","kind":"flow-diagram","title":"...","subtitle":"...","nodes":[{"label":"...","detail":"...","tag":"...","accent":"sky"}],"narration":"...","durationSec":13,"sfx":"whoosh"}
+4. "terminal": {"id":"...","kind":"terminal","title":"...","caption":"...","lines":[{"kind":"command","text":"javac Main.java"},{"kind":"success","text":"Output"}],"narration":"...","durationSec":12,"sfx":"keyclick"}
+5. "compare": {"id":"...","kind":"compare","title":"...","top":{"label":"...","badge":"❌ BAD","tone":"bad","code":"...","points":["..."]},"bottom":{"label":"...","badge":"✅ GOOD","tone":"good","code":"...","points":["..."]},"narration":"...","durationSec":13,"sfx":"whoosh"}
+6. "cta": {"id":"p${partNumber}-b5-cta","kind":"cta","title":"...","takeaways":["...","...","..."],${
+      isLast
+        ? `"command":"git checkout topic/${chapterId}","nextPartTeaser":"Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub"`
+        : `"nextPartTeaser":"Up Next (Part ${partNumber + 1}): ..."`
+    },"narration":"...","durationSec":8,"sfx":"success"}
 
 Rules:
-- partNumber: ${partNumber}
-- partSlug: "part-${partNumber}-<short-kebab-slug>"
-- partTitle: crisp title for Part ${partNumber}
-- beats: EXACTLY 5 beats:
-  1. "hook" (id "p${partNumber}-b1-hook", eyebrow "${chapterTitle} • Part ${partNumber} of ${complexity.recommendedParts}", headline, highlightWord, subline, sfx:"pop")
-  2-4. Mix of "code-spotlight" (1–12 lines of Java, valid 1-based steps[].lines), "flow-diagram" (3–4 nodes), "terminal" (3–7 lines), "compare" (top & bottom with tone "bad"|"good"|"neutral")
-  5. "cta" (id "p${partNumber}-b5-cta", 3 takeaways, ${
-      isLast
-        ? `command: "git checkout topic/${chapterId}", nextPartTeaser: "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub"`
-        : `nextPartTeaser: "Up Next (Part ${partNumber + 1}): ..."`
-    }, sfx:"success")
-- Every beat narration MUST be 16–38 words (NEVER >45 words), conversational spoken English.
-- NEVER use verb "live" (use "sit", "belong", "reside").
-- Include durationSec: 9..15 as an estimate.
-
-Exact Part JSON Example:
-${partSchemaExample}
+- Beat 1 MUST be "hook", Beats 2-4 mix of "code-spotlight"/"flow-diagram"/"terminal"/"compare", Beat 5 MUST be "cta".
+- Keep code-spotlight "code" <= 12 lines; every steps[].lines entry MUST be 1..lineCount.
+- Every terminal MUST have "lines" array (2-8 items, each with "kind" in "command"|"output"|"success"|"error"|"comment" and "text").
+- Every flow-diagram MUST have "nodes" array (3-4 items).
+- Every narration MUST be 16-38 words (NEVER >45 words), conversational spoken English. NEVER use verb "live" (use "sit"/"belong"/"reside").
 
 Source Material for Part ${partNumber}/${complexity.recommendedParts}:
 ${slice}`;
@@ -358,12 +361,31 @@ ${slice}`;
       try {
         const parsed = JSON.parse(lastRaw) as PartPayload;
         parsed.partNumber = partNumber;
-        // Normalize beat defaults if omitted
+        // Normalize beat defaults & clamp minor out-of-range line numbers cleanly
         if (Array.isArray(parsed.beats)) {
           parsed.beats.forEach((b, idx) => {
             if (!b.id) b.id = `p${partNumber}-b${idx + 1}-${b.kind || "beat"}`;
             if (typeof b.durationSec !== "number") b.durationSec = 10;
             if (!b.sfx || !VALID_SFX.has(b.sfx)) b.sfx = "whoosh";
+            if (b.kind === "code-spotlight" && typeof b.code === "string") {
+              const codeLines = b.code.split("\n");
+              if (codeLines.length > 12) {
+                b.code = codeLines.slice(0, 12).join("\n");
+              }
+              const maxLine = b.code.split("\n").length;
+              if (Array.isArray(b.steps)) {
+                b.steps.forEach((st) => {
+                  if (Array.isArray(st.lines)) {
+                    st.lines = st.lines
+                      .map((n) => Math.max(1, Math.min(maxLine, Number(n) || 1)))
+                      .filter((v, i, arr) => arr.indexOf(v) === i);
+                  }
+                });
+              }
+            }
+            if (b.kind === "terminal" && Array.isArray(b.lines) && b.lines.length > 10) {
+              b.lines = b.lines.slice(0, 10);
+            }
           });
         }
         lastErrors = validatePart(parsed, partNumber);
