@@ -1,0 +1,596 @@
+{
+  "chapterId": "level-6/architectural-patterns",
+  "level": "level-6",
+  "levelLabel": "Level 6",
+  "slug": "architectural-patterns",
+  "chapterTitle": "Architectural Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-6/architectural-patterns",
+  "branchName": "topic/level-6/architectural-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-hexagonal-core",
+      "partTitle": "Hexagonal Architecture: The Core",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture Patterns • Part 1 of 5",
+          "headline": "Why does your business logic depend on your database?",
+          "highlightWord": "depend",
+          "subline": "Stop leaking JPA entities into your controllers.",
+          "narration": "Most Java apps are tightly coupled messes. When your JPA entity leaks into your controller, a database schema change breaks your JSON API. It is time to decouple.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Ports and Adapters",
+          "nodes": [
+            {
+              "label": "Driving Adapters",
+              "detail": "REST, Kafka, CLI",
+              "tag": "Inbound",
+              "accent": "sky"
+            },
+            {
+              "label": "Application Core",
+              "detail": "Use Cases & Domain",
+              "tag": "Center",
+              "accent": "amber"
+            },
+            {
+              "label": "Driven Adapters",
+              "detail": "Postgres, Redis, Stripe",
+              "tag": "Outbound",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Hexagonal architecture puts your domain in the center. Driving adapters call inbound ports, while your core calls outbound ports. The core never knows if it is talking to Postgres or a mock.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-core",
+          "kind": "code-spotlight",
+          "title": "Pure Domain Logic",
+          "filename": "PlaceOrderService.java",
+          "code": "public record Order(String id, BigDecimal amount) {}\n\npublic interface OrderRepositoryPort {\n    void save(Order order);\n}\n\npublic class PlaceOrderService implements PlaceOrderUseCase {\n    private final OrderRepositoryPort repo;\n    public PlaceOrderService(OrderRepositoryPort repo) { this.repo = repo; }\n    public Order placeOrder(BigDecimal amount) {\n        Order order = new Order(UUID.randomUUID().toString(), amount);\n        repo.save(order);\n        return order;\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "POJO",
+              "explanation": "Zero framework annotations.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Port",
+              "explanation": "Interface owned by the core.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Service",
+              "explanation": "Pure Java, testable without Spring.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Notice the core has zero Spring or JPA imports. It defines its own repository interface. You can test this service in milliseconds without booting a database container.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Leaky vs. Clean Boundaries",
+          "top": {
+            "label": "Leaky (Standard CRUD)",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "@Entity public class Order { ... }",
+            "points": [
+              "Schema changes break API",
+              "LazyInitException hell"
+            ]
+          },
+          "bottom": {
+            "label": "Clean (Hexagonal)",
+            "badge": "Good",
+            "tone": "good",
+            "code": "public record Order(...) { ... }",
+            "points": [
+              "Domain is isolated",
+              "Easy to swap infrastructure"
+            ]
+          },
+          "narration": "Stop returning JPA entities from controllers. Map them to domain objects at the boundary. It prevents over-posting bugs and keeps your business rules safe from serialization side effects.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Core owns the ports",
+            "No framework imports in domain",
+            "Map entities at boundaries"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Enforcing architecture with ArchUnit →",
+          "narration": "That is the core. In Part 2, we use ArchUnit to ensure no one accidentally imports Spring into your domain package.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-archunit-enforcement",
+      "partTitle": "Enforcing Architecture with ArchUnit",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture Patterns • Part 2 of 5",
+          "headline": "Does your architecture rot after every PR?",
+          "highlightWord": "rot",
+          "subline": "Stop relying on code reviews to catch dependency violations.",
+          "narration": "Diagrams are just suggestions. If you don't enforce your architecture in CI, someone will eventually import a JPA repository into your domain layer.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-arch",
+          "kind": "code-spotlight",
+          "title": "ArchUnit Test",
+          "filename": "ArchitectureTest.java",
+          "code": "@Test\nvoid domainShouldNotDependOnFrameworks() {\n    noClasses()\n        .that().resideInAPackage(\"..domain..\")\n        .should().dependOnClassesThat()\n        .resideInAnyPackage(\"..adapter..\", \"org.springframework..\")\n        .check(importedClasses);\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Rule",
+              "explanation": "Define forbidden dependencies.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Check",
+              "explanation": "Fails CI if violated.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "ArchUnit lets you write architectural rules as unit tests. If a developer imports Spring into the domain package, the build fails immediately. It is the ultimate guardrail.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Onion Architecture",
+          "nodes": [
+            {
+              "label": "Domain",
+              "detail": "Entities & Rules",
+              "tag": "Core",
+              "accent": "amber"
+            },
+            {
+              "label": "Use Cases",
+              "detail": "Orchestration",
+              "tag": "Layer 2",
+              "accent": "sky"
+            },
+            {
+              "label": "Adapters",
+              "detail": "Controllers & Repos",
+              "tag": "Layer 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Onion architecture is just Hexagonal with layers. Dependencies only point inward. The domain knows nothing about the outside world. Keep it that way.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "CI Integration",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "mvn test"
+            },
+            {
+              "kind": "error",
+              "text": "[ERROR] Architecture violation in PlaceOrderService"
+            },
+            {
+              "kind": "output",
+              "text": "Class <..domain..> depends on <..adapter..>"
+            },
+            {
+              "kind": "success",
+              "text": "Build Failed: 1 architectural violation found"
+            }
+          ],
+          "narration": "When a rule breaks, you get a clear error message in your CI logs. No more guessing why a dependency graph is circular.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "ArchUnit enforces rules in CI",
+            "Dependencies point inward only",
+            "Automate your code reviews"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): CQRS for high-performance reads →",
+          "narration": "Automate your standards. In Part 3, we look at CQRS to separate your read and write models for massive performance gains.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-cqrs-patterns",
+      "partTitle": "CQRS: Separating Reads and Writes",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture Patterns • Part 3 of 5",
+          "headline": "Why are your read models so slow?",
+          "highlightWord": "slow",
+          "subline": "Stop using JPA aggregates for complex reporting screens.",
+          "narration": "JPA entities are great for writes, but terrible for complex reads. If you are doing 5-way joins just to show a dashboard, you need CQRS.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "CQRS Flow",
+          "nodes": [
+            {
+              "label": "Command",
+              "detail": "Mutate state",
+              "tag": "Write",
+              "accent": "amber"
+            },
+            {
+              "label": "Event",
+              "detail": "State change",
+              "tag": "Sync",
+              "accent": "sky"
+            },
+            {
+              "label": "Projection",
+              "detail": "Denormalized view",
+              "tag": "Read",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "CQRS separates commands from queries. You write to a normalized domain model and project that data into a flat, read-optimized table. No joins required.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-cqrs",
+          "kind": "code-spotlight",
+          "title": "Read Projection",
+          "filename": "OrderProjectionStore.java",
+          "code": "public record OrderSummaryView(String id, String name) {}\n\npublic class OrderProjectionStore {\n    private final Map<String, OrderSummaryView> views = new ConcurrentHashMap<>();\n\n    public void onOrderPlaced(OrderPlacedEvent event) {\n        views.put(event.orderId(), new OrderSummaryView(event.id(), event.name()));\n    }\n\n    public Optional<OrderSummaryView> find(String id) {\n        return Optional.ofNullable(views.get(id));\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "DTO",
+              "explanation": "Flat, read-only record.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Projection",
+              "explanation": "Updates on events.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The projection is just a flat record. When an order is placed, we update this view. Queries become simple key-value lookups. It is lightning fast.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Consistency Trade-offs",
+          "top": {
+            "label": "Strong Consistency",
+            "badge": "Write Side",
+            "tone": "neutral",
+            "code": "Transaction commit",
+            "points": [
+              "ACID compliant",
+              "Slower reads"
+            ]
+          },
+          "bottom": {
+            "label": "Eventual Consistency",
+            "badge": "Read Side",
+            "tone": "neutral",
+            "code": "Async projection",
+            "points": [
+              "High throughput",
+              "Replication lag"
+            ]
+          },
+          "narration": "CQRS introduces eventual consistency. Your read model might be milliseconds behind the write model. Use optimistic UI updates to mask this delay.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "CQRS separates read/write models",
+            "Use flat records for reads",
+            "Handle eventual consistency"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Strangler Fig migration →",
+          "narration": "CQRS is powerful but adds complexity. In Part 4, we learn how to migrate a legacy monolith using the Strangler Fig pattern.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-strangler-fig",
+      "partTitle": "Strangler Fig: Migrating Monoliths",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture Patterns • Part 4 of 5",
+          "headline": "Stop the big-bang rewrite.",
+          "highlightWord": "big-bang",
+          "subline": "It never works. Use the Strangler Fig pattern instead.",
+          "narration": "Rewriting a monolith from scratch is a death sentence. Instead, strangle it. Extract one capability at a time until the monolith is gone.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Strangler Fig Pattern",
+          "nodes": [
+            {
+              "label": "Gateway",
+              "detail": "Route traffic",
+              "tag": "Proxy",
+              "accent": "amber"
+            },
+            {
+              "label": "Monolith",
+              "detail": "Legacy code",
+              "tag": "Host",
+              "accent": "sky"
+            },
+            {
+              "label": "New Service",
+              "detail": "Extracted feature",
+              "tag": "Target",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Place a gateway in front of your monolith. Route specific paths to your new service. Keep the rest on the monolith until you are ready to migrate.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-acl",
+          "kind": "code-spotlight",
+          "title": "Anti-Corruption Layer",
+          "filename": "LegacyOrderAdapter.java",
+          "code": "public class LegacyOrderAntiCorruptionAdapter {\n    public ModernOrder fetch(String id) {\n        LegacyOrder raw = client.fetch(id);\n        return new ModernOrder(\n            raw.ordNo().trim(),\n            mapStatus(raw.stsFlg())\n        );\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Legacy",
+              "explanation": "Cryptic column names.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Mapping",
+              "explanation": "Convert to clean domain.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Anti-Corruption Layer translates legacy garbage into clean domain objects. It keeps the new service's codebase pristine while it talks to the old system.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Gateway Routing",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Route orders to new service"
+            },
+            {
+              "kind": "output",
+              "text": "Path=/api/v1/orders/** -> http://orders-service:8081"
+            },
+            {
+              "kind": "comment",
+              "text": "# Fallback to monolith"
+            },
+            {
+              "kind": "output",
+              "text": "Path=/api/v1/** -> http://legacy-monolith:8080"
+            }
+          ],
+          "narration": "Use a gateway like Spring Cloud Gateway to manage the transition. You can even route a small percentage of traffic to the new service as a canary.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Summary",
+          "takeaways": [
+            "Migrate incrementally",
+            "Use an Anti-Corruption Layer",
+            "Gateway handles routing"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Modular Monoliths →",
+          "narration": "Strangler Fig is the safest way to modernize. In Part 5, we discuss when a modular monolith is actually the best choice.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-modular-monolith",
+      "partTitle": "When to Use a Modular Monolith",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture Patterns • Part 5 of 5",
+          "headline": "Is your architecture over-engineered?",
+          "highlightWord": "over-engineered",
+          "subline": "Sometimes, a simple modular monolith is all you need.",
+          "narration": "Hexagonal and CQRS are great, but they add serious overhead. If you are a small team, don't pay the tax until you have to.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Modular Monolith",
+          "nodes": [
+            {
+              "label": "Orders",
+              "detail": "Business Module",
+              "tag": "Module",
+              "accent": "sky"
+            },
+            {
+              "label": "Billing",
+              "detail": "Business Module",
+              "tag": "Module",
+              "accent": "amber"
+            },
+            {
+              "label": "Inventory",
+              "detail": "Business Module",
+              "tag": "Module",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Organize by business capability, not technical layer. Use package-private classes to enforce boundaries. It is easier to maintain and faster to build.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-compare",
+          "kind": "compare",
+          "title": "Pragmatism vs. Complexity",
+          "top": {
+            "label": "Modular Monolith",
+            "badge": "Pragmatic",
+            "tone": "good",
+            "code": "Package-per-module",
+            "points": [
+              "Fast development",
+              "Easy refactoring"
+            ]
+          },
+          "bottom": {
+            "label": "Full Hexagonal + CQRS",
+            "badge": "Complex",
+            "tone": "neutral",
+            "code": "Distributed everything",
+            "points": [
+              "High operational cost",
+              "Hard to debug"
+            ]
+          },
+          "narration": "Start with a modular monolith. It gives you the seams you need to extract services later. Don't distribute your system until the load demands it.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b4-terminal",
+          "kind": "terminal",
+          "title": "Final Checklist",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "1. Start with Modular Monolith"
+            },
+            {
+              "kind": "success",
+              "text": "2. Enforce boundaries with ArchUnit"
+            },
+            {
+              "kind": "success",
+              "text": "3. Extract services only when needed"
+            },
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-6/architectural-patterns"
+            }
+          ],
+          "narration": "Keep it simple. Use ArchUnit to keep your modules clean. Extract to microservices only when your team or load justifies the cost.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Architecture must be proportional",
+            "Modular monoliths are valid",
+            "Check out the roadmap"
+          ],
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered architectural patterns. Checkout the roadmap for the full guide and lab exercises. Keep building clean systems.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
