@@ -1,0 +1,585 @@
+{
+  "chapterId": "level-5/the-java-memory-model-jmm",
+  "level": "level-5",
+  "levelLabel": "Level 5",
+  "slug": "the-java-memory-model-jmm",
+  "chapterTitle": "The Java Memory Model (JMM)",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-5/the-java-memory-model-jmm",
+  "branchName": "topic/level-5/the-java-memory-model-jmm",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-hardware-reality",
+      "partTitle": "Why CPUs Break Your Java Code",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JMM Internals • Part 1 of 5",
+          "headline": "Why does your code work on your laptop but crash in production?",
+          "highlightWord": "crash in production",
+          "subline": "It is not your logic, it is the CPU architecture.",
+          "narration": "Your code runs perfectly on your Intel laptop but fails on AWS Graviton. Why? Because CPUs don't read from RAM directly. They use registers, store buffers, and L1 caches that lead to hidden memory reordering.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Hardware Reality",
+          "subtitle": "Cores don't talk to RAM directly",
+          "nodes": [
+            {
+              "label": "CPU Core 1",
+              "detail": "Registers & L1 Cache",
+              "tag": "Private",
+              "accent": "sky"
+            },
+            {
+              "label": "Store Buffer",
+              "detail": "Pending writes sit here",
+              "tag": "Hidden",
+              "accent": "amber"
+            },
+            {
+              "label": "Shared L3",
+              "detail": "The only common ground",
+              "tag": "Shared",
+              "accent": "purple"
+            },
+            {
+              "label": "Main RAM",
+              "detail": "Slowest memory tier",
+              "tag": "System",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Each CPU core has private caches and store buffers. A write in Core 1 might sit in a buffer, invisible to Core 2. The JMM is the contract that forces these cores to sync up.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "x86 vs. ARM64",
+          "top": {
+            "label": "x86-64 (Intel/AMD)",
+            "badge": "Stronger",
+            "tone": "neutral",
+            "code": "Total Store Order (TSO)",
+            "points": [
+              "Less reordering",
+              "Easier to debug"
+            ]
+          },
+          "bottom": {
+            "label": "ARM64 (Apple/AWS)",
+            "badge": "Weakly Ordered",
+            "tone": "bad",
+            "code": "Aggressive Reordering",
+            "points": [
+              "High performance",
+              "Bugs surface here"
+            ]
+          },
+          "narration": "x86 chips are naturally stricter. ARM chips are aggressive, reordering loads and stores for speed. If you don't follow JMM rules, your code will break on modern cloud infrastructure.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code",
+          "kind": "code-spotlight",
+          "title": "The Reordering Hazard",
+          "filename": "Reorder.java",
+          "code": "int a = 0, b = 0;\n// Thread 1\na = 1;\nr1 = b;\n// Thread 2\nb = 1;\nr2 = a;",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Thread 1",
+              "explanation": "Compiler/CPU can swap these lines.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Thread 2",
+              "explanation": "Result r1=0, r2=0 is actually legal!",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "In this classic example, both threads could finish with r1 and r2 equal to zero. Because the operations are independent, the CPU reorders them, violating your intuitive expectations.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "CPUs reorder for speed",
+            "ARM64 is weakly ordered",
+            "JMM provides the contract"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why your loop hangs forever →",
+          "narration": "That is the hardware trap. In Part 2, we see how JIT hoisting turns your loop into an infinite hang.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-visibility-and-hoisting",
+      "partTitle": "The JIT Loop Hoisting Trap",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JMM Internals • Part 2 of 5",
+          "headline": "Why does your worker thread never stop?",
+          "highlightWord": "never stop",
+          "subline": "The JIT compiler is smarter than your loop.",
+          "narration": "You have a boolean flag to stop a thread. You set it to true, but the worker keeps running. It is not a bug in your logic; it is the JIT compiler optimizing your code into oblivion.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code",
+          "kind": "code-spotlight",
+          "title": "The Invisible Flag",
+          "filename": "Worker.java",
+          "code": "boolean stopRequested = false;\n\nvoid runWorkLoop() {\n    while (!stopRequested) {\n        // Do work\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Not volatile",
+              "explanation": "Compiler assumes this never changes.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Loop Condition",
+              "explanation": "JIT hoists this read out.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Because stopRequested isn't volatile, the JIT compiler sees that nothing inside the loop changes it. It hoists the read outside the loop, effectively turning your code into a while true loop.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "The Debugger Deception",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Adding a print statement fixes it?"
+            },
+            {
+              "kind": "command",
+              "text": "System.out.println(\"Working...\");"
+            },
+            {
+              "kind": "output",
+              "text": "INFO: println is synchronized."
+            },
+            {
+              "kind": "comment",
+              "text": "# It forces a memory barrier!"
+            }
+          ],
+          "narration": "Ever notice the bug vanishes when you add a print statement? That is because PrintStream is synchronized. It forces a memory barrier, flushing caches and preventing the JIT from hoisting the loop.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Before vs. After Volatile",
+          "top": {
+            "label": "Ordinary boolean",
+            "badge": "Unsafe",
+            "tone": "bad",
+            "code": "while (!stopRequested)",
+            "points": [
+              "JIT hoists the check",
+              "Thread hangs forever"
+            ]
+          },
+          "bottom": {
+            "label": "volatile boolean",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "while (!stopRequested)",
+            "points": [
+              "JIT cannot hoist",
+              "Forces cache refresh"
+            ]
+          },
+          "narration": "Adding volatile tells the JVM: don't cache this in a register, and don't assume it's constant. It forces a read from memory every single time.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "JIT hoists reads",
+            "Print statements hide bugs",
+            "Volatile prevents hoisting"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The volatile keyword deep dive →",
+          "narration": "Volatile is the fix. In Part 3, we break down exactly how it works under the hood.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-volatile-mechanics",
+      "partTitle": "Volatile: Visibility & Barriers",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JMM Internals • Part 3 of 5",
+          "headline": "Is volatile just a memory flag?",
+          "highlightWord": "memory flag",
+          "subline": "It is a hardware fence that stops CPU reordering.",
+          "narration": "Volatile is more than just visibility. It is a hardware barrier. It tells the CPU to flush its store buffers and stop reordering instructions around the access.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Volatile Write Barrier",
+          "subtitle": "How the CPU enforces order",
+          "nodes": [
+            {
+              "label": "Pre-write",
+              "detail": "Ordinary reads/writes",
+              "tag": "Normal",
+              "accent": "sky"
+            },
+            {
+              "label": "StoreStore",
+              "detail": "Flush buffers",
+              "tag": "Fence",
+              "accent": "amber"
+            },
+            {
+              "label": "Volatile Write",
+              "detail": "The actual update",
+              "tag": "Action",
+              "accent": "purple"
+            },
+            {
+              "label": "StoreLoad",
+              "detail": "Drain buffer",
+              "tag": "Fence",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When you write to a volatile field, the JVM inserts a StoreStore barrier before and a StoreLoad barrier after. This ensures all previous writes are visible before the volatile write happens.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "The Atomic Counter Myth",
+          "filename": "Counter.java",
+          "code": "private volatile int count = 0;\n\npublic void increment() {\n    count++; \n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Not Atomic",
+              "explanation": "Read, Modify, Write is 3 steps.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Common mistake: thinking volatile makes count++ atomic. It doesn't. It is three separate bytecode operations. Two threads can read 5, compute 6, and write 6, losing an update.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Volatile vs. Atomic",
+          "top": {
+            "label": "volatile int",
+            "badge": "Visibility Only",
+            "tone": "neutral",
+            "code": "count++",
+            "points": [
+              "Visible across threads",
+              "Not atomic"
+            ]
+          },
+          "bottom": {
+            "label": "AtomicInteger",
+            "badge": "Thread Safe",
+            "tone": "good",
+            "code": "count.incrementAndGet()",
+            "points": [
+              "Uses CAS instructions",
+              "Truly atomic"
+            ]
+          },
+          "narration": "Use volatile for flags or replacing immutable references. Use AtomicInteger or LongAdder for counters. Don't mix them up.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Volatile adds memory fences",
+            "Volatile does not mean atomic",
+            "Use Atomic classes for math"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The Happens-Before rules →",
+          "narration": "Volatile is powerful, but limited. In Part 4, we unlock the Happens-Before rules to master synchronization.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-happens-before",
+      "partTitle": "Mastering Happens-Before",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JMM Internals • Part 4 of 5",
+          "headline": "What does 'happens-before' actually mean?",
+          "highlightWord": "happens-before",
+          "subline": "It is not about time; it is about visibility.",
+          "narration": "Happens-before isn't about wall-clock time. It is a formal guarantee that memory writes in one thread are visible to another. If you don't have a happens-before edge, you have a race condition.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Happens-Before Chain",
+          "subtitle": "Transitivity is your best friend",
+          "nodes": [
+            {
+              "label": "Thread 1",
+              "detail": "Writes data",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Volatile Write",
+              "detail": "The trigger",
+              "tag": "Sync",
+              "accent": "amber"
+            },
+            {
+              "label": "Volatile Read",
+              "detail": "The observer",
+              "tag": "Sync",
+              "accent": "purple"
+            },
+            {
+              "label": "Thread 2",
+              "detail": "Reads data",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "If Thread 1 writes data and then a volatile flag, and Thread 2 reads that flag, Thread 2 is guaranteed to see the data. This is the magic of transitivity.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code",
+          "kind": "code-spotlight",
+          "title": "Safe Piggybacking",
+          "filename": "Config.java",
+          "code": "String data; \nvolatile boolean ready;\n\nvoid publish() {\n    data = \"OK\"; // Action 1\n    ready = true; // Action 2\n}",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Action 1",
+              "explanation": "Visible to any thread reading ready.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "You don't need to make the data volatile. Because ready is volatile, the write to data is guaranteed to be visible to any thread that reads ready as true. This is safe piggybacking.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Rules of Engagement",
+          "top": {
+            "label": "Lock/Unlock",
+            "badge": "Monitor",
+            "tone": "good",
+            "code": "synchronized",
+            "points": [
+              "Strongest guarantee",
+              "Full memory flush"
+            ]
+          },
+          "bottom": {
+            "label": "Thread.join()",
+            "badge": "Lifecycle",
+            "tone": "good",
+            "code": "t.join()",
+            "points": [
+              "Everything visible",
+              "After join returns"
+            ]
+          },
+          "narration": "Every synchronized block and every join call creates a happens-before edge. These are the building blocks of thread-safe Java applications.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Happens-before = visibility",
+            "Transitivity is key",
+            "Use locks or volatile"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Double-Checked Locking →",
+          "narration": "You now know the rules. In Part 5, we fix the classic Double-Checked Locking bug.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-double-checked-locking",
+      "partTitle": "Fixing Double-Checked Locking",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JMM Internals • Part 5 of 5",
+          "headline": "Why is your singleton broken?",
+          "highlightWord": "singleton broken",
+          "subline": "Double-checked locking without volatile is a disaster.",
+          "narration": "Double-checked locking is a classic interview question. If you don't use volatile, you aren't just risking performance; you're risking returning a partially initialized object.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code",
+          "kind": "code-spotlight",
+          "title": "The Broken Singleton",
+          "filename": "Singleton.java",
+          "code": "static Singleton instance;\n\nstatic Singleton get() {\n    if (instance == null) {\n        synchronized(class) {\n            if (instance == null)\n                instance = new Singleton();\n        }\n    }\n    return instance;\n}",
+          "steps": [
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Unsafe",
+              "explanation": "Constructor might run after assignment.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The JVM can assign the reference before the constructor finishes. Another thread sees a non-null instance and returns it, but the fields are still null. Total chaos.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-compare",
+          "kind": "compare",
+          "title": "The Fix",
+          "top": {
+            "label": "Broken",
+            "badge": "No Volatile",
+            "tone": "bad",
+            "code": "static Singleton instance;",
+            "points": [
+              "Partial initialization",
+              "Race condition"
+            ]
+          },
+          "bottom": {
+            "label": "Fixed",
+            "badge": "Volatile",
+            "tone": "good",
+            "code": "static volatile Singleton instance;",
+            "points": [
+              "Safe publication",
+              "Guaranteed visibility"
+            ]
+          },
+          "narration": "Just add volatile. That single keyword creates the happens-before edge that ensures the constructor finishes before the reference is published.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b4-terminal",
+          "kind": "terminal",
+          "title": "The Modern Way",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Use the Holder idiom"
+            },
+            {
+              "kind": "command",
+              "text": "private static class Holder { static final Singleton INSTANCE = new Singleton(); }"
+            },
+            {
+              "kind": "success",
+              "text": "Lazy, thread-safe, zero locks."
+            }
+          ],
+          "narration": "Better yet, use the Holder idiom. The classloader handles the synchronization for you. It is cleaner, faster, and impossible to get wrong.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "DCL needs volatile",
+            "Holder idiom is best",
+            "JMM is your shield"
+          ],
+          "command": "git checkout topic/level-5/the-java-memory-model-jmm",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered the JMM. Checkout the branch in the description to run the concurrency labs yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
