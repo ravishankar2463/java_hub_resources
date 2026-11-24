@@ -149,8 +149,9 @@ export async function synthesizePartAudio(
       ? beat.ttsNarration
       : normalizeTextForTts(beat.narration, beat.id);
 
+    const beatStart = Date.now();
     console.log(
-      `[TTS] (${i + 1}/${part.beats.length}) ${filename} (${voice}, ${speed}x)...`
+      `[TTS] (${i + 1}/${part.beats.length}) Synthesizing ${filename} (${voice}, ${speed}x)...`
     );
     const audio = await tts.generate(spokenText, {
       voice: voice as Parameters<KokoroTTS["generate"]>[1] extends { voice?: infer V } ? V : never,
@@ -160,8 +161,9 @@ export async function synthesizePartAudio(
 
     const exactDuration = getWavDurationSec(absPath);
     const paddedDuration = Number((exactDuration + BEAT_PADDING_SEC).toFixed(2));
+    const genSec = ((Date.now() - beatStart) / 1000).toFixed(1);
     console.log(
-      `[TTS]   -> ${exactDuration.toFixed(2)}s audio (beat: ${paddedDuration.toFixed(2)}s)`
+      `[TTS]   -> ${exactDuration.toFixed(2)}s audio (beat: ${paddedDuration.toFixed(2)}s, synthesized in ${genSec}s)`
     );
 
     updatedBeats.push({

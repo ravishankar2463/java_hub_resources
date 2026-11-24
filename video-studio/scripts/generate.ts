@@ -329,6 +329,7 @@ async function main(): Promise<void> {
     );
 
     let lastPct = -1;
+    const renderStart = Date.now();
     await renderMedia({
       composition,
       serveUrl,
@@ -338,9 +339,10 @@ async function main(): Promise<void> {
       inputProps,
       onProgress: ({ progress }) => {
         const pct = Math.floor(progress * 100);
-        if (pct >= lastPct + 25 || pct === 100) {
+        if (pct >= lastPct + 10 || pct === 100) {
           lastPct = pct;
-          console.log(`[Render]   ${pct}%`);
+          const elapsed = ((Date.now() - renderStart) / 1000).toFixed(0);
+          console.log(`[Render]   Part ${part.partNumber}/${part.totalParts} — ${pct}% (${elapsed}s)`);
         }
       },
     });

@@ -126,7 +126,12 @@ export function validateStoryboardBundle(
   return errors;
 }
 
-async function callOllamaJson(prompt: string, model: string): Promise<string> {
+async function callOllamaJson(
+  prompt: string,
+  model: string,
+  label: string
+): Promise<string> {
+  const startedAt = Date.now();
   const res = await fetch(`${OLLAMA_URL}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -134,7 +139,7 @@ async function callOllamaJson(prompt: string, model: string): Promise<string> {
       model,
       prompt,
       format: "json",
-      stream: false,
+      stream: true,
       options: {
         temperature: 0.45,
         num_ctx: 12288,
@@ -142,15 +147,54 @@ async function callOllamaJson(prompt: string, model: string): Promise<string> {
     }),
   });
 
-  if (!res.ok) {
+  if (!res.ok || !res.body) {
     const text = await res.text();
     throw new Error(`Ollama API error (${res.status}): ${text}`);
   }
-  const json = (await res.json()) as { response?: string };
-  if (!json.response) {
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullResponse = "";
+  let tokenCount = 0;
+  let lastLogAt = Date.now();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const chunk = JSON.parse(trimmed) as { response?: string; done?: boolean };
+      if (chunk.response) {
+        fullResponse += chunk.response;
+        tokenCount++;
+      }
+      const now = Date.now();
+      if (now - lastLogAt >= 3000) {
+        const elapsedSec = ((now - startedAt) / 1000).toFixed(1);
+        const tokPerSec = (tokenCount / Math.max(0.1, (now - startedAt) / 1000)).toFixed(1);
+        console.log(
+          `[Ollama] ${label} | ${tokenCount} tokens | ${elapsedSec}s | ${tokPerSec} tok/s`
+        );
+        lastLogAt = now;
+      }
+    }
+  }
+
+  const totalSec = ((Date.now() - startedAt) / 1000).toFixed(1);
+  console.log(
+    `[Ollama] ${label} finished (${tokenCount} tokens in ${totalSec}s)`
+  );
+
+  if (!fullResponse) {
     throw new Error("Ollama returned empty response.");
   }
-  return json.response;
+  return fullResponse;
 }
 
 export async function checkOllamaReady(model = DEFAULT_MODEL): Promise<void> {
@@ -260,7 +304,7 @@ ${mdSnippet}`;
     console.log(
       `[Ollama:${model}] Drafting ${chapterId} (${complexity.recommendedParts} parts, attempt ${attempt}/3)...`
     );
-    lastRaw = await callOllamaJson(prompt, model);
+    lastRaw = await callOllamaJson(prompt, model, `${chapterId} (attempt ${attempt}/3)`);
 
     try {
       const parsed = JSON.parse(lastRaw) as ChapterStoryboardBundle;
