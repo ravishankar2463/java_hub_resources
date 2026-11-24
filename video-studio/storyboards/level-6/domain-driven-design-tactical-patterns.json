@@ -1,0 +1,489 @@
+{
+  "chapterId": "level-6/domain-driven-design-tactical-patterns",
+  "level": "level-6",
+  "levelLabel": "Level 6",
+  "slug": "domain-driven-design-tactical-patterns",
+  "chapterTitle": "Domain-Driven Design Tactical Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-6/domain-driven-design-tactical-patterns",
+  "branchName": "topic/level-6/domain-driven-design-tactical-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-anemic-vs-rich-models",
+      "partTitle": "Stop Writing Anemic Domain Models",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "DDD Tactical • Part 1 of 4",
+          "headline": "Is your code just a bag of getters and setters?",
+          "highlightWord": "getters and setters",
+          "subline": "Anemic models are the silent killer of enterprise software quality.",
+          "narration": "If your business rules are scattered across service classes while your entities are just bags of data, you have an anemic domain model. Let's fix that with tactical DDD.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Anemic vs. Rich Domain Models",
+          "top": {
+            "label": "Anemic Model",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "order.setStatus(CONFIRMED);\norder.setItems(new ArrayList<>());",
+            "points": [
+              "External code controls state",
+              "Business rules are fragmented"
+            ]
+          },
+          "bottom": {
+            "label": "Rich Aggregate",
+            "badge": "Good",
+            "tone": "good",
+            "code": "order.confirm();\n// Logic resides inside",
+            "points": [
+              "Self-validating invariants",
+              "Encapsulated state transitions"
+            ]
+          },
+          "narration": "Anemic models let any caller corrupt your state. Rich models encapsulate logic, ensuring that an object is always in a valid state by design.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-vo",
+          "kind": "code-spotlight",
+          "title": "Value Objects with Java Records",
+          "filename": "Money.java",
+          "code": "public record Money(BigDecimal amount, Currency currency) {\n    public Money {\n        Objects.requireNonNull(amount);\n        if (amount.signum() < 0) throw new IllegalArgumentException();\n    }\n\n    public Money add(Money other) {\n        if (!this.currency.equals(other.currency)) throw new IllegalArgumentException();\n        return new Money(this.amount.add(other.amount), this.currency);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Immutable",
+              "explanation": "Records are perfect for Value Objects. They are immutable and provide value-based equality automatically.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2,
+                3,
+                4
+              ],
+              "badge": "Compact Constructor",
+              "explanation": "Validate business invariants at the moment of creation. If it exists, it is valid.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use Java records for Value Objects. They are immutable, thread-safe, and their compact constructor guarantees that invalid data never enters your system.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Tactical DDD Building Blocks",
+          "nodes": [
+            {
+              "label": "Aggregate Root",
+              "detail": "The consistency boundary",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Value Object",
+              "detail": "Immutable attributes",
+              "tag": "Data",
+              "accent": "amber"
+            },
+            {
+              "label": "Entity",
+              "detail": "Identity-based lifecycle",
+              "tag": "Identity",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Tactical DDD gives you three tools: Value Objects for attributes, Entities for identity, and Aggregates to enforce consistency across the whole cluster.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Anemic models bypass business rules",
+            "Records are perfect for Value Objects",
+            "Aggregates own consistency boundaries"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Protecting invariants with Aggregate Roots →",
+          "narration": "That is the foundation. In Part 2, we build a self-validating Aggregate Root that makes illegal states impossible.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-aggregate-roots",
+      "partTitle": "Aggregate Roots & Invariants",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "DDD Tactical • Part 2 of 4",
+          "headline": "Can your Order exist with zero items?",
+          "highlightWord": "zero items",
+          "subline": "If it can, your Aggregate Root is leaking business logic.",
+          "narration": "If your code allows an order to be confirmed while empty, you have failed to protect your invariants. Let's build a proper Aggregate Root.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-ar",
+          "kind": "code-spotlight",
+          "title": "Protecting Aggregate Invariants",
+          "filename": "Order.java",
+          "code": "public void addLineItem(ProductId pid, Money price) {\n    if (this.status != DRAFT) throw new IllegalStateException();\n    \n    var item = new OrderItem(pid, price);\n    if (this.total.add(item.price()).isOverLimit()) {\n        throw new IllegalStateException(\"Limit exceeded\");\n    }\n    this.items.add(item);\n    this.total = this.total.add(item.price());\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Guard Clause",
+              "explanation": "Check status first to prevent illegal state transitions.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                7
+              ],
+              "badge": "Invariant Check",
+              "explanation": "Validate business rules before modifying any internal state.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The Aggregate Root is the gatekeeper. Always validate invariants before touching state. If a check fails, the aggregate remains in its previous valid state.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Aggregate Design Rules",
+          "nodes": [
+            {
+              "label": "Root Entry",
+              "detail": "Only interact via the root",
+              "tag": "Rule 1",
+              "accent": "sky"
+            },
+            {
+              "label": "ID References",
+              "detail": "No direct object links",
+              "tag": "Rule 3",
+              "accent": "amber"
+            },
+            {
+              "label": "One Transaction",
+              "detail": "Modify one aggregate per unit",
+              "tag": "Rule 4",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Follow these four rules: interact only through the root, enforce invariants, reference other aggregates by ID only, and modify one aggregate per transaction.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Repository vs. DAO",
+          "top": {
+            "label": "DAO",
+            "badge": "Table-centric",
+            "tone": "bad",
+            "code": "orderItemDao.delete(id);",
+            "points": [
+              "Bypasses aggregate rules",
+              "Exposes internal structure"
+            ]
+          },
+          "bottom": {
+            "label": "Repository",
+            "badge": "Aggregate-centric",
+            "tone": "good",
+            "code": "orderRepository.save(order);",
+            "points": [
+              "Persists whole aggregate",
+              "Ensures consistency"
+            ]
+          },
+          "narration": "Repositories are not DAOs. A DAO manages table rows; a Repository manages the lifecycle of an entire Aggregate. Never expose child entities for direct deletion.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Guard clauses protect invariants",
+            "Reference aggregates by ID only",
+            "Repositories manage full aggregates"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Decoupling with Domain Events →",
+          "narration": "That is how you maintain consistency. In Part 3, we use Domain Events to decouple your services without losing transactional integrity.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-domain-events",
+      "partTitle": "Decoupling with Domain Events",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "DDD Tactical • Part 3 of 4",
+          "headline": "Are your services tangled in a web of dependencies?",
+          "highlightWord": "tangled",
+          "subline": "Stop calling downstream services directly inside your transactions.",
+          "narration": "Calling three different services inside one transaction is a recipe for disaster. Use Domain Events to keep your bounded contexts clean and decoupled.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-event",
+          "kind": "code-spotlight",
+          "title": "Capturing Domain Facts",
+          "filename": "Order.java",
+          "code": "public void confirm() {\n    this.status = CONFIRMED;\n    this.events.add(new OrderConfirmedEvent(this.id));\n}\n\npublic List<DomainEvent> pullEvents() {\n    var copy = List.copyOf(this.events);\n    this.events.clear();\n    return copy;\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Fact-based",
+              "explanation": "Record what happened, not what should happen next.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8
+              ],
+              "badge": "Event Buffer",
+              "explanation": "Collect events inside the aggregate, pull them after saving.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Domain events capture facts that occurred. By buffering them in the aggregate, you can publish them safely after the transaction commits.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Safe Event Dispatch",
+          "nodes": [
+            {
+              "label": "Aggregate",
+              "detail": "Save to DB",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Transaction",
+              "detail": "Commit success",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Publisher",
+              "detail": "Send event",
+              "tag": "Step 3",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Never publish events before the transaction commits. Use an Outbox table or post-commit listeners to ensure downstream systems don't receive phantom events.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-term",
+          "kind": "terminal",
+          "title": "Outbox Pattern Logic",
+          "caption": "Ensuring event delivery",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "1. Save aggregate + event in one transaction"
+            },
+            {
+              "kind": "command",
+              "text": "INSERT INTO orders ...;"
+            },
+            {
+              "kind": "command",
+              "text": "INSERT INTO outbox (event_payload) ...;"
+            },
+            {
+              "kind": "comment",
+              "text": "2. Relay service polls outbox"
+            },
+            {
+              "kind": "success",
+              "text": "Event published to Kafka"
+            }
+          ],
+          "narration": "For mission-critical events, write to an Outbox table in the same transaction as your aggregate. A separate relay process then handles the asynchronous delivery.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Events capture past facts",
+            "Buffer events in the aggregate",
+            "Use Outbox for reliable delivery"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Anti-Corruption Layers →",
+          "narration": "You are now decoupling like a pro. In Part 4, we protect your domain from legacy system rot using Anti-Corruption Layers.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-anti-corruption-layer",
+      "partTitle": "Anti-Corruption Layers",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "DDD Tactical • Part 4 of 4",
+          "headline": "Is your domain code full of legacy ERP hacks?",
+          "highlightWord": "legacy ERP hacks",
+          "subline": "Stop letting messy external APIs pollute your clean domain model.",
+          "narration": "If your domain logic is littered with legacy ERP codes like STS_01, you need an Anti-Corruption Layer. Let's isolate the mess.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-acl",
+          "kind": "code-spotlight",
+          "title": "Implementing an ACL",
+          "filename": "ErpAdapter.java",
+          "code": "public class ErpAdapter implements CreditPort {\n    public CreditStanding check(CustomerId id) {\n        var raw = client.fetch(id.val());\n        return new CreditStanding(\n            isApproved(raw.status()),\n            new Money(raw.cents())\n        );\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Port Interface",
+              "explanation": "Define what the domain needs, not what the legacy system provides.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3,
+                4,
+                5
+              ],
+              "badge": "Translation",
+              "explanation": "Map legacy DTOs to your clean domain types here.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The ACL is a translator. It consumes messy legacy data and maps it to your domain's clean types. Your domain services never see the legacy mess.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "ACL Isolation Architecture",
+          "nodes": [
+            {
+              "label": "Legacy System",
+              "detail": "Messy, SOAP/XML",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "ACL Adapter",
+              "detail": "Translates & Validates",
+              "tag": "Barrier",
+              "accent": "amber"
+            },
+            {
+              "label": "Domain Model",
+              "detail": "Clean, Pure Java",
+              "tag": "Target",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The ACL acts as a barrier. If the legacy system changes its API, you only update the adapter. Your domain model remains untouched.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Direct Integration vs. ACL",
+          "top": {
+            "label": "Direct Integration",
+            "badge": "Polluted",
+            "tone": "bad",
+            "code": "if (erp.code().equals(\"01\")) ...",
+            "points": [
+              "Legacy leaks into business logic",
+              "Hard to test or refactor"
+            ]
+          },
+          "bottom": {
+            "label": "ACL Pattern",
+            "badge": "Isolated",
+            "tone": "good",
+            "code": "if (credit.isApproved()) ...",
+            "points": [
+              "Domain remains pure",
+              "Easy to mock and swap"
+            ]
+          },
+          "narration": "Direct integration forces your domain to know about legacy quirks. The ACL pattern keeps your business logic clean and focused on the problem at hand.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "ACL isolates legacy mess",
+            "Map DTOs to Domain types",
+            "Protect your domain's purity"
+          ],
+          "command": "git checkout topic/level-6/domain-driven-design-tactical-patterns",
+          "nextPartTeaser": "Full guide + Lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered tactical DDD. Checkout the companion branch to run the lab and see these patterns in a real-world project.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
