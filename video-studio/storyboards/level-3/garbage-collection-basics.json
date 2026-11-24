@@ -1,0 +1,588 @@
+{
+  "chapterId": "level-3/garbage-collection-basics",
+  "level": "level-3",
+  "levelLabel": "Level 3",
+  "slug": "garbage-collection-basics",
+  "chapterTitle": "Garbage Collection Basics",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-3/garbage-collection-basics",
+  "branchName": "topic/level-3/garbage-collection-basics",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-reachability-and-roots",
+      "partTitle": "How the JVM Tracks Liveness",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "GC Internals • Part 1 of 5",
+          "headline": "Why don't circular references leak memory in Java?",
+          "highlightWord": "circular references",
+          "subline": "The JVM doesn't use reference counting. It uses a graph-based reachability model.",
+          "narration": "If object A points to B, and B points to A, they form a cycle. In languages like Python, this could be a leak. In Java, it's garbage. Here is why.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Tracing Reachability",
+          "subtitle": "Roots define what stays alive",
+          "nodes": [
+            {
+              "label": "GC Roots",
+              "detail": "Stack, Statics, JNI",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Reachable Graph",
+              "detail": "Live objects",
+              "tag": "Keep",
+              "accent": "emerald"
+            },
+            {
+              "label": "Isolated Cycle",
+              "detail": "A <-> B",
+              "tag": "Collect",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The collector starts at GC roots—like your thread stack or static fields. It traverses every reference. If it can't reach an object, it's dead, even if that object is part of a complex circular chain.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code",
+          "kind": "code-spotlight",
+          "title": "The Lifecycle of a Cycle",
+          "filename": "Reachability.java",
+          "code": "private static void buildCycle() {\n    Node a = new Node(\"alpha\");\n    Node b = new Node(\"beta\");\n    a.next = b;\n    b.next = a;\n    // Method returns, stack frame pops\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Allocation",
+              "explanation": "Objects created on the heap.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Cycle",
+              "explanation": "Cross-references created.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Scope End",
+              "explanation": "Local variables vanish, roots are gone.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Inside this method, local variables are roots. Once the method returns, the stack frame is gone. The cycle is now unreachable and eligible for collection. No manual nulling required.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Reference Strengths",
+          "top": {
+            "label": "Strong Reference",
+            "badge": "Default",
+            "tone": "good",
+            "code": "Object obj = new Object();",
+            "points": [
+              "Prevents GC"
+            ]
+          },
+          "bottom": {
+            "label": "Weak Reference",
+            "badge": "Cache",
+            "tone": "neutral",
+            "code": "WeakReference<T> ref = ...",
+            "points": [
+              "Allows collection"
+            ]
+          },
+          "narration": "Strong references keep objects alive. Weak references allow the collector to reclaim memory when pressure is high, perfect for caches that shouldn't cause OutOfMemoryErrors.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "GC roots define liveness",
+            "Cycles are not leaks",
+            "Use WeakReference for caches"
+          ],
+          "nextPartTeaser": "Up Next: Generational Heap & Minor GC →",
+          "narration": "Roots define everything. In Part 2, we look at the Generational Hypothesis and why Minor GC is so fast.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-generational-heap",
+      "partTitle": "Why Minor GC is Blazing Fast",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Generational GC • Part 2 of 5",
+          "headline": "Most objects die young.",
+          "highlightWord": "die young",
+          "subline": "The Weak Generational Hypothesis is the secret to Java's high-throughput memory management.",
+          "narration": "Most objects are temporary—think iterator instances or request DTOs. The JVM exploits this by splitting the heap into generations.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Generational Heap Layout",
+          "subtitle": "Eden, Survivors, and Old Gen",
+          "nodes": [
+            {
+              "label": "Eden",
+              "detail": "New allocations",
+              "tag": "Young",
+              "accent": "sky"
+            },
+            {
+              "label": "S0/S1",
+              "detail": "Survivor spaces",
+              "tag": "Buffer",
+              "accent": "amber"
+            },
+            {
+              "label": "Old Gen",
+              "detail": "Tenured objects",
+              "tag": "Mature",
+              "accent": "purple"
+            }
+          ],
+          "narration": "New objects land in Eden. When it fills, Minor GC triggers. Survivors move between S0 and S1, and once they're old enough, they get promoted to the Old Generation.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "Reading GC Logs",
+          "caption": "Unified Logging (-Xlog:gc*)",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java -Xlog:gc:stdout"
+            },
+            {
+              "kind": "output",
+              "text": "GC(14) Pause Young 512M->64M(1024M) 4.2ms"
+            },
+            {
+              "kind": "output",
+              "text": "GC(42) Pause Full 998M->810M(1024M) 612ms"
+            }
+          ],
+          "narration": "Minor GC is brief because it only copies survivors. Full GC is the danger zone—it indicates the heap is struggling and the application is pausing for hundreds of milliseconds.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "GC Algorithms",
+          "top": {
+            "label": "Parallel GC",
+            "badge": "Throughput",
+            "tone": "neutral",
+            "code": "-XX:+UseParallelGC",
+            "points": [
+              "High throughput",
+              "Longer pauses"
+            ]
+          },
+          "bottom": {
+            "label": "ZGC",
+            "badge": "Latency",
+            "tone": "good",
+            "code": "-XX:+UseZGC",
+            "points": [
+              "Sub-millisecond",
+              "Concurrent"
+            ]
+          },
+          "narration": "Parallel GC maximizes throughput for batch jobs. ZGC uses concurrent marking to keep pauses under one millisecond, even on massive heaps.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Eden is for short-lived data",
+            "Minor GC = fast copy",
+            "Full GC = performance killer"
+          ],
+          "nextPartTeaser": "Up Next: Stop-the-World & Safepoints →",
+          "narration": "Generational GC keeps your app responsive. Next, we explore how the JVM actually freezes threads during STW pauses.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-stw-safepoints",
+      "partTitle": "Stop-the-World & Safepoints",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "STW Events • Part 3 of 5",
+          "headline": "Can the JVM pause mid-instruction?",
+          "highlightWord": "mid-instruction",
+          "subline": "The JVM uses safepoints to ensure thread state is consistent before GC begins.",
+          "narration": "The JVM can't just kill threads. It needs them to reach a safe state where registers are clean. These are called safepoints.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Safepoint Protocol",
+          "subtitle": "How threads pause",
+          "nodes": [
+            {
+              "label": "JIT Code",
+              "detail": "Contains poll sites",
+              "tag": "Running",
+              "accent": "sky"
+            },
+            {
+              "label": "Poll Trigger",
+              "detail": "Global state change",
+              "tag": "Signal",
+              "accent": "amber"
+            },
+            {
+              "label": "Parked",
+              "detail": "Thread waits for GC",
+              "tag": "Safe",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The JIT compiler inserts polls at loop back-edges and method returns. When GC needs a pause, it flips a global flag. Threads check this flag and park themselves.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "Safepoint Locations",
+          "filename": "Loop.java",
+          "code": "for (int i = 0; i < 1_000_000; i++) {\n    // Safepoint poll here\n    doWork();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Loop Header",
+              "explanation": "Compiler-injected check.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Method Call",
+              "explanation": "Call sites are natural safepoints.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "If a loop is too long without a call or a back-edge, the thread won't reach a safepoint, delaying the GC pause. This is why tight loops can cause latency spikes.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Pause Impact",
+          "top": {
+            "label": "Short Pauses",
+            "badge": "Healthy",
+            "tone": "good",
+            "code": "< 10ms",
+            "points": [
+              "Invisible to users"
+            ]
+          },
+          "bottom": {
+            "label": "Long Pauses",
+            "badge": "Warning",
+            "tone": "bad",
+            "code": "> 500ms",
+            "points": [
+              "RPC timeouts",
+              "Unresponsiveness"
+            ]
+          },
+          "narration": "Short pauses are fine. Long pauses cause cascading failures in microservices. If your GC pauses are long, you need to tune your heap or switch collectors.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Threads pause at safepoints",
+            "Long loops delay GC",
+            "Monitor pause times"
+          ],
+          "nextPartTeaser": "Up Next: Memory Leaks in Java →",
+          "narration": "Safepoints keep the JVM consistent. Next, we look at why your app might still leak memory despite having an automated garbage collector.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-memory-leaks",
+      "partTitle": "Why Java Apps Leak Memory",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Memory Leaks • Part 4 of 5",
+          "headline": "Garbage collection doesn't mean no leaks.",
+          "highlightWord": "no leaks",
+          "subline": "If you hold a reference, the collector can't touch it.",
+          "narration": "A leak in Java is just an object you forgot to stop referencing. If it's reachable from a root, the collector is forced to keep it alive forever.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code",
+          "kind": "code-spotlight",
+          "title": "The Static Map Leak",
+          "filename": "LeakyStore.java",
+          "code": "public class SessionStore {\n    private static final Map<String, byte[]> CACHE = new HashMap<>();\n\n    public void add(String id, byte[] data) {\n        CACHE.put(id, data);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Static Field",
+              "explanation": "GC Root anchor.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Unbounded",
+              "explanation": "Never removed, never collected.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "This static map is a classic leak. It's a GC root that grows indefinitely. Use a cache with eviction policies, like Caffeine, instead of a raw HashMap.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Leak Anatomy",
+          "subtitle": "Roots keep dead objects alive",
+          "nodes": [
+            {
+              "label": "Static Map",
+              "detail": "The Root",
+              "tag": "Anchor",
+              "accent": "sky"
+            },
+            {
+              "label": "SessionData",
+              "detail": "Unused object",
+              "tag": "Leak",
+              "accent": "amber"
+            },
+            {
+              "label": "Heap",
+              "detail": "Filling up",
+              "tag": "Pressure",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The static map anchors the session data. Even if the user is gone, the data stays in the heap. Eventually, you hit an OutOfMemoryError.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Prevention",
+          "top": {
+            "label": "ThreadLocal",
+            "badge": "Risk",
+            "tone": "bad",
+            "code": "tl.set(val);",
+            "points": [
+              "Must call remove()"
+            ]
+          },
+          "bottom": {
+            "label": "Try-With-Resources",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "try (res) { ... }",
+            "points": [
+              "Automatic cleanup"
+            ]
+          },
+          "narration": "ThreadLocals in pooled threads are another common leak. Always use try-finally blocks to remove values. For resources, try-with-resources is your best friend.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Summary",
+          "takeaways": [
+            "Static maps are dangerous",
+            "Clean up ThreadLocals",
+            "Use bounded caches"
+          ],
+          "nextPartTeaser": "Up Next: Why System.gc() is a trap →",
+          "narration": "Leaks are logic errors, not GC errors. Next, we cover why calling System dot gc is almost always a bad idea.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-system-gc-finalizers",
+      "partTitle": "Avoid System.gc() and Finalizers",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Anti-Patterns • Part 5 of 5",
+          "headline": "Why is System.gc() a performance bomb?",
+          "highlightWord": "performance bomb",
+          "subline": "It's a hint, not a command—and it usually triggers a full stop-the-world pause.",
+          "narration": "Calling System dot gc is like asking the entire factory to stop production just because you want to clean a single desk. It's rarely the right move.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code",
+          "kind": "code-spotlight",
+          "title": "The Finalizer Trap",
+          "filename": "Legacy.java",
+          "code": "@Override\nprotected void finalize() throws Throwable {\n    // Slow, unreliable, deprecated!\n    super.finalize();\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Deprecated",
+              "explanation": "Removed in modern Java.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Bottleneck",
+              "explanation": "Single-thread execution.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Finalizers are deprecated for removal. They cause objects to survive extra GC cycles and run on a single background thread. Use AutoCloseable instead.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-terminal",
+          "kind": "terminal",
+          "title": "Safety Flags",
+          "caption": "Protecting your runtime",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java -XX:+DisableExplicitGC -jar app.jar"
+            },
+            {
+              "kind": "command",
+              "text": "java -XX:+ExplicitGCInvokesConcurrent -jar app.jar"
+            }
+          ],
+          "narration": "If you suspect libraries are calling System dot gc, use these flags. Disabling it is safe for most apps, but be careful if you use direct buffers.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-compare",
+          "kind": "compare",
+          "title": "Modern Cleanup",
+          "top": {
+            "label": "Finalizer",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "finalize()",
+            "points": [
+              "Unpredictable",
+              "Slow"
+            ]
+          },
+          "bottom": {
+            "label": "Cleaner API",
+            "badge": "Good",
+            "tone": "good",
+            "code": "Cleaner.create()",
+            "points": [
+              "Safety net only"
+            ]
+          },
+          "narration": "The Cleaner API is the modern way to handle native resource cleanup as a safety net. But always prefer try-with-resources for deterministic management.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Avoid System.gc()",
+            "Finalizers are dead",
+            "Use AutoCloseable"
+          ],
+          "command": "git checkout topic/level-3/garbage-collection-basics",
+          "nextPartTeaser": "Explore the full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered GC basics. Run the lab in the branch below and check out the full roadmap for more deep dives.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
