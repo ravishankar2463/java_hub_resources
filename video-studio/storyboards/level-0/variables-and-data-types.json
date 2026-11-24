@@ -1,0 +1,533 @@
+{
+  "chapterId": "level-0/variables-and-data-types",
+  "level": "level-0",
+  "levelLabel": "Level 0",
+  "slug": "variables-and-data-types",
+  "chapterTitle": "Variables and Data Types",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-0/variables-and-data-types",
+  "branchName": "topic/level-0/variables-and-data-types",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-stack-vs-heap-memory",
+      "partTitle": "Stack vs. Heap: Where Your Data Resides",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Variables & Memory • Part 1 of 4",
+          "headline": "Declaring a primitive stores raw bits. Declaring an object stores an address.",
+          "highlightWord": "stores an address",
+          "subline": "Understanding Stack vs Heap dictates how fast your Java application runs.",
+          "narration": "Assigning int score equals 100 reserves raw binary bits directly in memory. Assigning a user object creates a pointer address pointing to the heap. Here is how stack and heap dictate Java execution speed.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Stack vs. Heap Memory Layout",
+          "subtitle": "Local variables sit on thread stack frames; objects reside on the shared heap",
+          "nodes": [
+            {
+              "label": "Thread Stack",
+              "detail": "Holds local primitive values & object memory addresses directly",
+              "tag": "Frame Scope",
+              "accent": "sky"
+            },
+            {
+              "label": "Address Reference",
+              "detail": "64-bit pointer linking stack variable to heap location",
+              "tag": "Pointer",
+              "accent": "amber"
+            },
+            {
+              "label": "Shared JVM Heap",
+              "detail": "Stores actual object payload, fields & string pool instances",
+              "tag": "Dynamic Allocation",
+              "accent": "purple"
+            },
+            {
+              "label": "Garbage Collector",
+              "detail": "Reclaims heap memory when zero references point to an object",
+              "tag": "Cleanup",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Every thread gets a stack storing method frames and local variables. Local primitives sit directly in stack slots, while object reference variables hold memory addresses pointing to objects dynamic allocated on the shared heap.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Field Defaults vs. Uninitialized Local Variables",
+          "top": {
+            "label": "Class Fields (Heap)",
+            "badge": "Auto-Initialized",
+            "tone": "good",
+            "code": "public class Account {\n    int count; // Automatically set to 0\n    boolean active; // Automatically set to false\n}",
+            "points": [
+              "Fields on heap get automatic default values",
+              "Primitives get 0 or false, references get null"
+            ]
+          },
+          "bottom": {
+            "label": "Local Variables (Stack)",
+            "badge": "❌ Compile Error",
+            "tone": "bad",
+            "code": "public void process() {\n    int count;\n    // System.out.println(count); // Fails compilation!\n}",
+            "points": [
+              "Stack slots contain leftover stack garbage",
+              "Compiler rejects reads before explicit assignment"
+            ]
+          },
+          "narration": "Class fields residing on the heap get automatic zero initialization. But local variables on the stack get no default values at all. Reading an uninitialized local variable fails at compile time immediately.",
+          "durationSec": 13,
+          "sfx": "error"
+        },
+        {
+          "id": "p1-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Inspecting Primitive vs Reference Locations",
+          "filename": "MemoryDemo.java",
+          "code": "public class MemoryDemo {\n    private int id = 42;\n\n    public void execute() {\n        double balance = 999.50;\n        String user = \"Alice\";\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Heap Field",
+              "explanation": "Field id is a primitive, but because it belongs to MemoryDemo, it resides on the heap inside the object.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Stack Primitive",
+              "explanation": "Local double balance sits directly inside the method stack frame as pure binary bits.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Stack Pointer",
+              "explanation": "Local user reference sits on stack, but its string character content resides in the heap pool.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Look at the memory location rules. Local primitive balance sits directly inside the method stack frame. But field id resides inside object storage on the heap, even though id is a primitive.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Memory Layout Mastered",
+          "takeaways": [
+            "Primitives store values directly; references store heap addresses",
+            "Local variables sit on stack frames; heap holds all objects",
+            "Class fields auto-initialize to zero; local variables do not"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Silent overflow bugs & why double breaks money math →",
+          "narration": "That is stack and heap layout. In Part 2, we uncover silent integer wrap around and why floating point double ruins financial calculations.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-primitives-and-overflow",
+      "partTitle": "The 8 Primitives, Overflow & Floating-Point Traps",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Primitives & Precision • Part 2 of 4",
+          "headline": "Calculating 0.1 plus 0.2 in Java yields 0.30000000000000004.",
+          "highlightWord": "0.30000000000000004",
+          "subline": "Binary IEEE 754 precision will corrupt floating point financial software.",
+          "narration": "Evaluating zero point one plus zero point two using double in Java produces zero point three zero zero zero four. Here is why binary floating point breaks monetary calculations.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-overflow",
+          "kind": "code-spotlight",
+          "title": "Silent Wrap Around vs Safe Math",
+          "filename": "OverflowDemo.java",
+          "code": "int max = Integer.MAX_VALUE; // 2,147,483,647\nint wrapped = max + 1;\nSystem.out.println(wrapped); // Prints -2147483648 !\n\n// Safe alternative:\nint safe = Math.addExact(max, 1);\n// Throws ArithmeticException: integer overflow",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Two's Complement Wrap",
+              "explanation": "Java arithmetic never throws on numeric overflow! High bits drop and values wrap to negative minimum.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Math.addExact()",
+              "explanation": "Throws ArithmeticException instantly when arithmetic exceeds boundaries.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Adding one to maximum int wrap around silently to negative two billion with zero warning. For financial counters or critical arithmetic, use Math dot addExact to trigger exceptions on overflow.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Floating Point vs exact Financial Math",
+          "top": {
+            "label": "double / float",
+            "badge": "❌ Unsafe for Money",
+            "tone": "bad",
+            "code": "double price = 0.1 + 0.2;\n// 0.30000000000000004\n// Base-2 binary floating point loses exact precision!",
+            "points": [
+              "Fractions repeat infinitely in base-2 binary",
+              "Rounding errors accumulate across billing cycles"
+            ]
+          },
+          "bottom": {
+            "label": "BigDecimal / Cents",
+            "badge": "✅ Exact Decimal Math",
+            "tone": "good",
+            "code": "BigDecimal exact = new BigDecimal(\"0.1\")\n    .add(new BigDecimal(\"0.2\"));\nlong priceCents = 1999L; // 19.99 USD",
+            "points": [
+              "BigDecimal initialized from String preserves exact digits",
+              "Or store monetary values as primitive long cents"
+            ]
+          },
+          "narration": "Base two floating point cannot represent decimal fractions like zero point one exactly. For financial calculations, build BigDecimal from string literals or store monetary amounts as long integer cents.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-term-output",
+          "kind": "terminal",
+          "title": "Running Numeric Tests",
+          "caption": "Demonstrating overflow wrap and exact overflow exceptions",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java OverflowDemo"
+            },
+            {
+              "kind": "output",
+              "text": "Unsafe wrap output: -2147483648"
+            },
+            {
+              "kind": "error",
+              "text": "Exception in thread \"main\" java.lang.ArithmeticException: integer overflow"
+            },
+            {
+              "kind": "output",
+              "text": "\tat java.base/java.lang.Math.addExact(Math.java:869)"
+            },
+            {
+              "kind": "success",
+              "text": "Exact Math caught overflow safely!"
+            }
+          ],
+          "narration": "Standard integer addition wraps around silently into negative numbers. Calling Math dot addExact aborts execution immediately with an exception, stopping corrupted data from hitting database tables.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Primitives Guarded",
+          "takeaways": [
+            "Integer arithmetic wraps silently using two's complement",
+            "Use Math.addExact() to prevent silent numeric corruption",
+            "Never use float or double for money; use BigDecimal or cents"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Autoboxing NPEs & the hidden -128 to 127 Integer cache →",
+          "narration": "Those are primitive numeric limits. In Part 3, we dive into autoboxing traps, silent null pointer crashes, and the JVM integer cache.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-autoboxing-and-integer-cache",
+      "partTitle": "Autoboxing Traps & The Integer Cache",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Wrapper Classes • Part 3 of 4",
+          "headline": "Integer a equals 100 returns true, but Integer x equals 200 returns false.",
+          "highlightWord": "returns false",
+          "subline": "Comparing wrapper objects with double equals creates subtle production bugs.",
+          "narration": "Comparing two Integer object variables assigned to 100 returns true using double equals. But assigning both to 200 returns false. This bug stems from the JVM Integer cache.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-cache",
+          "kind": "code-spotlight",
+          "title": "The Integer Cache & Null Pointer Traps",
+          "filename": "WrapperDemo.java",
+          "code": "Integer a = 100, b = 100;\nSystem.out.println(a == b); // true (cached -128 to 127)\n\nInteger x = 200, y = 200;\nSystem.out.println(x == y); // false (new heap objects!)\nSystem.out.println(x.equals(y)); // true\n\nInteger count = null;\nint total = count + 1; // Throws NullPointerException!",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Integer Cache",
+              "explanation": "Integer.valueOf caches values from -128 through 127. Both variables share the exact same pooled reference.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "== vs .equals()",
+              "explanation": "Values outside cache range allocate distinct heap objects. Always use .equals() for wrapper identity.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                8,
+                9
+              ],
+              "badge": "Unboxing NPE",
+              "explanation": "Implicit unboxing calls count.intValue() on null, causing an instant NullPointerException.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The JVM caches Integer objects between minus 128 and 127. Outside that range, double equals checks reference memory addresses. Furthermore, unboxing a null wrapper invokes intValue on null, throwing a NullPointerException.",
+          "durationSec": 16,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Loop Performance: Primitive vs. Boxed Wrapper",
+          "top": {
+            "label": "Boxed Wrapper Loop",
+            "badge": "❌ 10 Million Heap Allocations",
+            "tone": "bad",
+            "code": "Long sum = 0L;\nfor (long i = 0; i < 10_000_000L; i++) {\n    sum += i; // Unboxes sum, adds i, boxes back to new Long!\n}",
+            "points": [
+              "Allocates millions of temporary Long instances",
+              "Triggers aggressive Garbage Collector pauses"
+            ]
+          },
+          "bottom": {
+            "label": "Primitive Loop",
+            "badge": "✅ CPU Register Speed",
+            "tone": "good",
+            "code": "long fastSum = 0L;\nfor (long i = 0; i < 10_000_000L; i++) {\n    fastSum += i;\n}",
+            "points": [
+              "Executes purely inside CPU registers",
+              "Zero heap allocation and zero GC overhead"
+            ]
+          },
+          "narration": "Declaring sum as wrapper Long inside a loop repeatedly unboxes and re-boxes numbers. That allocates millions of short lived heap objects. Using primitive long keeps calculations inside CPU registers.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-term-bench",
+          "kind": "terminal",
+          "title": "JMH Benchmark Results",
+          "caption": "Comparing execution runtime between Long and long",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java -jar benchmarks.jar LoopBenchmark"
+            },
+            {
+              "kind": "output",
+              "text": "Benchmark               Mode  Cnt   Score   Error  Units"
+            },
+            {
+              "kind": "error",
+              "text": "LoopBenchmark.boxed     avgt   5   42.811 ± 1.203  ms/op"
+            },
+            {
+              "kind": "success",
+              "text": "LoopBenchmark.primitive avgt   5    3.104 ± 0.089  ms/op"
+            },
+            {
+              "kind": "comment",
+              "text": "# Primitive execution runs 13x faster with 0 GC overhead!"
+            }
+          ],
+          "narration": "Microbenchmarks confirm that primitive arithmetic runs over ten times faster than boxed wrapper iterations. Avoid object wrapper types inside heavy calculation loops.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Wrappers Demystified",
+          "takeaways": [
+            "Always use .equals() for wrappers due to -128 to 127 caching",
+            "Unboxing null wrapper objects throws NullPointerException",
+            "Use primitives in loops to prevent heap allocation churn"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): String constant pool, casting rules & var inference →",
+          "narration": "That covers wrapper pitfalls. In Part 4, we examine the String Constant Pool, numeric type casting, and type inference with var.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-string-pool-casting-and-var",
+      "partTitle": "String Pool, Type Casting & Modern var",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Strings & Type Inference • Part 4 of 4",
+          "headline": "Comparing string input using double equals can bypass authentication logic.",
+          "highlightWord": "bypass authentication",
+          "subline": "String literals reuse the constant pool; dynamically constructed strings do not.",
+          "narration": "Comparing string variables with double equals breaks when text comes from JSON payloads or file inputs. Here is how the String Constant Pool dictates reference equality.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "String Constant Pool Architecture",
+          "subtitle": "Literals share pooled references; explicit constructor calls bypass pooling",
+          "nodes": [
+            {
+              "label": "Literal 'a'",
+              "detail": "String a = \"Java\" points to constant pool",
+              "tag": "Pooled",
+              "accent": "emerald"
+            },
+            {
+              "label": "Literal 'b'",
+              "detail": "String b = \"Java\" reuses existing pool entry",
+              "tag": "Reused Pointer",
+              "accent": "sky"
+            },
+            {
+              "label": "String Constant Pool",
+              "detail": "Special heap segment storing unique immutable string values",
+              "tag": "Heap Pool",
+              "accent": "amber"
+            },
+            {
+              "label": "Explicit 'new String()'",
+              "detail": "Forces new heap allocation outside string pool",
+              "tag": "Separate Object",
+              "accent": "purple"
+            }
+          ],
+          "narration": "String literals point directly to shared string objects inside the pool on the heap. But dynamic strings or explicit constructor calls create separate heap objects, causing reference comparisons to return false.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-var",
+          "kind": "code-spotlight",
+          "title": "Casting Rules & Modern var Type Inference",
+          "filename": "ModernJavaDemo.java",
+          "code": "double price = 9.99;\nint truncated = (int) price; // Truncates to 9\n\n// Java 10+ Local Variable Type Inference\nvar users = new HashMap<String, List<String>>();\nvar message = \"Confirmed\"; // Inferred as String\n\n// Compiler Errors:\n// var empty;      // Cannot infer without initializer!\n// var item = null; // Cannot infer type from null!",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Narrowing Cast",
+              "explanation": "Explicit cast (int) truncates fractional digits towards zero without rounding.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "var Keyword",
+              "explanation": "Infers type at compile time from right hand initializer. Remains 100% statically typed!",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                9,
+                10
+              ],
+              "badge": "var Constraints",
+              "explanation": "var requires an explicit non-null initializer and cannot be used for fields or parameters.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Narrowing numeric types requires an explicit cast that truncates fractional decimals toward zero. Meanwhile, Java 10 introduced var to infer local variable types from initializers while remaining 100 percent statically typed.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-compile",
+          "kind": "terminal",
+          "title": "Disassembling var Bytecode",
+          "caption": "Proving var emits identical bytecode to explicit types",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "javac ModernJavaDemo.java"
+            },
+            {
+              "kind": "command",
+              "text": "javap -c ModernJavaDemo.class"
+            },
+            {
+              "kind": "output",
+              "text": "  0: ldc           #7 // String Confirmed"
+            },
+            {
+              "kind": "output",
+              "text": "  2: astore_1      // Stores reference into local variable 1"
+            },
+            {
+              "kind": "success",
+              "text": "Identical bytecode generated as explicit String declaration!"
+            }
+          ],
+          "narration": "Disassembling compiled code with javap proves that var generates identical bytecode compared to explicit type declarations. It is compile time syntactic sugar with zero runtime performance impact.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Always use .equals() for strings to compare text instead of pool pointers",
+            "Narrowing numerical casts truncate fractional decimals without rounding",
+            "var provides static type inference for local variables at compile time"
+          ],
+          "command": "git checkout topic/level-0/variables-and-data-types",
+          "nextPartTeaser": "Full roadmap + hands-on labs at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered variables and Java memory representation. Checkout the companion branch in java hub resources to run the hands on exercises and JUnit 5 tests yourself.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
