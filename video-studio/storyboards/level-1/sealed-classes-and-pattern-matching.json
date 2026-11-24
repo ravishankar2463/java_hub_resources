@@ -1,0 +1,502 @@
+{
+  "chapterId": "level-1/sealed-classes-and-pattern-matching",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "sealed-classes-and-pattern-matching",
+  "chapterTitle": "Sealed Classes and Pattern Matching",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/sealed-classes-and-pattern-matching",
+  "branchName": "topic/level-1/sealed-classes-and-pattern-matching",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-sealed-revolution",
+      "partTitle": "Why Sealed Classes Beat Open Inheritance",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Domain Modeling • Part 1 of 4",
+          "headline": "Why is your switch statement failing silently?",
+          "highlightWord": "failing silently",
+          "subline": "Open hierarchies let anyone add subtypes, breaking your logic without a compiler error.",
+          "narration": "Open class hierarchies are a liability. When you use a standard abstract class, any developer can add a new subtype in a distant package. Your existing switch statements won't know, and your logic will silently fail in production.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Open vs. Closed Hierarchies",
+          "top": {
+            "label": "Open (Standard)",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "public abstract class Status {}\npublic class Success extends Status {}\n// Anyone can extend Status anywhere!",
+            "points": [
+              "No control over subtypes",
+              "Switch needs default branch",
+              "Silent runtime bugs"
+            ]
+          },
+          "bottom": {
+            "label": "Sealed (Java 17+)",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "public sealed interface Status\n    permits Success, Failed {}",
+            "points": [
+              "Compiler knows all types",
+              "Exhaustive switch check",
+              "Zero-cost safety"
+            ]
+          },
+          "narration": "Sealed classes turn your domain model into a finite set. By using the permits clause, you tell the compiler exactly which classes are allowed. If a new type is added, the compiler forces you to handle it everywhere.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-sealed",
+          "kind": "code-spotlight",
+          "title": "Defining a Sealed Hierarchy",
+          "filename": "PaymentStatus.java",
+          "code": "public sealed interface PaymentStatus\n    permits Success, Failed {\n    Instant timestamp();\n}\n\npublic record Success(Instant ts) \n    implements PaymentStatus {}\n\npublic record Failed(Instant ts) \n    implements PaymentStatus {}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "sealed",
+              "explanation": "Restricts the hierarchy to a specific list of permitted subtypes.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "permits",
+              "explanation": "The explicit list of allowed implementations. Must reside in the same package.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                8
+              ],
+              "badge": "records",
+              "explanation": "Records are implicitly final, making them the perfect fit for sealed sum types.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The sealed keyword restricts the hierarchy. The permits clause defines the exact list of allowed subtypes. Since records are implicitly final, they pair perfectly with sealed interfaces to create rock-solid domain models.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Sum Types + Product Types",
+          "subtitle": "Algebraic Data Types in Java",
+          "nodes": [
+            {
+              "label": "Sealed Interface",
+              "detail": "Sum Type: Fixed set of alternatives",
+              "tag": "OR Logic",
+              "accent": "sky"
+            },
+            {
+              "label": "Records",
+              "detail": "Product Type: Bundled data fields",
+              "tag": "AND Logic",
+              "accent": "emerald"
+            },
+            {
+              "label": "Compiler",
+              "detail": "Verifies exhaustiveness across the whole set",
+              "tag": "Safety",
+              "accent": "amber"
+            }
+          ],
+          "narration": "You are building Algebraic Data Types. Sealed interfaces act as Sum Types, representing a fixed set of possibilities, while records act as Product Types, bundling data. The compiler ties them together for total safety.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Sealed = closed domain hierarchy",
+            "Permits = explicit list of subtypes",
+            "Records = perfect final data carriers"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Exhaustive Pattern Matching →",
+          "narration": "Sealed classes are the foundation. In Part 2, we see how Java 21's exhaustive switch pattern matching eliminates the need for default branches and runtime errors.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-exhaustive-pattern-matching",
+      "partTitle": "Exhaustive Switch & Pattern Matching",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Pattern Matching • Part 2 of 4",
+          "headline": "Stop using default branches in your switch.",
+          "highlightWord": "default branches",
+          "subline": "If you use a sealed type, the compiler already knows every possible case.",
+          "narration": "Stop using default branches in your switch statements. If you are switching over a sealed type, the compiler already knows every possible case. A default branch just hides bugs when you add new types later.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-switch",
+          "kind": "code-spotlight",
+          "title": "Exhaustive Switch Expression",
+          "filename": "Handler.java",
+          "code": "return switch (status) {\n    case Success s -> \"Paid: \" + s.ts();\n    case Failed f  -> \"Error: \" + f.ts();\n    // No default needed!\n};",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "switch expression",
+              "explanation": "Returns a value directly, forcing you to handle all cases.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "pattern matching",
+              "explanation": "Unpacks the type and binds the variable in one step.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "exhaustiveness",
+              "explanation": "If you add a new subtype to the sealed interface, this code will fail to compile.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This switch expression is exhaustive. If you add a new permitted subtype to your interface, the compiler will instantly flag every switch statement that needs an update. No more missed branches in production.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-records",
+          "kind": "code-spotlight",
+          "title": "Record Deconstruction",
+          "filename": "Handler.java",
+          "code": "case Success(var ts, var ref) -> \n    process(ref);\n\ncase Failed(var ts, var reason) \n    when reason.isEmpty() -> \n    alert();",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "deconstruction",
+              "explanation": "Extracts fields directly from the record without calling getters.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "when guard",
+              "explanation": "Adds conditional logic to your pattern match.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Record patterns let you deconstruct objects directly in the case label. Combine this with when guards to filter by value. It is clean, readable, and keeps your logic close to the data structure.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Pattern Matching vs. Old Way",
+          "top": {
+            "label": "Old instanceof",
+            "badge": "Verbose",
+            "tone": "bad",
+            "code": "if (s instanceof Success) {\n    Success succ = (Success) s;\n    process(succ.ref());\n}",
+            "points": [
+              "Casting boilerplate",
+              "Hard to read",
+              "Not exhaustive"
+            ]
+          },
+          "bottom": {
+            "label": "Pattern Match",
+            "badge": "Concise",
+            "tone": "good",
+            "code": "case Success(var ts, var ref) -> \n    process(ref);",
+            "points": [
+              "No casting needed",
+              "Declarative syntax",
+              "Type-safe"
+            ]
+          },
+          "narration": "Compare this to the old instanceof chains. You no longer need to manually cast objects or check types. Pattern matching handles the extraction and the type check in a single, readable line.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Avoid default in sealed switches",
+            "Use record patterns to deconstruct",
+            "Use 'when' guards for extra logic"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): JVM Internals & Reflection Safety →",
+          "narration": "Exhaustive switches are a game changer. In Part 3, we look at how the JVM enforces these rules at runtime and why reflection can't bypass your sealed hierarchy.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-jvm-internals",
+      "partTitle": "How the JVM Enforces Sealing",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Internals • Part 3 of 4",
+          "headline": "Can you bypass sealed classes with reflection?",
+          "highlightWord": "bypass",
+          "subline": "The JVM enforces your hierarchy at the class-loading level.",
+          "narration": "Think you can bypass sealed classes with reflection or custom bytecode? Think again. The JVM enforces your hierarchy at the class-loading level. If a class isn't in the permitted list, the JVM refuses to load it.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-term-javap",
+          "kind": "terminal",
+          "title": "Inspecting PermittedSubclasses",
+          "caption": "The binary contract in the classfile",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "javap -v PaymentStatus.class"
+            },
+            {
+              "kind": "output",
+              "text": "PermittedSubclasses:"
+            },
+            {
+              "kind": "output",
+              "text": "  com/pay/Success"
+            },
+            {
+              "kind": "output",
+              "text": "  com/pay/Failed"
+            },
+            {
+              "kind": "comment",
+              "text": "# JVM checks this list at runtime!"
+            }
+          ],
+          "narration": "When you compile a sealed class, the compiler adds a PermittedSubclasses attribute to the bytecode. The JVM reads this attribute during class loading. If an unauthorized class tries to extend your sealed type, the JVM throws an IncompatibleClassChangeError.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Runtime Enforcement",
+          "subtitle": "The JVM Class Loader Security",
+          "nodes": [
+            {
+              "label": "Class Loader",
+              "detail": "Loads the class and inspects supertype",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "PermittedSubclasses",
+              "detail": "JVM verifies the class is in the list",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Execution",
+              "detail": "Throws IncompatibleClassChangeError if invalid",
+              "tag": "Step 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The JVM is the final authority. It checks the PermittedSubclasses attribute before allowing any class to link against your sealed type. This isn't just a compile-time suggestion; it is a hard runtime guarantee.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code-nonsealed",
+          "kind": "code-spotlight",
+          "title": "The non-sealed Escape Hatch",
+          "filename": "Status.java",
+          "code": "public sealed interface Status \n    permits Success, Custom {}\n\n// Re-opens the hierarchy for plugins\npublic non-sealed class Custom \n    implements Status {}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "non-sealed",
+              "explanation": "Allows any class to extend this specific branch while keeping the parent sealed.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Need an escape hatch? Use non-sealed. It allows you to re-open a specific branch of your hierarchy for plugins or external extensions, while the top-level interface remains sealed and exhaustive.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "JVM enforces sealing via PermittedSubclasses",
+            "Illegal extensions trigger IncompatibleClassChangeError",
+            "non-sealed allows controlled extension"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Replacing the Visitor Pattern →",
+          "narration": "The JVM has your back. In Part 4, we finish by replacing the bulky Visitor pattern with clean, modern sealed hierarchies and pattern matching.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-visitor-vs-sealed",
+      "partTitle": "Replacing the Visitor Pattern",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Design Patterns • Part 4 of 4",
+          "headline": "Delete your Visitor pattern boilerplate.",
+          "highlightWord": "delete",
+          "subline": "Sealed classes and pattern matching do the same job with 80% less code.",
+          "narration": "Delete your Visitor pattern boilerplate. It was a necessary evil to handle closed hierarchies in old Java. Now, sealed classes and pattern matching do the same job with 80% less code and better readability.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Visitor vs. Pattern Matching",
+          "top": {
+            "label": "Visitor Pattern",
+            "badge": "Heavy",
+            "tone": "bad",
+            "code": "interface Visitor { visit(Add a); }\nclass Add { accept(Visitor v) { v.visit(this); } }",
+            "points": [
+              "Double dispatch",
+              "Massive interface bloat",
+              "Hard to maintain"
+            ]
+          },
+          "bottom": {
+            "label": "Pattern Match",
+            "badge": "Clean",
+            "tone": "good",
+            "code": "switch (expr) {\n    case Add(var l, var r) -> ...\n}",
+            "points": [
+              "No double dispatch",
+              "Pure data classes",
+              "Easy to read"
+            ]
+          },
+          "narration": "The Visitor pattern requires double dispatch and massive interfaces. Pattern matching treats your data as pure data, allowing you to write operations as simple methods. It is cleaner, faster, and much easier to debug.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-simplify",
+          "kind": "code-spotlight",
+          "title": "One-Line Simplification",
+          "filename": "Expr.java",
+          "code": "public static Expr simplify(Expr e) {\n    return switch (e) {\n        case Add(Constant(int a), Constant(int b)) \n            -> new Constant(a + b);\n        case Expr other -> other;\n    };\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "nested match",
+              "explanation": "Matches deep object graphs in a single expression.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "transformation",
+              "explanation": "Returns a new object based on the matched structure.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Look at this nested match. You can fold constant additions in one line. This is impossible with the Visitor pattern without creating complex, stateful traversal logic. Pattern matching makes tree transformations trivial.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "The Expression Problem",
+          "subtitle": "Choosing your design strategy",
+          "nodes": [
+            {
+              "label": "Open Interface",
+              "detail": "Easy to add new types, hard to add new operations",
+              "tag": "Plugins",
+              "accent": "sky"
+            },
+            {
+              "label": "Sealed Hierarchy",
+              "detail": "Easy to add new operations, hard to add new types",
+              "tag": "Domain",
+              "accent": "amber"
+            },
+            {
+              "label": "Trade-off",
+              "detail": "Pick the strategy that fits your growth",
+              "tag": "Decision",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Choose your strategy based on the Expression Problem. Use open interfaces for plugin architectures. Use sealed hierarchies when your domain model is stable and you need to add many operations like serialization or evaluation.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Visitor is dead for closed hierarchies",
+            "Pattern matching is the new standard",
+            "Match your design to the Expression Problem"
+          ],
+          "command": "git checkout topic/level-1/sealed-classes-and-pattern-matching",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered sealed classes and pattern matching. Check the companion branch in the Java Hub to run the lab and see these patterns in action. Your code will never be the same.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
