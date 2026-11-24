@@ -1,0 +1,504 @@
+{
+  "chapterId": "level-5/executors-and-thread-pools",
+  "level": "level-5",
+  "levelLabel": "Level 5",
+  "slug": "executors-and-thread-pools",
+  "chapterTitle": "Executors and Thread Pools",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-5/executors-and-thread-pools",
+  "branchName": "topic/level-5/executors-and-thread-pools",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-executor-hierarchy",
+      "partTitle": "Why Thread Pools Beat Raw Threads",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Concurrency • Part 1 of 4",
+          "headline": "Stop spawning threads manually.",
+          "highlightWord": "manually",
+          "subline": "Every new Thread() eats 1MB of stack memory. Here is how to stop crashing your JVM.",
+          "narration": "Spawning raw threads for every task is a recipe for an OutOfMemoryError. You are burning native memory and killing performance with context switching. The Executor framework is the professional alternative.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Executor Lifecycle",
+          "subtitle": "Decoupling task submission from execution",
+          "nodes": [
+            {
+              "label": "Producer",
+              "detail": "Submits Runnable/Callable",
+              "tag": "Submit",
+              "accent": "sky"
+            },
+            {
+              "label": "ExecutorService",
+              "detail": "Manages thread lifecycle",
+              "tag": "Manager",
+              "accent": "amber"
+            },
+            {
+              "label": "Worker Pool",
+              "detail": "Reused threads execute tasks",
+              "tag": "Execution",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The ExecutorService acts as a buffer. You submit tasks, and a managed pool of worker threads picks them up. This reuses memory and keeps your service stable under heavy load.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-hierarchy",
+          "kind": "code-spotlight",
+          "title": "The Core Interface Hierarchy",
+          "filename": "ExecutorHierarchy.java",
+          "code": "public interface Executor {\n    void execute(Runnable command);\n}\n\npublic interface ExecutorService extends Executor {\n    void shutdown();\n    <T> Future<T> submit(Callable<T> task);\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                3
+              ],
+              "badge": "Executor",
+              "explanation": "The base interface for fire-and-forget tasks.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                7
+              ],
+              "badge": "ExecutorService",
+              "explanation": "Adds lifecycle control and result-bearing tasks.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Executor is the bare-bones interface for fire-and-forget. Extend it to ExecutorService, and you get lifecycle management like shutdown and the ability to return results via Futures.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Raw vs Managed",
+          "top": {
+            "label": "new Thread()",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "new Thread(task).start();",
+            "points": [
+              "Unbounded memory usage",
+              "High OS overhead"
+            ]
+          },
+          "bottom": {
+            "label": "ExecutorService",
+            "badge": "Good",
+            "tone": "good",
+            "code": "executor.submit(task);",
+            "points": [
+              "Bounded resource usage",
+              "Graceful shutdown"
+            ]
+          },
+          "narration": "Raw threads are dangerous. Managed pools provide backpressure and prevent your JVM from hitting the native thread limit. Always prefer the ExecutorService pattern.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Raw threads = OOM risk",
+            "ExecutorService = managed lifecycle",
+            "Decouple submission from execution"
+          ],
+          "nextPartTeaser": "Up Next: The hidden traps of ThreadPoolExecutor →",
+          "narration": "That is the foundation. In Part 2, we dissect the ThreadPoolExecutor algorithm, because the default queue behavior might surprise you.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-threadpoolexecutor-internals",
+      "partTitle": "The 4-Step Admission Algorithm",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Internals • Part 2 of 4",
+          "headline": "Does your pool actually grow?",
+          "highlightWord": "actually grow",
+          "subline": "Most developers misunderstand the ThreadPoolExecutor admission algorithm.",
+          "narration": "Think your pool scales to maximumPoolSize immediately? Think again. The internal algorithm is surprisingly strict, and it is easy to accidentally ignore your max limit entirely.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Task Admission Flow",
+          "subtitle": "The strict 4-step execution logic",
+          "nodes": [
+            {
+              "label": "Core Check",
+              "detail": "Below corePoolSize?",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Queue Check",
+              "detail": "Offer to queue?",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Max Check",
+              "detail": "Below maxPoolSize?",
+              "tag": "Step 3",
+              "accent": "purple"
+            },
+            {
+              "label": "Reject",
+              "detail": "Run handler",
+              "tag": "Step 4",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "First, we spawn core threads. Second, we fill the queue. Only when the queue is full do we spawn burst threads. If everything is full, we trigger the rejection handler.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-factory",
+          "kind": "code-spotlight",
+          "title": "Configuring a Production Pool",
+          "filename": "PoolConfig.java",
+          "code": "return new ThreadPoolExecutor(\n    8, 24, 60L, TimeUnit.SECONDS,\n    new ArrayBlockingQueue<>(200),\n    new ThreadPoolExecutor.CallerRunsPolicy()\n);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Sizing",
+              "explanation": "Core vs Max threads define your burst capacity.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Queue",
+              "explanation": "Bounded queue is mandatory to force max scaling.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Policy",
+              "explanation": "CallerRuns provides natural backpressure.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use a bounded queue. If you use an unbounded queue, the pool will never spawn burst threads, effectively ignoring your maxPoolSize and risking heap exhaustion.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Inspecting Threads",
+          "caption": "Avoid generic pool names",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "jcmd <pid> Thread.print"
+            },
+            {
+              "kind": "output",
+              "text": "\"payment-worker-1\" prio=5 ... waiting"
+            },
+            {
+              "kind": "output",
+              "text": "\"payment-worker-2\" prio=5 ... running"
+            },
+            {
+              "kind": "comment",
+              "text": "# Always use a custom ThreadFactory!"
+            }
+          ],
+          "narration": "Use a custom ThreadFactory to name your threads. During an incident, seeing payment-worker-1 is infinitely better than pool-3-thread-14.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Core threads first",
+            "Queue second",
+            "Max threads last"
+          ],
+          "nextPartTeaser": "Up Next: Callable, Future, and the silent exception trap →",
+          "narration": "That is the admission logic. In Part 3, we look at Callables and the silent failure trap that makes debugging asynchronous code a nightmare.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-callable-future-pitfalls",
+      "partTitle": "Handling Async Results",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Async • Part 3 of 4",
+          "headline": "Where do your exceptions go?",
+          "highlightWord": "exceptions",
+          "subline": "If you ignore a Future, you ignore the error.",
+          "narration": "When a Callable throws an exception, it is captured by the Future. If you never call get(), that error vanishes into the void. No logs, no stack trace, just silence.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-future",
+          "kind": "code-spotlight",
+          "title": "Safe Future Handling",
+          "filename": "AsyncService.java",
+          "code": "Future<String> future = executor.submit(task);\ntry {\n    String result = future.get(500, TimeUnit.MILLISECONDS);\n} catch (ExecutionException e) {\n    Throwable cause = e.getCause();\n    log.error(\"Task failed\", cause);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "submit()",
+              "explanation": "Captures the result or the exception.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "get()",
+              "explanation": "Always use a timeout to prevent deadlocks.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4,
+                6
+              ],
+              "badge": "ExecutionException",
+              "explanation": "Must unwrap to find the real cause.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use timed gets. If the task fails, the exception is wrapped in an ExecutionException. You must call getCause to see what actually went wrong.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Task Cancellation",
+          "top": {
+            "label": "cancel(false)",
+            "badge": "Soft",
+            "tone": "neutral",
+            "code": "future.cancel(false);",
+            "points": [
+              "Only cancels if not started"
+            ]
+          },
+          "bottom": {
+            "label": "cancel(true)",
+            "badge": "Hard",
+            "tone": "good",
+            "code": "future.cancel(true);",
+            "points": [
+              "Interrupts running thread"
+            ]
+          },
+          "narration": "Use cancel(true) to interrupt the worker. But remember, it is cooperative. If your code does not check for interrupts, the thread will keep running.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Batch Operations",
+          "subtitle": "When to use invokeAll vs invokeAny",
+          "nodes": [
+            {
+              "label": "invokeAll",
+              "detail": "Wait for all to finish",
+              "tag": "Batch",
+              "accent": "sky"
+            },
+            {
+              "label": "invokeAny",
+              "detail": "First successful result",
+              "tag": "Hedged",
+              "accent": "amber"
+            },
+            {
+              "label": "Timeout",
+              "detail": "Enforce strict limits",
+              "tag": "Safety",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Need results from multiple sources? invokeAll waits for the group. Need the fastest response from replicas? invokeAny takes the first success and cancels the rest.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Always call get()",
+            "Unwrap ExecutionException",
+            "cancel(true) is cooperative"
+          ],
+          "nextPartTeaser": "Up Next: Sizing pools and the Virtual Thread revolution →",
+          "narration": "That is the async workflow. In Part 4, we cover sizing math and why Java 21 Virtual Threads change everything.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-sizing-and-virtual-threads",
+      "partTitle": "Sizing Pools & Modern Concurrency",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Scaling • Part 4 of 4",
+          "headline": "Stop guessing your pool size.",
+          "highlightWord": "guessing",
+          "subline": "Use math, not intuition, to size your thread pools.",
+          "narration": "Sizing pools is not about picking a random number like 200. It is about the ratio of wait time to compute time. And with Virtual Threads, the old rules are changing fast.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Sizing Formula",
+          "subtitle": "Threads = Cores * Util * (1 + Wait/Compute)",
+          "nodes": [
+            {
+              "label": "CPU Bound",
+              "detail": "Size = Cores + 1",
+              "tag": "Compute",
+              "accent": "sky"
+            },
+            {
+              "label": "I/O Bound",
+              "detail": "Use Wait/Compute ratio",
+              "tag": "Blocking",
+              "accent": "amber"
+            },
+            {
+              "label": "Virtual Threads",
+              "detail": "One per task",
+              "tag": "JEP 444",
+              "accent": "purple"
+            }
+          ],
+          "narration": "For CPU tasks, keep it close to your core count. For I/O, use the wait-to-compute ratio. But on Java 21, just use Virtual Threads for I/O and forget the pool math.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-vthreads",
+          "kind": "code-spotlight",
+          "title": "Java 21 Virtual Threads",
+          "filename": "VirtualPool.java",
+          "code": "try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {\n    executor.submit(() -> fetchProfile(id));\n    executor.submit(() -> fetchOrders(id));\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Virtual Threads",
+              "explanation": "Cheap, lightweight, and non-blocking.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "AutoCloseable",
+              "explanation": "Scoped execution for clean shutdown.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Virtual threads are not pooled. They are created per task and garbage collected. This is the new standard for blocking I/O workloads in modern Java.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Graceful Shutdown",
+          "caption": "The two-phase shutdown pattern",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "pool.shutdown();"
+            },
+            {
+              "kind": "command",
+              "text": "pool.awaitTermination(30, SECONDS);"
+            },
+            {
+              "kind": "command",
+              "text": "pool.shutdownNow();"
+            },
+            {
+              "kind": "comment",
+              "text": "# Always drain your pools!"
+            }
+          ],
+          "narration": "Never just kill your process. Use the two-phase shutdown: stop accepting new tasks, wait for existing ones, and force-stop only if the timeout hits.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Size based on I/O ratio",
+            "Use Virtual Threads for I/O",
+            "Always shutdown gracefully"
+          ],
+          "command": "git checkout topic/level-5/executors-and-thread-pools",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered thread pools. Checkout the companion branch to run the labs yourself. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
