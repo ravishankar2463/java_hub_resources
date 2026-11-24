@@ -1,0 +1,490 @@
+{
+  "chapterId": "level-0/intro-to-oops",
+  "level": "level-0",
+  "levelLabel": "Level 0",
+  "slug": "intro-to-oops",
+  "chapterTitle": "Intro to OOPS",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-0/intro-to-oops",
+  "branchName": "topic/level-0/intro-to-oops",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-class-vs-object",
+      "partTitle": "Class Blueprints & Heap vs Metaspace Memory",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "OOP Fundamentals • Part 1 of 4",
+          "headline": "Loose arrays and floating variables will wreck your app.",
+          "highlightWord": "wreck your app",
+          "subline": "Classes bundle state and behavior into a single cohesive unit.",
+          "narration": "Tracking financial balances across loose arrays quickly creates severe data sync bugs. Object-oriented programming fixes this by wrapping state and behavior inside a single compiled blueprint called a class.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Metaspace vs Heap Memory",
+          "subtitle": "Method bytecode is shared while fields belong to instances",
+          "nodes": [
+            {
+              "label": "Metaspace",
+              "detail": "Stores class metadata & shared method bytecode",
+              "tag": "Class",
+              "accent": "amber"
+            },
+            {
+              "label": "Heap Instance 1",
+              "detail": "accountNumber: ACC-101 | balance: 1250.00",
+              "tag": "Object",
+              "accent": "emerald"
+            },
+            {
+              "label": "Heap Instance 2",
+              "detail": "accountNumber: ACC-102 | balance: 85000.00",
+              "tag": "Object",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Class metadata and compiled bytecode reside once inside Metaspace. When you allocate objects on the Heap, each instance gets its own field values while sharing that exact same bytecode in Metaspace.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code",
+          "kind": "code-spotlight",
+          "title": "Encapsulating State in Java",
+          "filename": "BankAccount.java",
+          "code": "public class BankAccount {\n    private final String id;\n    private double balance;\n\n    public BankAccount(String id, double initial) {\n        this.id = id;\n        this.balance = initial;\n    }\n    public void deposit(double amount) {\n        if (amount > 0) balance += amount;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "private fields",
+              "explanation": "Encapsulates state so callers cannot write balance directly.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                9,
+                10
+              ],
+              "badge": "public methods",
+              "explanation": "Enforces business rules before mutating balance.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "In this class, private fields enforce encapsulation so external code cannot corrupt account balance. Every mutation must pass through public methods that validate business logic.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Procedural Data vs Encapsulated Class",
+          "top": {
+            "label": "Procedural Arrays",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "String[] ids = {\"ACC-101\"};\ndouble[] balances = {1000.0};\n// Easy to desynchronize!",
+            "points": [
+              "Decoupled data structures",
+              "No state validation"
+            ]
+          },
+          "bottom": {
+            "label": "Java OOP Class",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "BankAccount acc = new BankAccount(\"ACC-101\", 1000.0);\nacc.deposit(250.0);",
+            "points": [
+              "State and logic bound together",
+              "Guarantees domain invariants"
+            ]
+          },
+          "narration": "Procedural arrays decouple state from logic, causing hard-to-track bugs. Java classes protect fields with validated methods, guaranteeing your invariants remain enforced across your entire app.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Classes are blueprints loaded into Metaspace",
+            "Objects are distinct memory allocations on the Heap",
+            "Private encapsulation protects object integrity"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): What happens during object instantiation with new →",
+          "narration": "That is the core class model. Next in Part 2, we trace the exact four-step memory pipeline the JVM executes every time you call new.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-constructors-and-new-keyword",
+      "partTitle": "Constructors & What Happens During new",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Object Lifecycle • Part 2 of 4",
+          "headline": "A constructor with a return type is not a constructor.",
+          "highlightWord": "return type",
+          "subline": "Adding void turns it into a standard method that never initializes objects.",
+          "narration": "Adding void to a constructor signature turns it into a regular method. The compiler won't complain, but calling new will completely bypass your initialization logic.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The 4-Step Object Initialization Pipeline",
+          "subtitle": "What the JVM executes during new BankAccount()",
+          "nodes": [
+            {
+              "label": "1. Heap Memory",
+              "detail": "Reserves Heap space for object header and fields",
+              "tag": "Step 1",
+              "accent": "amber"
+            },
+            {
+              "label": "2. Zero Init",
+              "detail": "Sets fields to default 0, 0.0, false, or null",
+              "tag": "Step 2",
+              "accent": "sky"
+            },
+            {
+              "label": "3. Run Constructor",
+              "detail": "Executes init bytecode & field initializers",
+              "tag": "Step 3",
+              "accent": "purple"
+            },
+            {
+              "label": "4. Return Reference",
+              "detail": "Assigns Heap reference address to variable",
+              "tag": "Step 4",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When calling new, the JVM reserves Heap memory, zero-initializes fields to defaults, executes constructor init bytecode, and finally returns the reference address to your variable.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code",
+          "kind": "code-spotlight",
+          "title": "Shadowing & Constructor Chaining",
+          "filename": "BankAccount.java",
+          "code": "public class BankAccount {\n    private final String id;\n    private double balance;\n    public BankAccount(String id) {\n        this(id, 0.0);\n    }\n    public BankAccount(String id, double balance) {\n        this.id = id;\n        this.balance = balance;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "this(...) chaining",
+              "explanation": "Delegates to master constructor; must be the first statement.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                8,
+                9
+              ],
+              "badge": "shadowing",
+              "explanation": "Resolves parameter shadowing against instance fields.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use this to resolve parameter shadowing when argument names match class fields. You can also chain constructors using this with arguments, which must be the very first statement.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term",
+          "kind": "terminal",
+          "title": "Inspecting Synthesized Constructors",
+          "caption": "javap reveals javac bytecode generation",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Disassemble compiled bytecode for Counter class"
+            },
+            {
+              "kind": "command",
+              "text": "javap -c -p out/com/javahub/Counter.class"
+            },
+            {
+              "kind": "success",
+              "text": "public com.javahub.Counter();"
+            },
+            {
+              "kind": "output",
+              "text": "  0: aload_0"
+            },
+            {
+              "kind": "output",
+              "text": "  1: invokespecial #1 // Method java/lang/Object.\"<init>\":()V"
+            },
+            {
+              "kind": "output",
+              "text": "  4: return"
+            }
+          ],
+          "narration": "Disassembling a class file reveals compiler internals. Omitting constructors causes javac to automatically generate a default no-argument constructor calling Object's init method under the hood.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Constructor Mechanics Mastered",
+          "takeaways": [
+            "Constructors have no return type—not even void",
+            "JVM zero-initializes fields before constructor code runs",
+            "Explicit constructors suppress compiler default no-arg generation"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Hidden bytecode slot 0 & Static vs Instance methods →",
+          "narration": "Now you know how objects instantiate. In Part 3, we crack open JVM bytecode to discover how instance methods access the hidden this reference.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-this-keyword-and-static-methods",
+      "partTitle": "The this Keyword Bytecode & Static vs Instance Methods",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Bytecode Internals • Part 3 of 4",
+          "headline": "Instance methods receive a hidden argument you never wrote.",
+          "highlightWord": "hidden argument",
+          "subline": "Slot 0 in local variable tables automatically holds the this reference.",
+          "narration": "Instance methods don't magically know which object called them. At the bytecode level, the JVM silently passes the target object reference as hidden parameter zero.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code",
+          "kind": "code-spotlight",
+          "title": "Disassembling Method Calls",
+          "filename": "BankAccount.java",
+          "code": "public class BankAccount {\n    private double balance;\n    public void deposit(double amount) {\n        if (amount > 0) {\n            this.balance += amount;\n        }\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4,
+                5,
+                6
+              ],
+              "badge": "aload_0 bytecode",
+              "explanation": "Reads hidden this reference passed implicitly into local variable slot 0.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Inspecting compiled bytecode shows aload_0 pushing this from local variable slot zero onto the operand stack. Static methods belong to the class itself, so they lack slot zero completely.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Instance Methods vs Static Utilities",
+          "top": {
+            "label": "Instance Method",
+            "badge": "Stateful",
+            "tone": "good",
+            "code": "public void deposit(double amount) {\n    this.balance += amount;\n}",
+            "points": [
+              "Operates on instance fields",
+              "Receives hidden this reference"
+            ]
+          },
+          "bottom": {
+            "label": "Static Method",
+            "badge": "Stateless Utility",
+            "tone": "neutral",
+            "code": "public static double calcTax(double val, double rate) {\n    return val * rate;\n}",
+            "points": [
+              "Invoked on class name directly",
+              "No instance target; referencing this fails"
+            ]
+          },
+          "narration": "Use static methods for stateless pure functions that rely only on parameters. Use instance methods when logic depends on fields belonging to a specific object instance.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code",
+          "kind": "code-spotlight",
+          "title": "Fluent Builder Pattern with return this",
+          "filename": "QueryBuilder.java",
+          "code": "public class QueryBuilder {\n    private String table;\n    private int limit;\n    public QueryBuilder from(String table) {\n        this.table = table;\n        return this;\n    }\n    public QueryBuilder limit(int limit) {\n        this.limit = limit;\n        return this;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                6,
+                10
+              ],
+              "badge": "return this;",
+              "explanation": "Returns current instance reference to enable method chaining.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Returning this from instance methods enables fluent method chaining. Callers can trigger consecutive configuration calls on a single target instance in a clean readable chain.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Method Semantics Locked In",
+          "takeaways": [
+            "aload_0 passes hidden this reference to instance methods",
+            "Static methods belong to classes and have no this reference",
+            "Returning this enables fluent method chaining"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Heap aliasing & Java 14+ NullPointerException diagnostics →",
+          "narration": "That covers method mechanics. Next in Part 4, see how reference variables alias Heap memory and how modern Java pinpoints NullPointerExceptions.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-references-and-npe",
+      "partTitle": "Object References, Memory Aliasing & NPE Diagnostics",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Memory Management • Part 4 of 4",
+          "headline": "Copying an object variable never copies the object.",
+          "highlightWord": "never copies",
+          "subline": "Variables hold remote memory addresses, not the underlying data.",
+          "narration": "Assigning one object variable to another never copies data on the Heap. It only copies the reference address, creating two pointers to the exact same object.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Stack References & Heap Objects",
+          "subtitle": "Two variables aliasing a single Heap instance",
+          "nodes": [
+            {
+              "label": "Stack: acc1",
+              "detail": "Reference address pointing to 0x8F00",
+              "tag": "Address",
+              "accent": "sky"
+            },
+            {
+              "label": "Stack: acc2",
+              "detail": "Copied address pointing to 0x8F00",
+              "tag": "Address",
+              "accent": "sky"
+            },
+            {
+              "label": "Heap Object (0x8F00)",
+              "detail": "accountNumber: ACC-101 | balance: 1500.00",
+              "tag": "Heap Data",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Stack variables hold reference addresses pointing to Heap locations. When two variables share an address, modifying object state through one reference instantly updates what the other sees.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "Reference Equality vs Value Equality",
+          "top": {
+            "label": "== Operator",
+            "badge": "Address Check",
+            "tone": "neutral",
+            "code": "if (acc1 == acc2) {\n    // Checks if variables share same address\n}",
+            "points": [
+              "Compares reference memory addresses",
+              "Ignores internal instance field values"
+            ]
+          },
+          "bottom": {
+            "label": ".equals() Method",
+            "badge": "Logical Check",
+            "tone": "good",
+            "code": "if (str1.equals(str2)) {\n    // Checks if contents are equal\n}",
+            "points": [
+              "Compares field state values",
+              "Standard for strings and domain objects"
+            ]
+          },
+          "narration": "Using double equals compares whether two reference variables point to the identical memory address. To compare actual field values across separate objects, always call the equals method instead.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-term",
+          "kind": "terminal",
+          "title": "Helpful NullPointerExceptions (Java 14+)",
+          "caption": "Precise diagnostic message pinpoints null references",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Executing method call on a null variable"
+            },
+            {
+              "kind": "command",
+              "text": "java -cp out com.javahub.banking.Main"
+            },
+            {
+              "kind": "error",
+              "text": "Exception in thread \"main\" java.lang.NullPointerException:"
+            },
+            {
+              "kind": "error",
+              "text": "  Cannot invoke \"BankAccount.deposit(double)\" because \"acc3\" is null"
+            },
+            {
+              "kind": "comment",
+              "text": "# JVM pinpoints variable 'acc3' directly!"
+            }
+          ],
+          "narration": "Invoking methods on null references throws a NullPointerException. Modern Java prints exact diagnostic details in the stack trace, identifying the precise variable that evaluated to null.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Object variables hold Heap memory addresses",
+            "Use equals() for content comparison, not ==",
+            "Validate inputs early with Objects.requireNonNull"
+          ],
+          "command": "git checkout topic/level-0/intro-to-oops",
+          "nextPartTeaser": "Full roadmap + labs at ravishankar2463.github.io/java_hub",
+          "narration": "You just mastered Java object-oriented fundamentals. Run git checkout topic/level-0/intro-to-oops in your terminal to explore the full lab and verified tests.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
