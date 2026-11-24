@@ -33,6 +33,8 @@ export interface CompareSide {
 export interface BaseBeat {
   id: string;
   narration: string;
+  /** Optional spoken-only override for TTS (captions still display `narration`) */
+  ttsNarration?: string;
   /** Relative path inside video-studio/public/ (auto-filled by TTS or .human.wav override) */
   audioFile?: string;
   /** Exact duration in seconds (measured from WAV + tight breath padding) */

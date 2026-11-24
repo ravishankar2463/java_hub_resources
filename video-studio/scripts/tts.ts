@@ -7,6 +7,63 @@ const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 /** Snappy YouTube Shorts breath gap between beats */
 const BEAT_PADDING_SEC = 0.16;
 
+/**
+ * Common English homographs & Java tech tokens that TTS models can mispronounce.
+ * - `live` ("live inside a class" /lɪv/ vs "live traffic" /laɪv/)
+ * - `read` (/riːd/ vs /rɛd/), `lead` (/liːd/ vs /lɛd/), `close` (/kloʊz/ vs /kloʊs/)
+ * - `record` (Java record noun vs verb), `invalid`, `use`, `wound`
+ */
+const HOMOGRAPH_WARNINGS: Array<{ pattern: RegExp; tip: string }> = [
+  {
+    pattern: /\blive\b(?!\s+(?:reload|traffic|stream|demo|server|production|coding|update|data|metrics|view))/i,
+    tip: '"live" can be mispronounced as /laɪv/ ("live TV") instead of /lɪv/ — consider "reside", "sit", or "belong", or set beat.ttsNarration.',
+  },
+  {
+    pattern: /\bread\b/i,
+    tip: '"read" is a homograph (/riːd/ vs /rɛd/) — verify tense pronunciation or set beat.ttsNarration.',
+  },
+  {
+    pattern: /\b(lead|close|record|invalid)\b/i,
+    tip: 'Contains a homograph ("lead", "close", "record", or "invalid") — spot-check audio or set beat.ttsNarration if mispronounced.',
+  },
+];
+
+const SPOKEN_NORMALIZERS: Array<[RegExp, string]> = [
+  // Verb "live" in spatial Java contexts -> unambiguous "reside" for TTS only (captions stay unchanged)
+  [/\blive\s+(inside|in|on|within|under|outside)\b/gi, "reside $1"],
+  [/\blives\s+(inside|in|on|within|under|outside)\b/gi, "resides $1"],
+  // Common Java CLI / Big-O tokens
+  [/\bjavac\b/g, "java c"],
+  [/\bjavap\b/g, "java p"],
+  [/\bjavadoc\b/gi, "java doc"],
+  [/\bNIO\.2\b/g, "N I O 2"],
+  [/\bO\(1\)/g, "O of 1"],
+  [/\bO\(n\)/gi, "O of N"],
+  [/\bO\(log\s*n\)/gi, "O of log N"],
+  [/\bO\(n\s*log\s*n\)/gi, "O of N log N"],
+];
+
+export function normalizeTextForTts(
+  text: string,
+  beatId: string
+): string {
+  let spoken = text;
+
+  for (const [pattern, replacement] of SPOKEN_NORMALIZERS) {
+    if (pattern.test(spoken)) {
+      spoken = spoken.replace(pattern, replacement);
+    }
+  }
+
+  for (const { pattern, tip } of HOMOGRAPH_WARNINGS) {
+    if (pattern.test(spoken)) {
+      console.warn(`[TTS Homograph Check] (${beatId}) ${tip}`);
+    }
+  }
+
+  return spoken;
+}
+
 let cachedTts: KokoroTTS | null = null;
 
 async function getTtsEngine(): Promise<KokoroTTS> {
@@ -88,10 +145,14 @@ export async function synthesizePartAudio(
     const absPath = path.join(audioAbsDir, filename);
     const relPath = path.posix.join(audioRelDir, filename);
 
+    const spokenText = beat.ttsNarration
+      ? beat.ttsNarration
+      : normalizeTextForTts(beat.narration, beat.id);
+
     console.log(
       `[TTS] (${i + 1}/${part.beats.length}) ${filename} (${voice}, ${speed}x)...`
     );
-    const audio = await tts.generate(beat.narration, {
+    const audio = await tts.generate(spokenText, {
       voice: voice as Parameters<KokoroTTS["generate"]>[1] extends { voice?: infer V } ? V : never,
       speed,
     });
