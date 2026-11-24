@@ -1,0 +1,483 @@
+{
+  "chapterId": "level-1/memory-references-copying",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "memory-references-copying",
+  "chapterTitle": "Memory References & Copying",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/memory-references-copying",
+  "branchName": "topic/level-1/memory-references-copying",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-pass-by-value",
+      "partTitle": "Java is ALWAYS Pass-by-Value",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Memory Internals • Part 1 of 4",
+          "headline": "Is Java pass-by-value or pass-by-reference?",
+          "highlightWord": "pass-by-value",
+          "subline": "The answer is always the same, but the behavior changes based on what you pass.",
+          "narration": "Is Java pass-by-value or pass-by-reference? New developers get tripped up here constantly. If you reassign an object inside a method, it fails, but if you mutate it, it succeeds. Let's clear this up.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Reference Variable",
+          "subtitle": "Stacks, Heaps, and Copies",
+          "nodes": [
+            {
+              "label": "Stack Frame",
+              "detail": "Holds the reference (the address)",
+              "tag": "Variable",
+              "accent": "sky"
+            },
+            {
+              "label": "Heap",
+              "detail": "The actual object instance",
+              "tag": "Instance",
+              "accent": "emerald"
+            },
+            {
+              "label": "Method Call",
+              "detail": "Copies the address, not the object",
+              "tag": "Pass",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Think of the heap object as a house and the variable as a piece of paper with its address. When you pass a variable, Java photocopies the paper. Both papers point to the same house.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-mutation",
+          "kind": "code-spotlight",
+          "title": "Mutation vs. Reassignment",
+          "filename": "PassByValue.java",
+          "code": "static void modify(Car c) {\n    c.setColor(\"Blue\"); // Mutates shared heap object\n}\n\nstatic void replace(Car c) {\n    c = new Car(\"Green\"); // Reassigns local copy only\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Mutation",
+              "explanation": "Follows the copied address to the heap. The caller sees the change.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Reassignment",
+              "explanation": "Changes the local address on the paper. The caller's paper remains unchanged.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "If you mutate the object, you are following the copied address to the heap. If you reassign the parameter, you are just writing a new address on your local photocopy. The caller never sees the swap.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Primitive vs Reference",
+          "top": {
+            "label": "Primitive (int, boolean)",
+            "badge": "Value Copy",
+            "tone": "neutral",
+            "code": "int a = 10;\nint b = a; // b is a copy of 10",
+            "points": [
+              "Variable holds the raw data",
+              "No heap object involved"
+            ]
+          },
+          "bottom": {
+            "label": "Reference Type (Objects)",
+            "badge": "Address Copy",
+            "tone": "good",
+            "code": "Car a = new Car();\nCar b = a; // b is a copy of the address",
+            "points": [
+              "Variable holds a pointer",
+              "Aliasing occurs by default"
+            ]
+          },
+          "narration": "Primitives copy the raw data. Objects copy the address. This aliasing is why two variables can point to the same object. It is a feature, until you accidentally corrupt shared state.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Java is always pass-by-value",
+            "Objects are copied by reference address",
+            "Reassignment is local to the method"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why Object.clone() is a trap →",
+          "narration": "You now understand the stack-heap split. In Part 2, we look at why Object dot clone is a legacy minefield and how to build proper copies.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-cloning-vs-copying",
+      "partTitle": "Why Object.clone() is a Trap",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Copying Strategies • Part 2 of 4",
+          "headline": "Stop using Object.clone() in your production code.",
+          "highlightWord": "Stop using",
+          "subline": "It bypasses constructors and creates shallow copies that lead to silent bugs.",
+          "narration": "Stop using Object dot clone. It was a mistake in Java 1.0. It performs a shallow copy, bypasses your constructors, and requires a marker interface that does nothing.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Shallow vs. Deep Copy",
+          "subtitle": "The nested object problem",
+          "nodes": [
+            {
+              "label": "Original",
+              "detail": "Object -> Nested Object",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Shallow Copy",
+              "detail": "New Object -> Same Nested Object",
+              "tag": "Buggy",
+              "accent": "amber"
+            },
+            {
+              "label": "Deep Copy",
+              "detail": "New Object -> New Nested Object",
+              "tag": "Safe",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Shallow copies just copy the reference to nested objects. If you modify the nested object in the copy, you mutate the original. A deep copy recursively creates new instances for everything.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-clone",
+          "kind": "code-spotlight",
+          "title": "The Cloneable Failure",
+          "filename": "Employee.java",
+          "code": "@Override\npublic Employee clone() {\n    try {\n        return (Employee) super.clone();\n    } catch (CloneNotSupportedException e) {\n        throw new AssertionError();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "super.clone()",
+              "explanation": "Native JVM call. Bypasses your constructors entirely.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Checked Exception",
+              "explanation": "Forces ugly try-catch blocks for a method that shouldn't fail.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Super dot clone is a native call that ignores your constructors. It skips invariant checks and forces you to deal with checked exceptions. It is fragile, dangerous, and outdated.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "The Shallow Copy Gotcha",
+          "caption": "Mutating the copy affects the original",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "Employee e1 = new Employee(\"Priya\", addr);"
+            },
+            {
+              "kind": "command",
+              "text": "Employee e2 = e1.clone();"
+            },
+            {
+              "kind": "command",
+              "text": "e2.address.city = \"Seattle\";"
+            },
+            {
+              "kind": "output",
+              "text": "System.out.println(e1.address.city);"
+            },
+            {
+              "kind": "error",
+              "text": "Output: Seattle"
+            }
+          ],
+          "narration": "Because clone is shallow, e2 shares the same address object as e1. Changing the city in the clone silently corrupts the original instance. This is why we use copy constructors instead.",
+          "durationSec": 13,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Object.clone() is a shallow copy",
+            "It bypasses constructors",
+            "Avoid Cloneable interface"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Copy constructors vs. Static Factories →",
+          "narration": "Cloneable is a dead end. In Part 3, we implement proper copy constructors and static factory methods that handle deep copies cleanly.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-copy-constructors",
+      "partTitle": "The Right Way: Copy Constructors",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Best Practices • Part 3 of 4",
+          "headline": "Copy constructors are the gold standard.",
+          "highlightWord": "gold standard",
+          "subline": "They are explicit, type-safe, and work perfectly with final fields.",
+          "narration": "Copy constructors are the gold standard. They are explicit, type-safe, and work perfectly with final fields. They make it obvious when you are creating a deep copy versus a shallow one.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-copy-ctor",
+          "kind": "code-spotlight",
+          "title": "Implementing a Copy Constructor",
+          "filename": "Customer.java",
+          "code": "public Customer(Customer other) {\n    this.name = other.name;\n    this.address = new Address(other.address);\n    this.tags = new ArrayList<>(other.tags);\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Immutable",
+              "explanation": "String is immutable, so sharing the reference is safe.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Deep Copy",
+              "explanation": "Explicitly create new instances for mutable fields.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For immutable fields like Strings, just copy the reference. For mutable fields like Address or List, call their own copy constructors or create a new wrapper. This is explicit and safe.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Clone vs. Copy Constructor",
+          "top": {
+            "label": "Object.clone()",
+            "badge": "Legacy",
+            "tone": "bad",
+            "code": "e.clone(); // No type safety",
+            "points": [
+              "Bypasses constructors",
+              "Requires casting",
+              "Shallow by default"
+            ]
+          },
+          "bottom": {
+            "label": "Copy Constructor",
+            "badge": "Modern",
+            "tone": "good",
+            "code": "new Customer(e); // Type safe",
+            "points": [
+              "Runs constructor logic",
+              "No casting needed",
+              "Explicit deep copying"
+            ]
+          },
+          "narration": "Copy constructors win on every metric. They run your validation logic, require no casting, and make deep copying a deliberate design choice rather than an accidental side effect.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code-factory",
+          "kind": "code-spotlight",
+          "title": "Static Factory Alternative",
+          "filename": "Customer.java",
+          "code": "public static Customer copyOf(Customer other) {\n    return new Customer(other);\n}\n\n// Usage:\nCustomer c2 = Customer.copyOf(c1);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Static Factory",
+              "explanation": "Clean, readable API for copying objects.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "You can also use a static copy factory. It is just a wrapper around the copy constructor, but it provides a more fluent API and can even return cached instances if needed.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use copy constructors",
+            "Deep copy mutable fields",
+            "Static factories for clean APIs"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Defensive Copying & TOCTOU bugs →",
+          "narration": "Copy constructors are your best friend. In Part 4, we finish with defensive copying to protect your internal state from external mutation.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-defensive-copying",
+      "partTitle": "Defensive Copying & TOCTOU",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Security & Safety • Part 4 of 4",
+          "headline": "Your private fields are not actually private.",
+          "highlightWord": "not private",
+          "subline": "If you return mutable references, callers can destroy your internal invariants.",
+          "narration": "Your private fields are not actually private. If you return a mutable reference from a getter, the caller can modify your internal state. Defensive copying is the only way to lock it down.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-defensive",
+          "kind": "code-spotlight",
+          "title": "The Defensive Copy Pattern",
+          "filename": "SafePeriod.java",
+          "code": "public SafePeriod(Date start, Date end) {\n    this.start = new Date(start.getTime());\n    this.end = new Date(end.getTime());\n    if (this.start.after(this.end)) throw new Error();\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Copy First",
+              "explanation": "Copy before validation to avoid TOCTOU race conditions.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Validate",
+              "explanation": "Check the private copy, not the caller's reference.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always copy before validating. If you validate first, a concurrent thread could mutate the date in the gap between the check and the copy. This is a classic TOCTOU race condition.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "The Getter Leak",
+          "caption": "Don't return the original reference!",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "public Date getStart() {"
+            },
+            {
+              "kind": "command",
+              "text": "    return new Date(start.getTime()); // Return a copy!"
+            },
+            {
+              "kind": "command",
+              "text": "}"
+            },
+            {
+              "kind": "output",
+              "text": "// If you return 'start', the caller can:"
+            },
+            {
+              "kind": "error",
+              "text": "period.getStart().setTime(0); // Corrupts internal state"
+            }
+          ],
+          "narration": "Never return the raw reference in a getter. Always return a defensive copy. If you return the original, the caller can call setTime on it and bypass your class invariants entirely.",
+          "durationSec": 13,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Modern Alternatives",
+          "top": {
+            "label": "Legacy (java.util.Date)",
+            "badge": "Mutable",
+            "tone": "bad",
+            "code": "new Date()",
+            "points": [
+              "Requires defensive copies",
+              "Thread-unsafe"
+            ]
+          },
+          "bottom": {
+            "label": "Modern (java.time.Instant)",
+            "badge": "Immutable",
+            "tone": "good",
+            "code": "Instant.now()",
+            "points": [
+              "No copying needed",
+              "Thread-safe"
+            ]
+          },
+          "narration": "The best way to avoid defensive copying is to use immutable types. Java 8's java dot time package makes defensive copying obsolete. Use Instant or LocalDate and stop worrying about aliasing.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Copy before validation",
+            "Defensive copies in getters",
+            "Use immutable types (java.time)"
+          ],
+          "command": "git checkout topic/level-1/memory-references-copying",
+          "nextPartTeaser": "Full lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered memory references. Checkout the branch in the description to run the lab and see these patterns in action. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
