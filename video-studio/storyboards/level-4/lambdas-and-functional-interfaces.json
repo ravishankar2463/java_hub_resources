@@ -1,0 +1,686 @@
+{
+  "chapterId": "level-4/lambdas-and-functional-interfaces",
+  "level": "level-4",
+  "levelLabel": "Level 4",
+  "slug": "lambdas-and-functional-interfaces",
+  "chapterTitle": "Lambdas and Functional Interfaces",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-4/lambdas-and-functional-interfaces",
+  "branchName": "topic/level-4/lambdas-and-functional-interfaces",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-functional-interfaces-and-sam-rules",
+      "partTitle": "Functional Interfaces & @FunctionalInterface Demystified",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Lambdas Core • Part 1 of 5",
+          "headline": "Why do lambdas require a single abstract method?",
+          "highlightWord": "single abstract method",
+          "subline": "It is not just syntax sugar. The compiler depends on target typing to map your code cleanly.",
+          "narration": "Before Java 8, passing a simple piece of logic into a method required six lines of anonymous inner class ceremony. Lambdas changed that, but what actually makes an interface compatible with a lambda?",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Anonymous Inner Class vs. Lambda Expression",
+          "top": {
+            "label": "Legacy Java 7",
+            "badge": "6 Lines Boilerplate",
+            "tone": "bad",
+            "code": "Collections.sort(names, new Comparator<String>() {\n    @Override\n    public int compare(String a, String b) {\n        return Integer.compare(a.length(), b.length());\n    }\n});",
+            "points": [
+              "Creates a separate class file on disk",
+              "Heavy visual noise obscures business logic"
+            ]
+          },
+          "bottom": {
+            "label": "Modern Java",
+            "badge": "1 Clean Line",
+            "tone": "good",
+            "code": "names.sort((a, b) -> Integer.compare(a.length(), b.length()));",
+            "points": [
+              "Compiler infers types from functional target",
+              "Zero unnecessary boilerplate classes"
+            ]
+          },
+          "narration": "Sorting a list by length used to take six lines of custom inner class boilerplate. With lambdas, you write a single line of concise parameter-to-expression mapping.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-sam",
+          "kind": "code-spotlight",
+          "title": "Anatomy of @FunctionalInterface",
+          "filename": "PaymentGateway.java",
+          "code": "@FunctionalInterface\npublic interface PaymentGateway {\n    PaymentReceipt charge(String accountId, long amountInCents);\n\n    default PaymentReceipt chargeWithLogging(String accountId, long amount) {\n        return charge(accountId, amount);\n    }\n\n    static boolean isValidAccount(String accountId) {\n        return accountId != null && !accountId.isBlank();\n    }\n\n    @Override\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                1,
+                3
+              ],
+              "badge": "SAM Rule",
+              "explanation": "Exactly one non-Object abstract method forms the Single Abstract Method target.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                7,
+                9,
+                10
+              ],
+              "badge": "Allowed Methods",
+              "explanation": "Default methods and static helpers provide implementation, so they do not count against the limit.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                13,
+                14
+              ],
+              "badge": "Object Overrides",
+              "explanation": "Abstract methods overriding public Object methods (like equals) are inherited by all classes and do not count.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "An interface annotated with FunctionalInterface must have exactly one abstract method. Default methods, static helpers, and overrides of Object methods like equals do not count against this single-method limit.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-sam",
+          "kind": "flow-diagram",
+          "title": "SAM Compiler Validation",
+          "subtitle": "How javac decides if an interface supports lambdas",
+          "nodes": [
+            {
+              "label": "Interface Candidate",
+              "detail": "Target interface evaluated by the compiler",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "Filter Non-Object Methods",
+              "detail": "Excludes default, static, and Object method signatures",
+              "tag": "Filter",
+              "accent": "amber"
+            },
+            {
+              "label": "Count Remaining Abstract",
+              "detail": "Validates exact count of remaining abstract methods",
+              "tag": "Validation",
+              "accent": "purple"
+            },
+            {
+              "label": "Functional Interface Valid",
+              "detail": "Accepted as a valid target for lambda expressions",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When the compiler inspects an interface, it ignores default methods, static methods, and Object class overrides. If exactly one non-Object abstract method remains, it qualifies as a valid functional interface target.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Functional interfaces need exactly one abstract method (SAM)",
+            "Default, static, and Object overrides don't break SAM",
+            "@FunctionalInterface asks javac to enforce the rule"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Scoping, why lambdas lack their own 'this', and effectively final capture rules ->",
+          "narration": "That's the contract. In Part 2, we explore variable capture, lexical scope, and why captured local variables must be effectively final.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-scoping-and-effectively-final",
+      "partTitle": "Lambda Scoping & Effectively Final Capture",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Variable Capture • Part 2 of 5",
+          "headline": "Why won't Java let you mutate local variables inside a lambda?",
+          "highlightWord": "mutate local variables",
+          "subline": "It is not an oversight. Java enforces this to prevent race conditions across threads.",
+          "narration": "Try mutating a local counter inside a Java lambda and your code won't compile. Java enforces this strictly to prevent subtle concurrency bugs.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Lexical Scope: Anonymous Class vs. Lambda",
+          "top": {
+            "label": "Anonymous Inner Class",
+            "badge": "New Class Scope",
+            "tone": "neutral",
+            "code": "new Runnable() {\n    private final String label = \"inner\";\n    public void run() {\n        System.out.println(this.label);\n    }\n};",
+            "points": [
+              "'this' refers to the inner class instance",
+              "Can shadow local variables of enclosing class"
+            ]
+          },
+          "bottom": {
+            "label": "Lambda Expression",
+            "badge": "Enclosing Scope",
+            "tone": "good",
+            "code": "Runnable r = () -> {\n    // 'this' refers to the outer class instance!\n    System.out.println(this.label);\n};",
+            "points": [
+              "'this' refers to the enclosing outer object",
+              "Variable shadowing is strictly forbidden"
+            ]
+          },
+          "narration": "Unlike anonymous inner classes, a lambda does not create its own lexical scope. Inside a lambda, 'this' points directly to the enclosing outer instance, and local variables cannot be shadowed.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Stack Frame vs Heap Capture",
+          "subtitle": "Why Java copies primitive locals by value",
+          "nodes": [
+            {
+              "label": "Method Stack Frame",
+              "detail": "Holds local variable threshold on execution stack",
+              "tag": "Stack",
+              "accent": "sky"
+            },
+            {
+              "label": "Value Copied to Heap",
+              "detail": "Lambda object captures a copy of threshold value",
+              "tag": "Capture",
+              "accent": "amber"
+            },
+            {
+              "label": "Stack Frame Popped",
+              "detail": "Method returns and stack frame memory is reclaimed",
+              "tag": "Cleanup",
+              "accent": "purple"
+            },
+            {
+              "label": "Lambda Runs on Heap",
+              "detail": "Lambda reads its own safe copied value independently",
+              "tag": "Execution",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Local variables reside in stack frames that disappear when methods return. Because a lambda might execute later on a different thread, Java captures local variables by copying their values onto the heap.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code-scope",
+          "kind": "code-spotlight",
+          "title": "Working with Capture Rules",
+          "filename": "ScopeRules.java",
+          "code": "public class ScopeRules {\n    private int instanceCount = 0;\n\n    public void process(List<Order> orders) {\n        long threshold = 10_000L;\n        AtomicInteger counter = new AtomicInteger(0);\n\n        orders.forEach(order -> {\n            if (order.totalCents() >= threshold) {\n                counter.incrementAndGet();\n                this.instanceCount++;\n            }\n        });\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Effectively Final",
+              "explanation": "Assigned once and never changed in scope, allowing safe read access inside the lambda.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                10
+              ],
+              "badge": "Atomic Workaround",
+              "explanation": "The reference 'counter' is final; mutating internal AtomicInteger state is safe across threads.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                11
+              ],
+              "badge": "Field Access",
+              "explanation": "Instance and static fields reside on the heap and can be mutated via the captured 'this' reference.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "You can read effectively final locals that are never reassigned. To track state mutations across lambda executions, use an AtomicInteger reference or update instance fields through the captured 'this' reference.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Lambdas share lexical scope with enclosing outer class",
+            "Captured local variables must be final or effectively final",
+            "Instance and static fields bypass local final restrictions"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The 4 method reference types and the bound NPE trap ->",
+          "narration": "Now you know the variable capture rules. In Part 3, we look at the four types of method references and the subtle evaluation gotcha with bound references.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-method-references-and-gotchas",
+      "partTitle": "The 4 Types of Method References & NPE Pitfalls",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Method References • Part 3 of 5",
+          "headline": "Can a method reference throw a NullPointerException at declaration?",
+          "highlightWord": "throw NullPointerException",
+          "subline": "Bound instance references evaluate their target receiver object immediately.",
+          "narration": "Method references aren't just syntax sugar—bound method references can throw silent NPEs before execution.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-refs",
+          "kind": "code-spotlight",
+          "title": "The 4 Method Reference Varieties",
+          "filename": "MethodRefTypes.java",
+          "code": "Function<String, Integer> parse = Integer::parseInt;\n\nString prefix = \"ORDER-\";\nFunction<String, String> addPrefix = prefix::concat;\n\nBiFunction<String, String, Boolean> startsWith = String::startsWith;\n\nSupplier<List<String>> newList = ArrayList::new;",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "1. Static Method",
+              "explanation": "ClassName::staticMethod maps parameters directly to static method arguments.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "2. Bound Instance Method",
+              "explanation": "instanceExpr::instanceMethod binds to a specific target instance evaluated immediately.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "3. Unbound Instance Method",
+              "explanation": "ClassName::instanceMethod makes the first parameter the receiver target.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "4. Constructor Reference",
+              "explanation": "ClassName::new binds directly to object or array constructors.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Java features four method reference types: static methods, bound instance methods attached to a fixed target, unbound instance methods taking receiver as first parameter, and constructor references.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Bound Reference Evaluation Trap",
+          "top": {
+            "label": "Bound Reference (Eager Evaluation)",
+            "badge": "⚠️ Eager NPE",
+            "tone": "bad",
+            "code": "// Evaluates getLogger() IMMEDIATELY at creation time!\nConsumer<String> logNow = getLogger()::info;",
+            "points": [
+              "Evaluates left side immediately on creation",
+              "Throws NPE right away if getLogger() returns null"
+            ]
+          },
+          "bottom": {
+            "label": "Explicit Lambda (Lazy Evaluation)",
+            "badge": "✅ Lazy & Safe",
+            "tone": "good",
+            "code": "// Evaluates getLogger() LAZILY when accept() is called\nConsumer<String> logLater = msg -> getLogger().info(msg);",
+            "points": [
+              "Defers expression evaluation until invocation",
+              "Avoids premature startup null pointer errors"
+            ]
+          },
+          "narration": "Look closely at bound instance references. The target expression on the left of double colon is evaluated immediately when created. If it evaluates to null, it throws a NullPointerException right away.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-term-npe",
+          "kind": "terminal",
+          "title": "Inspecting Eager Reference NPE",
+          "caption": "Stack trace proves NPE happens during method reference creation",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Compiling bound vs unbound lambda references"
+            },
+            {
+              "kind": "command",
+              "text": "javac -d out src/MethodRefDemo.java"
+            },
+            {
+              "kind": "command",
+              "text": "java -cp out MethodRefDemo"
+            },
+            {
+              "kind": "error",
+              "text": "Exception in thread \"main\" java.lang.NullPointerException"
+            },
+            {
+              "kind": "output",
+              "text": "  at MethodRefDemo.main(MethodRefDemo.java:12) // Thrown at creation!"
+            }
+          ],
+          "narration": "When running this code, notice the stack trace. The NullPointerException fires during method reference assignment, long before the functional interface method is ever called.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Method references come in static, bound, unbound, and constructor forms",
+            "Bound references evaluate the target instance expression immediately",
+            "Use lambdas when target expression evaluation must be deferred"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): java.util.function catalog, primitive performance, and function composition ->",
+          "narration": "Now you know how method references evaluate. In Part 4, we examine the built-in function catalog and how primitive specializations prevent garbage collection overhead.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-built-in-functional-interfaces-and-primitives",
+      "partTitle": "Built-in Functions & Primitive Specializations",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Function Catalog • Part 4 of 5",
+          "headline": "Can Predicate<Integer> slow down your high-throughput stream?",
+          "highlightWord": "slow down",
+          "subline": "Autoboxing primitives in tight loops creates heavy heap allocations and GC spikes.",
+          "narration": "Using Predicate Integer inside a loop processing millions of items creates massive garbage collection pressure. Here is how primitive specializations fix it.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "java.util.function Core Hierarchy",
+          "subtitle": "4 core functional shapes power the standard library",
+          "nodes": [
+            {
+              "label": "Predicate<T>",
+              "detail": "Takes T, returns boolean (test condition)",
+              "tag": "Test",
+              "accent": "sky"
+            },
+            {
+              "label": "Function<T, R>",
+              "detail": "Takes T, returns R (maps value)",
+              "tag": "Transform",
+              "accent": "amber"
+            },
+            {
+              "label": "Consumer<T>",
+              "detail": "Takes T, returns void (performs action)",
+              "tag": "Action",
+              "accent": "purple"
+            },
+            {
+              "label": "Supplier<T>",
+              "detail": "Takes zero args, returns T (produces value)",
+              "tag": "Supply",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The standard library builds on four core functional shapes: Predicates for testing conditions, Functions for mapping values, Consumers for side effects, and Suppliers for deferred value generation.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-primitives",
+          "kind": "code-spotlight",
+          "title": "Eliminating Autoboxing Overhead",
+          "filename": "PrimitiveFunctions.java",
+          "code": "Predicate<Integer> boxedCheck = n -> n > 0;\n\nIntPredicate primitiveCheck = n -> n > 0;\n\nToIntFunction<String> stringLength = String::length;\nLongConsumer logLatency = nanos -> Metrics.record(nanos);\nDoubleSupplier randomRate = Math::random;",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Boxed Generic Trap",
+              "explanation": "Forces Integer.valueOf(n) for every primitive, allocating objects on the heap.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "IntPredicate",
+              "explanation": "Accepts raw primitive int with zero object allocation.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                7
+              ],
+              "badge": "Primitive Specializations",
+              "explanation": "ToIntFunction, LongConsumer, and DoubleSupplier pass unboxed primitive values directly.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Generic functional interfaces like Predicate Integer force autoboxing for primitive values. Primitive specializations like IntPredicate, ToIntFunction, and LongConsumer operate directly on primitives with zero heap allocation.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-code-compose",
+          "kind": "code-spotlight",
+          "title": "Composing Logic Pipelines",
+          "filename": "Composition.java",
+          "code": "Predicate<User> isActive = User::isActive;\nPredicate<User> isVerified = User::isVerified;\n\nPredicate<User> validUser = isActive\n        .and(isVerified)\n        .and(Predicate.not(User::isSuspended));\n\nFunction<String, String> clean = String::trim;\nFunction<String, String> lower = s -> s.toLowerCase(Locale.ROOT);\nFunction<String, String> pipeline = clean.andThen(lower);",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "Predicate Chaining",
+              "explanation": "Combine checks with and(), or(), negate(), and Predicate.not() for clean readability.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                8,
+                9,
+                10
+              ],
+              "badge": "Function pipelines",
+              "explanation": "f.andThen(g) executes f first, then passes result to g (left to right order).",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Compose predicates easily using and, or, negate, and Predicate.not. For functions, andThen chains operations from left to right, creating clear declarative processing pipelines.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Master the core shapes: Predicate, Function, Consumer, Supplier",
+            "Use Int, Long, and Double specializations to eliminate autoboxing",
+            "Chain logic with Predicate composition and Function.andThen"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): How invokedynamic and LambdaMetafactory work under the hood ->",
+          "narration": "That covers the library catalog. In Part 5, we peek under the JVM hood at invokedynamic, LambdaMetafactory, and handling checked exceptions.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-invokedynamic-and-jvm-internals",
+      "partTitle": "How Lambdas Execute: invokedynamic & LambdaMetafactory",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Internals • Part 5 of 5",
+          "headline": "Does javac compile every lambda into an inner class file?",
+          "highlightWord": "inner class file",
+          "subline": "No. Java uses invokedynamic and LambdaMetafactory to link lambdas at runtime.",
+          "narration": "Java lambdas do not compile into anonymous inner class files on disk. The JVM uses invokedynamic to dynamically link lambdas at runtime.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Lambda Execution Pipeline",
+          "subtitle": "From Java source to high-speed CallSite execution",
+          "nodes": [
+            {
+              "label": "javac Compiler",
+              "detail": "Extracts body to private synthetic method + invokedynamic site",
+              "tag": "Compile",
+              "accent": "sky"
+            },
+            {
+              "label": "First Execution",
+              "detail": "invokedynamic invokes LambdaMetafactory.metafactory()",
+              "tag": "Bootstrap",
+              "accent": "amber"
+            },
+            {
+              "label": "Hidden Class Created",
+              "detail": "HotSpot dynamically generates lightweight class in memory",
+              "tag": "Runtime",
+              "accent": "purple"
+            },
+            {
+              "label": "Direct Execution",
+              "detail": "Subsequent calls execute linked CallSite with zero overhead",
+              "tag": "JIT Speed",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "At compile time, javac extracts the lambda body into a private synthetic method. On first run, invokedynamic invokes LambdaMetafactory to spin up a lightweight hidden class and link a high-speed CallSite.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-term-javap",
+          "kind": "terminal",
+          "title": "Disassembling Bytecode with javap -c -p",
+          "caption": "Inspecting generated synthetic methods and invokedynamic instructions",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "javap -c -p out/com/javahub/LambdaDemo.class"
+            },
+            {
+              "kind": "success",
+              "text": "private static synthetic void lambda$main$0(java.lang.String);"
+            },
+            {
+              "kind": "output",
+              "text": "  0: getstatic     System.out"
+            },
+            {
+              "kind": "output",
+              "text": "  3: invokevirtual PrintStream.println"
+            },
+            {
+              "kind": "output",
+              "text": "  6: return"
+            },
+            {
+              "kind": "success",
+              "text": "0: invokedynamic #2, 0 // Bootstrap: LambdaMetafactory"
+            }
+          ],
+          "narration": "Disassembling the class file reveals two key secrets: javac created a private static synthetic method containing the lambda body, and generated an invokedynamic instruction referencing LambdaMetafactory.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-compare",
+          "kind": "compare",
+          "title": "Handling Checked Exceptions in Lambdas",
+          "top": {
+            "label": "Direct Call (Compile Error)",
+            "badge": "❌ Unhandled IOException",
+            "tone": "bad",
+            "code": "// Fails compile: Function.apply() does not declare throws IOException\nList<String> contents = paths.stream()\n        .map(path -> Files.readString(path))\n        .toList();",
+            "points": [
+              "Standard functional interfaces ban checked exceptions",
+              "Inlining raw checked calls causes compilation errors"
+            ]
+          },
+          "bottom": {
+            "label": "Unchecked Helper Wrapper",
+            "badge": "✅ Safe Method Reference",
+            "tone": "good",
+            "code": "private static String readFileUnchecked(Path path) {\n    try { return Files.readString(path); }\n    catch (IOException e) { throw new UncheckedIOException(e); }\n}\n// Clean stream usage: .map(FileLoader::readFileUnchecked)",
+            "points": [
+              "Wraps checked exception in UncheckedIOException",
+              "Keeps functional stream pipelines clean and legible"
+            ]
+          },
+          "narration": "Standard functional interfaces do not declare checked exceptions. Handle them by wrapping exceptions inside helper methods or UncheckedIOException to keep functional stream pipelines clean.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "invokedynamic and LambdaMetafactory link lambdas dynamically at runtime",
+            "Non-capturing lambdas are cached to avoid repeated allocations",
+            "Wrap checked exceptions in helper methods for functional interfaces"
+          ],
+          "command": "git checkout topic/level-4/lambdas-and-functional-interfaces",
+          "nextPartTeaser": "Full roadmap & JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You now understand lambdas from syntax to JVM internals. Check out the companion branch in java hub to run verified Java 21 labs and tests.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
