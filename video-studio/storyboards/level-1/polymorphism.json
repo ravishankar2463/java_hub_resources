@@ -1,0 +1,506 @@
+{
+  "chapterId": "level-1/polymorphism",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "polymorphism",
+  "chapterTitle": "Polymorphism",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/polymorphism",
+  "branchName": "topic/level-1/polymorphism",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-overloading-vs-overriding",
+      "partTitle": "Compile-Time vs. Run-Time Polymorphism",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Polymorphism • Part 1 of 4",
+          "headline": "Passing a String variable printed Object!",
+          "highlightWord": "printed Object",
+          "subline": "Method overloading traps even experienced developers.",
+          "narration": "You pass a String object into an overloaded method, but Java executes the Object signature instead. Let's uncover why compile time overloading tricks your code while run time overriding dynamic dispatch saves it.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Overloading vs. Overriding",
+          "top": {
+            "label": "Method Overloading",
+            "badge": "Static Binding",
+            "tone": "neutral",
+            "code": "static String check(Object o) { return \"Obj\"; }\nstatic String check(String s) { return \"Str\"; }\n\nObject val = \"hello\";\ncheck(val); // Returns \"Obj\"!",
+            "points": [
+              "Resolved by javac at compile time",
+              "Based on declared reference type"
+            ]
+          },
+          "bottom": {
+            "label": "Method Overriding",
+            "badge": "Dynamic Dispatch",
+            "tone": "good",
+            "code": "PaymentProcessor p = new CardProcessor();\np.charge(49.99); // Executes CardProcessor!",
+            "points": [
+              "Resolved at runtime on heap object",
+              "Dynamic dispatch via virtual tables"
+            ]
+          },
+          "narration": "Method overloading binds statically at compile time using the reference declared type. So passing a String stored in an Object variable hits Object check. Overriding dynamically dispatches at runtime based on the actual object on the heap.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Dynamic Dispatch in Action",
+          "filename": "PaymentProcessor.java",
+          "code": "public abstract class PaymentProcessor {\n    public abstract void charge(double amount);\n}\n\npublic class CardProcessor extends PaymentProcessor {\n    @Override\n    public void charge(double amount) {\n        System.out.println(\"Card charged: \" + amount);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "abstract base",
+              "explanation": "Defines supertype contract so callers avoid monolithic if-else type checks.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                7
+              ],
+              "badge": "@Override",
+              "explanation": "Subclass overrides implementation; runtime heap type determines which charge executes.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Instead of writing fragile if else chains checking item types, define a supertype contract. Subclasses override charge, allowing callers to trigger concrete behavior without knowing the exact runtime subtype in advance.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Non-Overridable Members",
+          "filename": "Classifier.java",
+          "code": "public class Base {\n    public static void show() { System.out.println(\"Base\"); }\n    public final void print() { System.out.println(\"Final\"); }\n}\n\npublic class Sub extends Base {\n    public static void show() { System.out.println(\"Sub\"); }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "static method",
+              "explanation": "Static methods, private methods, and fields do not participate in dynamic dispatch.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "final method",
+              "explanation": "Final methods cannot be overridden; javac resolves them with static binding.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Be careful: static methods, private methods, constructors, and fields never participate in dynamic dispatch. Calling a static method resolves strictly against the reference type at compile time.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Overloading binds statically using declared argument types",
+            "Overriding dispatches dynamically based on heap object",
+            "Static methods and fields never dynamic dispatch"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How HotSpot uses vtables, itables & JIT inline caching →",
+          "narration": "That's static versus dynamic binding. In Part 2, we peek under the hood of HotSpot to see vtables, itables, and how JIT inline caching makes virtual calls lightning fast.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-hotspot-dynamic-dispatch",
+      "partTitle": "How HotSpot Dispatches Overridden Methods",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Internals • Part 2 of 4",
+          "headline": "How does the JVM find method code in 1 nanosecond?",
+          "highlightWord": "1 nanosecond",
+          "subline": "HotSpot vtables and JIT inline caching eliminate dispatch overhead.",
+          "narration": "When your code calls a virtual method on an interface reference, how does the JVM instantly pinpoint the correct machine code instruction? Let's trace HotSpot's internal vtables and JIT inline caching.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "HotSpot vtable Method Lookup",
+          "subtitle": "Tracing invokevirtual from Stack to Machine Code",
+          "nodes": [
+            {
+              "label": "Thread Stack Ref",
+              "detail": "Processor ref points to object address on heap",
+              "tag": "Stack",
+              "accent": "sky"
+            },
+            {
+              "label": "Heap Object Header",
+              "detail": "Reads Klass pointer inside object header",
+              "tag": "Heap",
+              "accent": "emerald"
+            },
+            {
+              "label": "Metaspace vtable",
+              "detail": "Direct O(1) slot index lookup in class metadata",
+              "tag": "Metaspace",
+              "accent": "amber"
+            },
+            {
+              "label": "JIT Code Cache",
+              "detail": "Jumps directly to compiled native machine code",
+              "tag": "Native",
+              "accent": "purple"
+            }
+          ],
+          "narration": "During invokevirtual calls, HotSpot follows the reference to the heap object, reads its class metadata pointer in Metaspace, inspects the vtable at a fixed offset, and jumps directly to compiled machine code.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "vtable vs. itable Lookup",
+          "top": {
+            "label": "vtable (invokevirtual)",
+            "badge": "O(1) Fixed Slot",
+            "tone": "good",
+            "code": "// Single inheritance hierarchy\n// Subclasses map method to identical slot\nProcessor p = new CardProcessor();\np.charge(49.99);",
+            "points": [
+              "Class hierarchy shares fixed method slots",
+              "Direct indexed array read"
+            ]
+          },
+          "bottom": {
+            "label": "itable (invokeinterface)",
+            "badge": "Table Search",
+            "tone": "neutral",
+            "code": "// Multiple interface implementation\n// Slot locations vary across classes\nPayable p = new CardProcessor();\np.pay();",
+            "points": [
+              "Classes implement interfaces in any order",
+              "Requires interface method table resolution"
+            ]
+          },
+          "narration": "Class methods use vtables where subclasses share identical slot indices for instant array reads. Interface methods use itables because unrelated classes implement interfaces in different order, requiring dynamic table resolution.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "JIT Inline Caching States",
+          "subtitle": "How JIT bypasses vtable lookup completely",
+          "nodes": [
+            {
+              "label": "Monomorphic Call Site",
+              "detail": "Only 1 concrete class seen; JIT inlines code directly",
+              "tag": "Fastest",
+              "accent": "emerald"
+            },
+            {
+              "label": "Bimorphic Call Site",
+              "detail": "2 concrete classes seen; JIT emits fast 2-way branch",
+              "tag": "Fast",
+              "accent": "sky"
+            },
+            {
+              "label": "Megamorphic Call Site",
+              "detail": "3+ classes seen; falls back to vtable or itable lookup",
+              "tag": "Fallback",
+              "accent": "amber"
+            }
+          ],
+          "narration": "HotSpot JIT profiles call sites at runtime. Monomorphic sites seeing only one class get fully inlined. Bimorphic sites use a fast two-way check. Only megamorphic sites seeing three or more classes pay for vtable lookup.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "invokevirtual uses O(1) vtable slot indexing",
+            "invokeinterface resolves dynamic offsets via itable",
+            "JIT inline caching inlines monomorphic call sites"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Upcasting, Downcasting & ClassCastException pitfalls →",
+          "narration": "Now you understand JVM dispatch internals. In Part 3, we master upcasting, downcasting safely, and the subtle null handling rules of instanceof.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-upcasting-downcasting-instanceof",
+      "partTitle": "Upcasting, Downcasting & Safe instanceof Rules",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Type Casting • Part 3 of 4",
+          "headline": "ClassCastException in production?",
+          "highlightWord": "ClassCastException",
+          "subline": "Explicit downcasting without checks is a ticking time bomb.",
+          "narration": "Casting supertype references to subtypes looks harmless until an unexpected object hits your pipeline and crashes production with a ClassCastException. Let's fix type safety once and for all.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Upcasting vs. Downcasting Safety",
+          "subtitle": "Implicit supertype vs. Explicit subtype conversion",
+          "nodes": [
+            {
+              "label": "Subtype Object (Dog)",
+              "detail": "Concrete instance allocated on JVM heap",
+              "tag": "Heap",
+              "accent": "emerald"
+            },
+            {
+              "label": "Upcasting (Implicit)",
+              "detail": "Assign to Animal supertype variable (always safe)",
+              "tag": "Safe",
+              "accent": "sky"
+            },
+            {
+              "label": "Downcasting (Explicit)",
+              "detail": "(Dog) pet required by compiler; unsafe without check",
+              "tag": "Risk",
+              "accent": "amber"
+            },
+            {
+              "label": "ClassCastException",
+              "detail": "JVM throws runtime error if actual object is Cat",
+              "tag": "Crash",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Upcasting to a supertype variable happens automatically because every subclass satisfies the base contract. Downcasting back requires an explicit cast because the compiler cannot guarantee the heap object true identity at runtime.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Classic instanceof Guard Rules",
+          "filename": "PetHandler.java",
+          "code": "public void interact(Animal animal) {\n    if (animal instanceof Dog) {\n        Dog dog = (Dog) animal;\n        dog.fetchBall();\n    } else if (animal instanceof Cat) {\n        Cat cat = (Cat) animal;\n        cat.purr();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "null safe",
+              "explanation": "null instanceof Anything always returns false—no NPE risk!",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "explicit cast",
+              "explanation": "Manual cast required before Java 16 pattern matching.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The instanceof operator checks runtime compatibility. Notice that null instanceof anything is always false, avoiding NullPointerExceptions. But notice how pre-Java 16 code repeats the type name three times.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "Compiler Checks vs. Runtime Crashes",
+          "caption": "What compiles versus what fails at runtime",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Unrelated class check is caught at compile time!"
+            },
+            {
+              "kind": "command",
+              "text": "javac PetHandler.java"
+            },
+            {
+              "kind": "error",
+              "text": "error: inconvertible types: String cannot be converted to Integer"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Runtime heap mismatch causes ClassCastException"
+            },
+            {
+              "kind": "command",
+              "text": "java com.javahub.PetRunner"
+            },
+            {
+              "kind": "error",
+              "text": "Exception in thread main java.lang.ClassCastException: Cat cannot be cast to Dog"
+            }
+          ],
+          "narration": "The compiler blocks casting unrelated types like String to Integer. But when casting supertypes like Animal to Dog, invalid heap objects compile cleanly and crash at runtime with a ClassCastException.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Upcasting is implicit and completely safe",
+            "Downcasting requires runtime checks to avoid ClassCastException",
+            "null instanceof Target evaluates safely to false"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Java 16 Pattern Matching & Java 21 Switch Expressions →",
+          "narration": "That's classic casting logic. In Part 4, we replace tedious manual casts with Java 16 pattern matching and Java 21 type pattern switch expressions.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-pattern-matching-and-switch",
+      "partTitle": "Modern Java Pattern Matching (Java 16+ & 21+)",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Java • Part 4 of 4",
+          "headline": "Stop repeating type names three times!",
+          "highlightWord": "repeating type names",
+          "subline": "Java 16 pattern matching and Java 21 switch eliminate boilerplate casts.",
+          "narration": "Writing instanceof, declaring a variable, and casting on the next line is redundant and error-prone. Modern Java makes pattern matching clean, safe, and scoped with flow precision.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Classic vs. Pattern Matching instanceof",
+          "top": {
+            "label": "Pre-Java 16 (Redundant)",
+            "badge": "Boilerplate",
+            "tone": "bad",
+            "code": "if (animal instanceof Dog) {\n    Dog dog = (Dog) animal;\n    dog.fetchBall();\n}",
+            "points": [
+              "Repeats type name 3 times",
+              "Manual casting error potential"
+            ]
+          },
+          "bottom": {
+            "label": "Java 16+ Pattern Matching",
+            "badge": "JEP 394 Finalized",
+            "tone": "good",
+            "code": "if (animal instanceof Dog dog) {\n    dog.fetchBall();\n}",
+            "points": [
+              "Combines check, declaration & cast",
+              "Flow scoping binds variable automatically"
+            ]
+          },
+          "narration": "Java 16 pattern matching combines type checking, variable declaration, and casting into a single atomic expression. If animal matches Dog, pattern variable dog is bound and ready to use immediately.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Flow Scoping & Guard Clauses",
+          "filename": "DogHandler.java",
+          "code": "public void registerDog(Animal animal) {\n    if (animal instanceof Dog dog && dog.weightKg() > 25) {\n        System.out.println(\"Large dog: \" + dog.name());\n    }\n    if (!(animal instanceof Dog dog)) {\n        return;\n    }\n    System.out.println(\"Registered: \" + dog.name());\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "&& guard",
+              "explanation": "dog is in scope on the right side of && because left side is guaranteed true.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                8
+              ],
+              "badge": "negated return",
+              "explanation": "dog stays in scope after early return because execution only continues when matched.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Pattern variables use flow scoping. In an AND check, dog is in scope on the right side. In a negated early return guard, dog stays in scope for the rest of the method.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Java 21 Pattern Matching switch",
+          "filename": "EventProcessor.java",
+          "code": "public String handle(PaymentEvent event) {\n    return switch (event) {\n        case PaymentSuccess s when s.amount() > 10_000 ->\n            \"Flagged high value: \" + s.transactionId();\n        case PaymentSuccess s -> \"Settled: \" + s.transactionId();\n        case PaymentFailed f -> \"Failed: \" + f.errorCode();\n        case null -> \"No event provided\";\n    };\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "when guard",
+              "explanation": "Refines pattern with extra boolean condition before matching.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "case null",
+              "explanation": "Explicit null handling eliminates NullPointerException inside switch expressions.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Java 21 switch expressions bring type patterns, extra when guards, and explicit case null branches together. When paired with sealed interfaces, the compiler guarantees exhaustive branch coverage without a default case.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Java 16 instanceof binds pattern variables in flow scope",
+            "Flow scoping enables clean && guards and early returns",
+            "Java 21 switch pattern matching handles sealed type hierarchies"
+          ],
+          "command": "git checkout topic/level-1/polymorphism",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You just mastered polymorphism, JVM dispatch, and modern pattern matching. Checkout the companion branch in java hub resources to run the verified Java 21 lab and JUnit 5 tests yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
