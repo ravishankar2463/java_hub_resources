@@ -149,7 +149,18 @@ function sanitizeAndValidateBundle(
         if (!beat.code) {
           errors.push(`${tag}: code-spotlight code must be non-empty.`);
         }
-        if (/^[^\n]+\n\s*import\s+/m.test(beat.code || "")) {
+        // Flag `import` only if preceded by a non-package/non-import/non-comment line
+        const hasMisplacedImport = lines.some((line, idx) => {
+          if (!/^\s*import\s+/.test(line)) return false;
+          return lines
+            .slice(0, idx)
+            .some(
+              (prev) =>
+                prev.trim() !== "" &&
+                !/^\s*(package\s+|import\s+|\/\/|\/\*|\*)/.test(prev)
+            );
+        });
+        if (hasMisplacedImport) {
           errors.push(`${tag}: invalid Java — import statement must appear at the top of the file.`);
         }
         if (!Array.isArray(beat.steps) || beat.steps.length === 0) {
