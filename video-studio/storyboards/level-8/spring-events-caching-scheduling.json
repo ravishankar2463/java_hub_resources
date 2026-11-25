@@ -1,0 +1,455 @@
+{
+  "chapterId": "level-8/spring-events-caching-scheduling",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "spring-events-caching-scheduling",
+  "chapterTitle": "Spring Events, Caching, & Scheduling",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/spring-events-caching-scheduling",
+  "branchName": "topic/level-8/spring-events-caching-scheduling",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-spring-events",
+      "partTitle": "Decoupling with Spring Events",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Events • Part 1 of 4",
+          "headline": "Stop blocking your API for a welcome email.",
+          "highlightWord": "Stop blocking",
+          "subline": "Your HTTP handlers should not wait for side effects. Use events to decouple.",
+          "narration": "Your API response shouldn't wait for an email to send. If your service is coupled to every side effect, you're building a monolith that's impossible to scale.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-code",
+          "kind": "code-spotlight",
+          "title": "Publishing Domain Events",
+          "filename": "OrderService.java",
+          "code": "@Transactional\npublic Order createOrder(CreateOrderCommand cmd) {\n    Order saved = repo.save(Order.from(cmd));\n    eventPublisher.publishEvent(\n        new OrderPlacedEvent(saved.getId())\n    );\n    return saved;\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Transactional",
+              "explanation": "Event publishing happens within the same transaction context.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "EventPublisher",
+              "explanation": "Decouples the service from listeners like Email or Audit.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Inject the ApplicationEventPublisher. By publishing an immutable record, your OrderService doesn't need to know who is listening or what side effects occur.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Sync vs Async Listeners",
+          "nodes": [
+            {
+              "label": "Publisher",
+              "detail": "OrderService",
+              "tag": "Thread A",
+              "accent": "sky"
+            },
+            {
+              "label": "Multicaster",
+              "detail": "SimpleApplicationEventMulticaster",
+              "tag": "Sync",
+              "accent": "amber"
+            },
+            {
+              "label": "Listener",
+              "detail": "@Async + @EventListener",
+              "tag": "Thread B",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Default listeners run synchronously on the caller's thread. If you do heavy I/O, use @Async with a dedicated executor to keep your main thread fast.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Event Safety",
+          "top": {
+            "label": "Standard @EventListener",
+            "badge": "In-Memory",
+            "tone": "bad",
+            "code": "void handle(Event e) { ... }",
+            "points": [
+              "Lost on pod crash",
+              "Sync by default"
+            ]
+          },
+          "bottom": {
+            "label": "Transactional Outbox",
+            "badge": "Durable",
+            "tone": "good",
+            "code": "db.save(event);\nkafka.send(event);",
+            "points": [
+              "Guaranteed delivery",
+              "Cross-service"
+            ]
+          },
+          "narration": "Spring events reside in memory. If a pod dies, the event dies. For critical workflows like payments, use a transactional outbox pattern instead.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Use records for events",
+            "Default listeners are synchronous",
+            "Events are for in-process only"
+          ],
+          "nextPartTeaser": "Up Next: Fixing the AFTER_COMMIT transaction bug →",
+          "narration": "That's decoupling. In Part 2, we fix the bug where your database writes inside listeners silently fail to persist.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-transactional-events",
+      "partTitle": "Transactional Event Listeners",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Transactions • Part 2 of 4",
+          "headline": "Why your listener is writing to a dead transaction.",
+          "highlightWord": "dead transaction",
+          "subline": "AFTER_COMMIT listeners need a new transaction, or your data won't save.",
+          "narration": "Ever noticed your listener code runs but nothing hits the database? It's because the transaction already committed before your code finished.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code",
+          "kind": "code-spotlight",
+          "title": "Fixing the Commit Race",
+          "filename": "AuditListener.java",
+          "code": "@Transactional(propagation = Propagation.REQUIRES_NEW)\n@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)\npublic void recordAudit(OrderPlacedEvent event) {\n    auditRepo.save(new AuditRecord(event.orderId()));\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "REQUIRES_NEW",
+              "explanation": "Starts a fresh transaction since the original is already closed.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "AFTER_COMMIT",
+              "explanation": "Ensures the event only fires if the DB write actually succeeded.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use TransactionPhase.AFTER_COMMIT to ensure your logic only runs after the data is safe. And always use REQUIRES_NEW to open a fresh transaction context.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Transaction Phases",
+          "nodes": [
+            {
+              "label": "BEFORE_COMMIT",
+              "detail": "Validating state",
+              "tag": "Phase 1",
+              "accent": "sky"
+            },
+            {
+              "label": "AFTER_COMMIT",
+              "detail": "Sending emails/logs",
+              "tag": "Phase 2",
+              "accent": "emerald"
+            },
+            {
+              "label": "AFTER_ROLLBACK",
+              "detail": "Cleanup/Alerts",
+              "tag": "Phase 3",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Choose your phase wisely. AFTER_COMMIT is your default for side effects, while AFTER_ROLLBACK is perfect for alerting if a critical operation fails.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "The Fallback Trap",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// Default: ignored if no transaction is active"
+            },
+            {
+              "kind": "command",
+              "text": "@TransactionalEventListener(fallbackExecution = true)"
+            },
+            {
+              "kind": "success",
+              "text": "// Now runs even without a transaction"
+            }
+          ],
+          "narration": "If your event might be published outside a transaction, set fallbackExecution to true. Otherwise, your listener will silently ignore the event.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "AFTER_COMMIT for side effects",
+            "REQUIRES_NEW for DB writes",
+            "Use fallbackExecution for non-tx events"
+          ],
+          "nextPartTeaser": "Up Next: Preventing cache stampedes with sync=true →",
+          "narration": "Transaction safety achieved. In Part 3, we stop cache stampedes from crashing your database under high load.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-caching",
+      "partTitle": "Declarative Caching & Stampedes",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Caching • Part 3 of 4",
+          "headline": "Your cache is a stampede waiting to happen.",
+          "highlightWord": "stampede",
+          "subline": "When a hot key expires, your DB gets hit by 1000 requests at once.",
+          "narration": "When a hot cache key expires, your database gets hammered by a thundering herd. Here is how to stop it with one simple flag.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code",
+          "kind": "code-spotlight",
+          "title": "Stampede Protection",
+          "filename": "ProductService.java",
+          "code": "@Cacheable(\n    cacheNames = \"products\",\n    key = \"#productId\",\n    sync = true\n)\npublic ProductDto getProduct(UUID productId) { ... }",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "sync = true",
+              "explanation": "Locks the key so only one thread loads from the DB.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Set sync = true on your Cacheable annotation. This locks the key locally, forcing concurrent requests to wait for the first thread to populate the cache.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Redis Config Best Practices",
+          "top": {
+            "label": "Default",
+            "badge": "JDK Serialization",
+            "tone": "bad",
+            "code": "Binary blobs in Redis",
+            "points": [
+              "Unreadable",
+              "Version fragile"
+            ]
+          },
+          "bottom": {
+            "label": "Custom",
+            "badge": "JSON Serialization",
+            "tone": "good",
+            "code": "GenericJackson2Json",
+            "points": [
+              "Human readable",
+              "Language agnostic"
+            ]
+          },
+          "narration": "Never use default JDK serialization. It creates opaque binary blobs. Use Jackson JSON serialization so you can actually debug your data in Redis.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Proxy Bypass Warning",
+          "nodes": [
+            {
+              "label": "Controller",
+              "detail": "Calls service method",
+              "tag": "Proxy",
+              "accent": "sky"
+            },
+            {
+              "label": "Service",
+              "detail": "Calls 'this.method()'",
+              "tag": "Bypass",
+              "accent": "amber"
+            },
+            {
+              "label": "Cache",
+              "detail": "Proxy never sees call",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Spring caching uses AOP proxies. If you call a cached method via 'this' inside the same bean, the proxy is bypassed and caching never happens.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use sync=true for stampedes",
+            "Always use JSON serialization",
+            "Avoid self-invocation proxy bypass"
+          ],
+          "nextPartTeaser": "Up Next: Clustering scheduled jobs with ShedLock →",
+          "narration": "Cache optimized. In Part 4, we finish with clustered scheduling so your jobs don't run 5 times on 5 pods.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-scheduling",
+      "partTitle": "Clustered Scheduling with ShedLock",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Scheduling • Part 4 of 4",
+          "headline": "Why your cron job is running 5 times.",
+          "highlightWord": "5 times",
+          "subline": "Scheduled tasks are local to the JVM. Here is how to coordinate them across pods.",
+          "narration": "Deploying 5 pods means your cron job runs 5 times. That's a disaster for billing or cleanup jobs. Here is how to lock them down.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code",
+          "kind": "code-spotlight",
+          "title": "ShedLock Coordination",
+          "filename": "BillingJob.java",
+          "code": "@Scheduled(cron = \"0 0 0 1 * *\")\n@SchedulerLock(\n    name = \"MonthlyBilling\",\n    lockAtMostFor = \"30m\"\n)\npublic void bill() { ... }",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "badge": "SchedulerLock",
+              "explanation": "Acquires a DB lock so only one pod executes the job.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "ShedLock uses a shared database table to coordinate. Only the pod that wins the lock runs the job; the others skip it silently.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "Scheduler Thread Pool",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Default pool size is 1!"
+            },
+            {
+              "kind": "command",
+              "text": "spring.task.scheduling.pool.size=4"
+            },
+            {
+              "kind": "success",
+              "text": "# Now tasks don't starve each other"
+            }
+          ],
+          "narration": "Spring's default scheduler pool is size 1. If one task hangs, everything else stops. Always increase your pool size in production.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Lock Bounds",
+          "top": {
+            "label": "lockAtLeastFor",
+            "badge": "Safety",
+            "tone": "neutral",
+            "code": "2m",
+            "points": [
+              "Prevents double execution",
+              "Handles clock drift"
+            ]
+          },
+          "bottom": {
+            "label": "lockAtMostFor",
+            "badge": "Safety",
+            "tone": "good",
+            "code": "30m",
+            "points": [
+              "Lease expiry",
+              "Handles pod crashes"
+            ]
+          },
+          "narration": "Use lockAtLeastFor to prevent overlapping due to clock drift, and lockAtMostFor to ensure the lock releases if a pod crashes mid-job.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "ShedLock for clustered jobs",
+            "Increase scheduler pool size",
+            "Always use idempotent logic"
+          ],
+          "command": "git checkout topic/level-8/spring-events-caching-scheduling",
+          "nextPartTeaser": "Master the full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered Spring's orchestration layer. Checkout the branch below to run the lab and test these patterns yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
