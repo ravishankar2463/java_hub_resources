@@ -1,0 +1,464 @@
+{
+  "chapterId": "level-10/apache-kafka-internals",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "apache-kafka-internals",
+  "chapterTitle": "Apache Kafka Internals",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/apache-kafka-internals",
+  "branchName": "topic/level-10/apache-kafka-internals",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-disk-and-segments",
+      "partTitle": "Why Kafka Uses Tiny Heaps",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 1 of 4",
+          "headline": "Why does Kafka run on a 6GB heap with 128GB of RAM?",
+          "highlightWord": "6GB heap",
+          "subline": "It is not a memory leak—it is a deliberate design to bypass the JVM entirely.",
+          "narration": "Why does Kafka run on a tiny 6GB heap even on massive servers? It is not a bug. It is a design choice to let the Linux kernel handle the heavy lifting.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Page Cache Strategy",
+          "subtitle": "Bypassing the JVM for raw speed",
+          "nodes": [
+            {
+              "label": "Disk",
+              "detail": "Persistent .log segments",
+              "tag": "Storage",
+              "accent": "sky"
+            },
+            {
+              "label": "OS Page Cache",
+              "detail": "Kernel-level RAM buffer",
+              "tag": "Hot Data",
+              "accent": "amber"
+            },
+            {
+              "label": "JVM Heap",
+              "detail": "Small 6GB limit",
+              "tag": "Metadata",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Kafka offloads data caching to the OS Page Cache. This prevents double-caching and keeps your data warm in RAM even if the broker JVM restarts, completely avoiding massive GC pauses.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-segments",
+          "kind": "code-spotlight",
+          "title": "Log Segment Architecture",
+          "filename": "segment.log",
+          "code": "00000000000000000000.log\n00000000000000000000.index\n00000000000000000000.timeindex\n00000000000000482150.log\n00000000000000482150.index",
+          "steps": [
+            {
+              "lines": [
+                1,
+                4
+              ],
+              "badge": "Rolling Logs",
+              "explanation": "Immutable segments roll at 1GB. Deleting old data is just an un-link operation.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2,
+                5
+              ],
+              "badge": "Sparse Index",
+              "explanation": "Maps offsets to physical file positions. Only 8 bytes per entry.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Kafka splits partitions into rolling log segments. The sparse index maps offsets to byte positions, allowing binary search lookups without loading the entire file into memory.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-terminal",
+          "kind": "terminal",
+          "title": "Inspecting Partition State",
+          "caption": "Verify ISR and Leader status",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "kafka-topics.sh --describe --topic orders"
+            },
+            {
+              "kind": "output",
+              "text": "Partition: 0 Leader: 1 Replicas: 1,2,3 Isr: 1,2,3"
+            },
+            {
+              "kind": "comment",
+              "text": "# Isr = In-Sync Replicas"
+            }
+          ],
+          "narration": "Use the CLI to check your ISR—the In-Sync Replicas. If a follower lags behind, it gets kicked out of the ISR to prevent data loss during leader elections.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Page cache > JVM heap",
+            "Rolling segments = fast cleanup",
+            "Sparse index = O(log N) lookup"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Zero-copy networking and the TLS trap →",
+          "narration": "That is the storage layer. In Part 2, we look at how Kafka uses zero-copy to blast data to the NIC, and why TLS encryption might be killing your performance.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-zero-copy-and-tls",
+      "partTitle": "Zero-Copy Networking Explained",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 2 of 4",
+          "headline": "Why does TLS encryption cripple Kafka throughput?",
+          "highlightWord": "TLS encryption",
+          "subline": "It breaks the zero-copy pipeline that gives Kafka its speed.",
+          "narration": "Kafka is fast because it uses zero-copy. But turn on TLS, and that performance advantage often vanishes. Here is why your encryption settings matter.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Zero-Copy Pipeline",
+          "subtitle": "Direct memory transfer to NIC",
+          "nodes": [
+            {
+              "label": "Disk",
+              "detail": "Source data",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Page Cache",
+              "detail": "Kernel memory",
+              "tag": "Buffer",
+              "accent": "amber"
+            },
+            {
+              "label": "NIC",
+              "detail": "Network card",
+              "tag": "Transfer",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "With zero-copy, data moves from the Page Cache directly to the NIC via DMA. It never touches the JVM heap, saving CPU cycles and memory bandwidth.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-zerocopy",
+          "kind": "code-spotlight",
+          "title": "FileChannel.transferTo()",
+          "filename": "ZeroCopy.java",
+          "code": "while (transferred < byteCount) {\n    long written = fileChannel.transferTo(\n        position + transferred,\n        byteCount - transferred,\n        socketChannel\n    );\n    if (written == 0) break;\n    transferred += written;\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "badge": "sendfile()",
+              "explanation": "Delegates to the OS sendfile system call to bypass user-space buffers.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This method triggers the sendfile system call. It tells the kernel to pull bytes from the page cache and push them to the socket buffer directly.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Plaintext vs. TLS Performance",
+          "top": {
+            "label": "Plaintext",
+            "badge": "Zero-Copy",
+            "tone": "good",
+            "code": "Disk -> Kernel -> NIC",
+            "points": [
+              "Minimal CPU",
+              "High throughput"
+            ]
+          },
+          "bottom": {
+            "label": "TLS Enabled",
+            "badge": "User-Space Encryption",
+            "tone": "bad",
+            "code": "Disk -> Kernel -> JVM -> Kernel -> NIC",
+            "points": [
+              "CPU intensive",
+              "Breaks sendfile"
+            ]
+          },
+          "narration": "TLS requires encryption in user-space. This forces data to copy into the JVM, killing the zero-copy benefit. Always benchmark your CPU usage after enabling TLS.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Zero-copy = sendfile()",
+            "TLS forces user-space copies",
+            "Benchmark TLS impact early"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): ISR, High Watermark, and Leader Election →",
+          "narration": "That is the networking layer. In Part 3, we dive into replication, High Watermarks, and how Kafka handles broker failure without losing data.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-replication-and-isr",
+      "partTitle": "Replication and ISR Safety",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 3 of 4",
+          "headline": "What happens when a partition leader crashes?",
+          "highlightWord": "leader crashes",
+          "subline": "Data is not lost if you understand the High Watermark.",
+          "narration": "When a leader crashes, how does Kafka ensure no data is lost? It relies on the In-Sync Replicas set and the High Watermark.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Replication Flow",
+          "subtitle": "LEO, HW, and ISR",
+          "nodes": [
+            {
+              "label": "Producer",
+              "detail": "Writes to Leader",
+              "tag": "Write",
+              "accent": "sky"
+            },
+            {
+              "label": "ISR Followers",
+              "detail": "Pull from Leader",
+              "tag": "Sync",
+              "accent": "amber"
+            },
+            {
+              "label": "High Watermark",
+              "detail": "Min LEO of ISR",
+              "tag": "Commit",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The High Watermark is the minimum LEO across the ISR. Consumers only see records up to this point, ensuring they never read uncommitted data.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-terminal",
+          "kind": "terminal",
+          "title": "Leader Election Rules",
+          "caption": "Why unclean leader election is dangerous",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "grep 'unclean.leader.election' server.properties"
+            },
+            {
+              "kind": "output",
+              "text": "unclean.leader.election.enable=false"
+            },
+            {
+              "kind": "comment",
+              "text": "# Keep this false for transactional data!"
+            }
+          ],
+          "narration": "Never enable unclean leader election for financial data. It allows lagging followers to become leaders, which guarantees data loss for any records not yet replicated.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Clean vs. Unclean Election",
+          "top": {
+            "label": "Clean Election",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "Only ISR brokers can lead",
+            "points": [
+              "Zero data loss",
+              "High durability"
+            ]
+          },
+          "bottom": {
+            "label": "Unclean Election",
+            "badge": "Risky",
+            "tone": "bad",
+            "code": "Any replica can lead",
+            "points": [
+              "Potential data loss",
+              "Higher availability"
+            ]
+          },
+          "narration": "Clean election is the default. It waits for an ISR member to take over. Unclean election prioritizes uptime over consistency, which is usually a bad trade.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "ISR = In-Sync Replicas",
+            "HW = Committed boundary",
+            "Unclean election = Data loss"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): KRaft and the death of ZooKeeper →",
+          "narration": "That is the replication layer. In Part 4, we cover the modern KRaft architecture and why ZooKeeper is finally gone from the Kafka stack.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-kraft-and-metadata",
+      "partTitle": "KRaft: The Future of Kafka",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 4 of 4",
+          "headline": "Why did Kafka finally kill ZooKeeper?",
+          "highlightWord": "kill ZooKeeper",
+          "subline": "Metadata scaling was the bottleneck holding back massive clusters.",
+          "narration": "ZooKeeper was a bottleneck for large clusters. Kafka 4.0 finally killed it with KRaft. Here is why the new metadata architecture is a game changer.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "KRaft Architecture",
+          "subtitle": "Metadata as an event stream",
+          "nodes": [
+            {
+              "label": "Controller",
+              "detail": "Raft consensus",
+              "tag": "Control",
+              "accent": "sky"
+            },
+            {
+              "label": "__metadata",
+              "detail": "Internal topic",
+              "tag": "Storage",
+              "accent": "amber"
+            },
+            {
+              "label": "Brokers",
+              "detail": "Follow metadata stream",
+              "tag": "State",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "KRaft stores metadata in an internal Kafka topic. Controllers use Raft for consensus, making metadata updates fast, consistent, and scalable to hundreds of thousands of partitions.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "KRaft Configuration",
+          "caption": "Setting up the controller quorum",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "cat server.properties | grep controller"
+            },
+            {
+              "kind": "output",
+              "text": "process.roles=broker,controller"
+            },
+            {
+              "kind": "output",
+              "text": "controller.quorum.voters=1@kafka-1:9093"
+            }
+          ],
+          "narration": "In KRaft mode, nodes act as both brokers and controllers. You define the quorum voters directly in your config, removing the need for a separate ZK cluster.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "ZooKeeper vs. KRaft",
+          "top": {
+            "label": "ZooKeeper",
+            "badge": "Legacy",
+            "tone": "bad",
+            "code": "External ensemble",
+            "points": [
+              "Hard to scale",
+              "Separate ops"
+            ]
+          },
+          "bottom": {
+            "label": "KRaft",
+            "badge": "Modern",
+            "tone": "good",
+            "code": "Internal topic",
+            "points": [
+              "Scales to 100k+ partitions",
+              "Single binary"
+            ]
+          },
+          "narration": "ZooKeeper was a separate system to manage. KRaft brings metadata into Kafka itself, simplifying operations and drastically improving failover speed from minutes to milliseconds.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "KRaft uses Raft consensus",
+            "Metadata = internal topic",
+            "Faster failover"
+          ],
+          "command": "git checkout topic/level-10/apache-kafka-internals",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered Kafka internals. Checkout the branch to explore the lab, and visit the roadmap for the full deep dive into distributed systems.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
