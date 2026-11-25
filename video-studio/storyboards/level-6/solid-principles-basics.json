@@ -1,0 +1,517 @@
+{
+  "chapterId": "level-6/solid-principles-basics",
+  "level": "level-6",
+  "levelLabel": "Level 6",
+  "slug": "solid-principles-basics",
+  "chapterTitle": "SOLID Principles Basics",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-6/solid-principles-basics",
+  "branchName": "topic/level-6/solid-principles-basics",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-srp-and-ocp",
+      "partTitle": "Single Responsibility & Open/Closed Principles",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "SOLID Architecture • Part 1 of 4",
+          "headline": "One class serving 3 business actors will break production.",
+          "highlightWord": "3 business actors",
+          "subline": "When finance rules, email templates, and SQL queries share a file, small edits cause cascading bugs.",
+          "narration": "When finance updates tax rules, why does email formatting break? Mixing multiple business actors inside a single class creates fragile code that fails when independent teams request changes.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "God Class vs. Isolated Actor Boundaries",
+          "top": {
+            "label": "Monolithic OrderService",
+            "badge": "❌ 3 Actors Coupled",
+            "tone": "bad",
+            "code": "public class OrderService {\n    public void process(Order order) {\n        // 1. Tax calculation (Finance)\n        // 2. Email HTML generation (Marketing)\n        // 3. JDBC Postgres SQL execution (DBA)\n    }\n}",
+            "points": [
+              "Tax edits force email re-testing",
+              "Cannot unit test without live DB"
+            ]
+          },
+          "bottom": {
+            "label": "Focused Collaborators",
+            "badge": "✅ Clean SRP",
+            "tone": "good",
+            "code": "public class OrderProcessor {\n    private final TaxCalculator taxCalc;\n    private final OrderRepository repo;\n    private final NotificationService notifier;\n}",
+            "points": [
+              "Each class answers to one actor",
+              "Testable in milliseconds with mocks"
+            ]
+          },
+          "narration": "In monolithic services, tax calculation, HTML rendering, and raw SQL execution sit together. Splitting them into distinct collaborators allows each business concern to evolve without risking side effects across unrelated modules.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-ocp",
+          "kind": "code-spotlight",
+          "title": "Extensible Strategy with OCP",
+          "filename": "PaymentEngine.java",
+          "code": "public interface PaymentMethod {\n    String name();\n    void pay(BigDecimal amount);\n}\npublic class PaymentEngine {\n    private final Map<String, PaymentMethod> map = new ConcurrentHashMap<>();\n    public void register(PaymentMethod m) {\n        map.put(m.name(), m);\n    }\n    public void execute(String name, BigDecimal amount) {\n        map.get(name).pay(amount);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "badge": "Open Interface",
+              "explanation": "Defines an explicit extension seam so new payment providers require zero edits to existing dispatch logic.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12
+              ],
+              "badge": "Closed Engine",
+              "explanation": "PaymentEngine handles registration and execution without growing massive if-else conditional chains.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The Open Closed Principle means open for extension, closed for modification. By dispatching through a registry map, adding Apple Pay only requires creating a new strategy class rather than editing existing core engine code.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Open Polymorphism vs. Sealed Exhaustiveness",
+          "subtitle": "Choosing the right abstraction model in modern Java",
+          "nodes": [
+            {
+              "label": "Open Interfaces",
+              "detail": "Plugin architectures with unknown future implementations",
+              "tag": "OCP Strategy",
+              "accent": "sky"
+            },
+            {
+              "label": "Sealed Hierarchies",
+              "detail": "Fixed domain states checked at compile-time by compiler",
+              "tag": "Java 21 Sealed",
+              "accent": "amber"
+            },
+            {
+              "label": "Pattern Switch",
+              "detail": "Exhaustive branch validation without fallback default clauses",
+              "tag": "Safety",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use open interfaces when third party plugins will expand your system over time. But for fixed domain states like payment outcomes, Java 21 sealed hierarchies offer compiler checked exhaustiveness across switch expressions.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "SRP & OCP Fundamentals Locked",
+          "takeaways": [
+            "SRP = isolated responsibilities per business actor",
+            "OCP = extend behavior without altering core code",
+            "Prefer sealed interfaces when variant sets are fixed"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Liskov Substitution & the silent Square-Rectangle bug →",
+          "narration": "That covers SRP and OCP. In Part 2, we dive into Liskov Substitution and reveal why standard subclassing breaks behavioral runtime expectations.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-liskov-substitution",
+      "partTitle": "Liskov Substitution Principle & Behavioral Contracts",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "LSP Integrity • Part 2 of 4",
+          "headline": "Subclasses can pass compilation yet shatter runtime logic.",
+          "highlightWord": "shatter runtime logic",
+          "subline": "The Java compiler checks method signatures, but it cannot enforce behavioral promises.",
+          "narration": "Your subclass can compile with zero warnings while completely breaking caller assumptions. Subtype substitution requires strict adherence to behavioral contracts, not just matching method signatures.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b2-code-lsp",
+          "kind": "code-spotlight",
+          "title": "The Classic Square-Rectangle Trap",
+          "filename": "Rectangle.java",
+          "code": "public class Rectangle {\n    protected int width, height;\n    public void setWidth(int w) { this.width = w; }\n    public void setHeight(int h) { this.height = h; }\n    public int area() { return width * height; }\n}\npublic class Square extends Rectangle {\n    @Override\n    public void setWidth(int w) { this.width = w; this.height = w; }\n    @Override\n    public void setHeight(int h) { this.width = h; this.height = h; }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "badge": "Parent Contract",
+              "explanation": "Rectangle promises callers that mutating width leaves height unaffected.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7,
+                9,
+                11
+              ],
+              "badge": "LSP Violation",
+              "explanation": "Square mutates both dimensions together, breaking callers expecting area of 20 after setting 5x4.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Rectangle promises independent width and height modification. Square overrides setWidth to alter height simultaneously. When passed to code expecting standard rectangle behavior, calculated areas produce wrong numbers at runtime.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Broken Subtype vs. Immutable Sealed Model",
+          "top": {
+            "label": "Throwing Mutator Subclass",
+            "badge": "❌ Contract Breach",
+            "tone": "bad",
+            "code": "public class ReadOnlyList<E> extends ArrayList<E> {\n    @Override\n    public boolean add(E element) {\n        throw new UnsupportedOperationException();\n    }\n}",
+            "points": [
+              "Strengthens preconditions on add()",
+              "Surprises callers expecting list modification"
+            ]
+          },
+          "bottom": {
+            "label": "Sealed Record Hierarchy",
+            "badge": "✅ Clean LSP",
+            "tone": "good",
+            "code": "public sealed interface Shape permits Rectangle, Square {\n    int area();\n}\npublic record Rectangle(int width, int height) implements Shape {\n    public int area() { return width * height; }\n}",
+            "points": [
+              "No mutable state invariant violations",
+              "Subtypes share clean contract without mutation"
+            ]
+          },
+          "narration": "Subclasses throwing UnsupportedOperationException violate behavioral expectation rules. Replace invalid inheritance hierarchies with composition or shared immutable records implementing focused interfaces.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "The 4 Behavioral Rules of LSP",
+          "subtitle": "Guarantees required for safe subtype substitution",
+          "nodes": [
+            {
+              "label": "Preconditions",
+              "detail": "Subtypes cannot reject valid inputs accepted by base types",
+              "tag": "Input Rules",
+              "accent": "sky"
+            },
+            {
+              "label": "Postconditions",
+              "detail": "Subtypes must deliver state promises made by supertypes",
+              "tag": "Output Rules",
+              "accent": "emerald"
+            },
+            {
+              "label": "Invariants",
+              "detail": "Supertype internal state rules must remain fully preserved",
+              "tag": "State Safety",
+              "accent": "amber"
+            },
+            {
+              "label": "No Unexpected Exceptions",
+              "detail": "Subtypes must not throw unexpected runtime failures",
+              "tag": "Runtime Safety",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Four rules protect subtype substitution: never strengthen preconditions, never weaken postconditions, preserve supertype state invariants, and avoid throwing unannounced runtime exceptions.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Subtype Contracts Validated",
+          "takeaways": [
+            "Subclasses must honor supertype behavioral promises",
+            "Avoid overriding methods just to throw exceptions",
+            "Favor composition and immutable records over mutable subclassing"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Segregating fat interfaces & Dependency Inversion →",
+          "narration": "Now you understand LSP constraints. In Part 3, we fix wide fat interfaces using ISP and decouple domain core policies using Dependency Inversion.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-isp-and-dip",
+      "partTitle": "Interface Segregation & Dependency Inversion",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Decoupling Contracts • Part 3 of 4",
+          "headline": "Fat interfaces force classes to write useless stub methods.",
+          "highlightWord": "useless stub methods",
+          "subline": "When interfaces combine unrelated duties, implementers end up coupled to code they never use.",
+          "narration": "Why should an automated CI bot implement human timesheet methods? Interface Segregation keeps contracts small and client focused, while Dependency Inversion turns package dependencies inward toward core logic.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Bloated Interface vs. Focused Role Interfaces",
+          "top": {
+            "label": "Fat Monolithic Interface",
+            "badge": "❌ ISP Violation",
+            "tone": "bad",
+            "code": "public interface Worker {\n    void writeCode();\n    void reviewPullRequest();\n    void submitTimesheet(); // Bots fail here!\n}",
+            "points": [
+              "Forces bots to implement human methods",
+              "Changes for human workflows touch bot code"
+            ]
+          },
+          "bottom": {
+            "label": "Segregated Role Contracts",
+            "badge": "✅ Clean ISP",
+            "tone": "good",
+            "code": "public interface CodeProducer { void writeCode(); }\npublic interface CodeReviewer { void reviewPullRequest(); }\n\npublic class CiBot implements CodeProducer, CodeReviewer {\n    // Implements only relevant methods!\n}",
+            "points": [
+              "Classes implement only what they support",
+              "Clients depend strictly on needed operations"
+            ]
+          },
+          "narration": "Grouping unrelated responsibilities into giant interfaces forces implementers to throw exceptions or supply empty stubs. Splitting them into role interfaces ensures classes adopt only the capabilities they genuinely support.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Dependency Inversion in Architecture",
+          "subtitle": "Inverting compile-time arrows toward core domain logic",
+          "nodes": [
+            {
+              "label": "Domain Core",
+              "detail": "High-level business rules owning the repository interface port",
+              "tag": "High Level",
+              "accent": "emerald"
+            },
+            {
+              "label": "AccountRepository",
+              "detail": "Pure abstraction seam residing inside core business package",
+              "tag": "Port Interface",
+              "accent": "sky"
+            },
+            {
+              "label": "PostgresAdapter",
+              "detail": "Low-level infrastructure implementing domain interface",
+              "tag": "Low Level Adapter",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Dependency Inversion flips compile time dependencies. High level domain logic owns the port interface, while low level infrastructure adapters like PostgreSQL implement that interface from outer layers.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code-dip",
+          "kind": "code-spotlight",
+          "title": "Domain Policy Decoupled from Infrastructure",
+          "filename": "TransferFundsUseCase.java",
+          "code": "public interface AccountRepository {\n    Account findById(String id);\n    void save(Account account);\n}\npublic class TransferFundsUseCase {\n    private final AccountRepository repo;\n    public TransferFundsUseCase(AccountRepository repo) { this.repo = repo; }\n    public void transfer(String from, String to, BigDecimal amt) {\n        Account a = repo.findById(from); Account b = repo.findById(to);\n        a.debit(amt); b.credit(amt);\n        repo.save(a); repo.save(b);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "badge": "Domain Port",
+              "explanation": "Owned by domain core with zero imports of JDBC, Hibernate, or Spring framework classes.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12
+              ],
+              "badge": "Pure Business Policy",
+              "explanation": "Executes domain logic and relies on abstraction for state updates.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Notice how TransferFundsUseCase stays completely clean. It has zero dependencies on databases or frameworks. It operates strictly through the domain-owned AccountRepository abstraction.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "ISP & DIP Cleanly Integrated",
+          "takeaways": [
+            "ISP = small role interfaces tailored to client needs",
+            "DIP = core business rules own abstractions",
+            "Decouple domain policy from database implementation details"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Pragmatic SOLID, Java 25 & avoiding over-abstraction →",
+          "narration": "You have mastered interface segregation and dependency inversion. In Part 4, learn when not to abstract, plus explore modern Java sealed patterns.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-pragmatic-solid-and-modern-java",
+      "partTitle": "Pragmatic SOLID, Modern Java & Practical Trade-Offs",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Pragmatic Engineering • Part 4 of 4",
+          "headline": "Creating Service and ServiceImpl everywhere is an anti-pattern.",
+          "highlightWord": "ServiceImpl everywhere",
+          "subline": "Blindly applying design abstractions creates unnecessary tax without giving flexibility.",
+          "narration": "Creating matching interfaces for single concrete classes is a classic Java over-abstraction trap. SOLID principles are design heuristics to manage real change, not dogma to apply blindly.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Dogmatic Over-Abstraction vs. Pragmatic Concrete First",
+          "top": {
+            "label": "1:1 Interface Wrapper Tax",
+            "badge": "❌ Unneeded Indirection",
+            "tone": "bad",
+            "code": "public interface OrderService {\n    void process(Order order);\n}\npublic class OrderServiceImpl implements OrderService {\n    // Only one implementation will ever exist!\n}",
+            "points": [
+              "Doubles file count with zero runtime benefits",
+              "Forces IDE navigation jumps to find code"
+            ]
+          },
+          "bottom": {
+            "label": "Concrete First, Refactor Later",
+            "badge": "✅ High Signal Design",
+            "tone": "good",
+            "code": "public class OrderService {\n    public void process(Order order) {\n        // Start concrete, extract seam when needed\n    }\n}",
+            "points": [
+              "Extract interfaces when multiple implementations emerge",
+              "Keep code readable until friction demands abstractions"
+            ]
+          },
+          "narration": "Do not write one-to-one interfaces for every service class before you actually need a second implementation or test seam. Start concrete and extract interfaces when friction appears.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-j21",
+          "kind": "code-spotlight",
+          "title": "Modern OCP: Sealed Interfaces + Pattern Switch",
+          "filename": "PaymentProcessor.java",
+          "code": "public sealed interface PaymentResult permits Approved, Declined {}\npublic record Approved(String txId) implements PaymentResult {}\npublic record Declined(String reason) implements PaymentResult {}\n\npublic class Processors {\n    public String format(PaymentResult res) {\n        return switch (res) {\n            case Approved a -> \"Approved: \" + a.txId();\n            case Declined d -> \"Declined: \" + d.reason();\n        };\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Sealed Domain Set",
+              "explanation": "Restricts implementation variants explicitly within the domain layer.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "badge": "Compiler Exhaustiveness",
+              "explanation": "Pattern switch requires handling all cases, eliminating runtime missing-branch bugs.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Modern Java gives us powerful options beyond traditional polymorphism. Sealed interfaces paired with switch pattern matching deliver full compiler checked exhaustiveness across closed sets of business outcomes.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Testing DIP In-Memory Repositories",
+          "caption": "Fast unit tests using plain Java test double implementations",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Run unit tests using lightweight in-memory storage adapters"
+            },
+            {
+              "kind": "command",
+              "text": "./gradlew test --tests com.javahub.solid.TransferFundsTest"
+            },
+            {
+              "kind": "output",
+              "text": "TransferFundsTest > shouldTransferBalance Successfully PASSED"
+            },
+            {
+              "kind": "success",
+              "text": "BUILD SUCCESSFUL in 850ms (0 external DB calls required)"
+            }
+          ],
+          "narration": "Applying Dependency Inversion pays instant testing dividends. By substituting fast in-memory repository adapters into unit tests, test suites execute in milliseconds without launching database containers.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "SOLID Mastery Unlocked!",
+          "takeaways": [
+            "SOLID principles manage code change, not file counts",
+            "Use sealed pattern matching for fixed domain variants",
+            "Start concrete and extract interfaces when seams emerge"
+          ],
+          "command": "git checkout topic/level-6/solid-principles-basics",
+          "nextPartTeaser": "Explore complete hands-on code examples at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered SOLID principles in modern Java. Checkout the topic branch to explore all interactive refactorings, test doubles, and verified JUnit 5 suites yourself.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
