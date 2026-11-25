@@ -35,6 +35,8 @@ interface BatchOptions {
   model: string;
   hubDir: string;
   noPush: boolean;
+  renderExistingOnly: boolean;
+  maxConsecutiveFailures: number;
   limit?: number;
 }
 
@@ -46,6 +48,8 @@ function parseArgs(argv: string[]): BatchOptions {
     model: "",
     hubDir: DEFAULT_HUB_DIR,
     noPush: false,
+    renderExistingOnly: false,
+    maxConsecutiveFailures: 3,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -78,6 +82,13 @@ function parseArgs(argv: string[]): BatchOptions {
       case "--limit":
         opts.limit = Number(next);
         i++;
+        break;
+      case "--max-consecutive-failures":
+        opts.maxConsecutiveFailures = Number(next);
+        i++;
+        break;
+      case "--render-existing-only":
+        opts.renderExistingOnly = true;
         break;
       case "--no-push":
         opts.noPush = true;
@@ -210,7 +221,11 @@ async function main(): Promise<void> {
   const completed = getCompletedChapterIds();
   const allChapters = listChapters(opts.hubDir).filter((id) => {
     const lvl = Number(id.split("/")[0].replace(/\D/g, ""));
-    return lvl >= opts.startLevel && lvl <= opts.endLevel && !completed.has(id);
+    if (lvl < opts.startLevel || lvl > opts.endLevel || completed.has(id)) return false;
+    if (opts.renderExistingOnly) {
+      return fs.existsSync(path.join(STORYBOARDS_DIR, `${id}.json`));
+    }
+    return true;
   });
 
   const queue = opts.limit ? allChapters.slice(0, opts.limit) : allChapters;
@@ -247,6 +262,7 @@ async function main(): Promise<void> {
 
   let nextStoryboardPromise: Promise<PrefetchResult> | null = safePrefetch(queue[0]);
   let succeeded = 0;
+  let consecutiveFailures = 0;
   const failed: Array<{ chapterId: string; error: string }> = [];
 
   for (let i = 0; i < queue.length; i++) {
@@ -262,12 +278,13 @@ async function main(): Promise<void> {
         ? await nextStoryboardPromise
         : await safePrefetch(chapterId);
 
-      // Start prefetching Chapter N+1 IN PARALLEL (never rejects unhandled!)
-      nextStoryboardPromise = nextChapterId ? safePrefetch(nextChapterId) : null;
-
+      // Only prefetch Chapter N+1 if current storyboard succeeded (avoid wasting calls during outages/429s)
       if (!sbRes.ok) {
+        nextStoryboardPromise = null;
         throw new Error(sbRes.error);
       }
+
+      nextStoryboardPromise = nextChapterId ? safePrefetch(nextChapterId) : null;
 
       await runNpmAsync(
         ["run", "generate", "--", "--chapter", chapterId, "--publish-release"],
@@ -276,11 +293,21 @@ async function main(): Promise<void> {
 
       commitAndPushTopic(chapterId, opts.hubDir, opts.noPush);
       succeeded++;
+      consecutiveFailures = 0;
       console.log(`[Done ${i + 1}/${queue.length}] ${chapterId} published & pushed!`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[FAILED] ${chapterId}: ${msg}`);
       failed.push({ chapterId, error: msg });
+      consecutiveFailures++;
+
+      if (consecutiveFailures >= opts.maxConsecutiveFailures) {
+        console.error(
+          `\n[CIRCUIT BREAKER] Stopping batch after ${consecutiveFailures} consecutive failures to avoid wasting retries/quota.`
+        );
+        break;
+      }
+
       if (nextChapterId && !nextStoryboardPromise) {
         nextStoryboardPromise = safePrefetch(nextChapterId);
       }
