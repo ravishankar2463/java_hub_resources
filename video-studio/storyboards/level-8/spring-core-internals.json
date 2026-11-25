@@ -1,0 +1,468 @@
+{
+  "chapterId": "level-8/spring-core-internals",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "spring-core-internals",
+  "chapterTitle": "Spring Core Internals",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/spring-core-internals",
+  "branchName": "topic/level-8/spring-core-internals",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-ioc-and-injection-styles",
+      "partTitle": "IoC, DI, and the Injection Trap",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Internals • Part 1 of 4",
+          "headline": "Why is field injection a ticking time bomb?",
+          "highlightWord": "ticking time bomb",
+          "subline": "It bypasses the compiler, hides dependencies, and makes your code impossible to test.",
+          "narration": "Field injection is convenient, but it's a trap. It uses reflection to bypass constructors, making your classes impossible to unit test without booting a massive Spring context.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Field vs. Constructor Injection",
+          "top": {
+            "label": "Field Injection",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "@Autowired\nprivate Gateway g;",
+            "points": [
+              "Cannot use final fields",
+              "Hides dependency bloat"
+            ]
+          },
+          "bottom": {
+            "label": "Constructor Injection",
+            "badge": "Good",
+            "tone": "good",
+            "code": "public Service(Gateway g) {\n    this.g = Objects.requireNonNull(g);\n}",
+            "points": [
+              "Guarantees immutability",
+              "Fail-fast at compile time"
+            ]
+          },
+          "narration": "Constructor injection forces you to declare dependencies explicitly. If your constructor list grows too long, that's a signal your class is doing too much. Use it to guarantee thread-safe, final fields.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-circular",
+          "kind": "code-spotlight",
+          "title": "Handling Circular Dependencies",
+          "filename": "CircularService.java",
+          "code": "@Service\npublic class A { \n    private final B b;\n    public A(B b) { this.b = b; }\n}\n// Spring throws BeanCurrentlyInCreationException",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "The Cycle",
+              "explanation": "Spring cannot instantiate A without B, and B without A. It fails fast at startup.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "The Fix",
+              "explanation": "Extract shared logic into a third bean or use ObjectProvider to break the cycle lazily.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Circular dependencies aren't just annoying; they're a design smell. Spring Boot 2.6+ disables them by default. Don't hack around it—refactor your shared logic into a third, independent component.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-context",
+          "kind": "flow-diagram",
+          "title": "BeanFactory vs. ApplicationContext",
+          "nodes": [
+            {
+              "label": "BeanFactory",
+              "detail": "Lazy, minimal registry",
+              "tag": "Core",
+              "accent": "sky"
+            },
+            {
+              "label": "ApplicationContext",
+              "detail": "Eager singletons, events, i18n",
+              "tag": "Enterprise",
+              "accent": "emerald"
+            },
+            {
+              "label": "Implementation",
+              "detail": "AnnotationConfigServletWebServer",
+              "tag": "Boot",
+              "accent": "amber"
+            }
+          ],
+          "narration": "BeanFactory is the bare-bones registry. ApplicationContext is what you actually use—it pre-instantiates singletons at startup to surface configuration errors before your app even accepts traffic.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Always prefer constructor injection",
+            "Circular deps signal architectural flaws",
+            "ApplicationContext is for production"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): The 7-step Bean Lifecycle →",
+          "narration": "That's the foundation. In Part 2, we trace the exact 7-step lifecycle of a bean, from raw instantiation to the final AOP proxy.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-bean-lifecycle",
+      "partTitle": "The 7-Step Bean Lifecycle",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Internals • Part 2 of 4",
+          "headline": "Why does @Transactional fail on @PostConstruct?",
+          "highlightWord": "fail",
+          "subline": "It's all about the order of operations in the bean lifecycle.",
+          "narration": "Ever tried to use @Transactional inside a @PostConstruct method? It fails silently. Here is why the bean lifecycle makes that impossible.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow-lifecycle",
+          "kind": "flow-diagram",
+          "title": "The Lifecycle Pipeline",
+          "nodes": [
+            {
+              "label": "Instantiation",
+              "detail": "Reflection constructor call",
+              "tag": "1",
+              "accent": "sky"
+            },
+            {
+              "label": "Initialization",
+              "detail": "@PostConstruct runs here",
+              "tag": "5",
+              "accent": "amber"
+            },
+            {
+              "label": "Proxy Wrapping",
+              "detail": "AOP/Transactional proxy created",
+              "tag": "6",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Initialization happens at step 5. The proxy wrapping happens at step 6. By the time your PostConstruct logic runs, the proxy doesn't exist yet. You are calling the raw method, not the transactional one.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-bpp",
+          "kind": "code-spotlight",
+          "title": "Detecting Slow Initialization",
+          "filename": "SlowInitDetector.java",
+          "code": "public Object postProcessAfterInitialization(Object bean, String name) {\n    long elapsed = System.nanoTime() - startNanos.get(name);\n    if (elapsed > 200) log.warn(\"Slow bean: {}\", name);\n    return bean;\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "BeanPostProcessor",
+              "explanation": "This interface lets you hook into the lifecycle to inspect or wrap every bean.",
+              "accent": "purple"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Lifecycle Hook",
+              "explanation": "Runs after init methods but before the bean is registered in the context.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "BeanPostProcessors are the secret sauce. They allow you to intercept, monitor, or even replace beans with proxies. This is exactly how Spring's AOP and Transactional features work under the hood.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare-proxy",
+          "kind": "compare",
+          "title": "Raw Bean vs. Proxy",
+          "top": {
+            "label": "Raw Bean",
+            "badge": "Step 5",
+            "tone": "neutral",
+            "code": "public void init() { ... }",
+            "points": [
+              "Direct method calls",
+              "No AOP interceptors"
+            ]
+          },
+          "bottom": {
+            "label": "Proxy Bean",
+            "badge": "Step 6",
+            "tone": "good",
+            "code": "public void init() {\n    txManager.begin();\n    target.init();\n    txManager.commit();\n}",
+            "points": [
+              "Transactional logic applied",
+              "Registered in Context"
+            ]
+          },
+          "narration": "Spring registers the proxy, not your raw bean. If you need transactional startup logic, use ApplicationReadyEvent instead of PostConstruct.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Lifecycle Mastered",
+          "takeaways": [
+            "PostConstruct runs before proxies exist",
+            "Use ApplicationReadyEvent for startup work",
+            "BeanPostProcessor is the ultimate hook"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The Prototype-in-Singleton Trap →",
+          "narration": "Lifecycle is now clear. In Part 3, we tackle the most common scope bug: injecting a prototype into a singleton and why it destroys your state.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-bean-scopes",
+      "partTitle": "Prototype-in-Singleton Traps",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Internals • Part 3 of 4",
+          "headline": "Why is your prototype bean behaving like a singleton?",
+          "highlightWord": "behaving like a singleton",
+          "subline": "You injected it once, so you're stuck with it forever.",
+          "narration": "You marked a bean as prototype, but it never changes. Why? Because you injected it into a singleton, and the container only resolves that reference once at startup.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-bug",
+          "kind": "code-spotlight",
+          "title": "The Prototype Trap",
+          "filename": "AuthService.java",
+          "code": "@Service\npublic class AuthService {\n    private final TokenGenerator gen;\n    public AuthService(TokenGenerator gen) { this.gen = gen; }\n    public String get() { return gen.getToken(); }\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "The Bug",
+              "explanation": "AuthService is a singleton. It gets one TokenGenerator instance at startup. It never changes.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The singleton is created once, so it holds the same prototype instance for its entire life. You aren't getting a new token; you're getting the same one over and over.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-fix",
+          "kind": "code-spotlight",
+          "title": "The ObjectProvider Fix",
+          "filename": "AuthService.java",
+          "code": "@Service\npublic class AuthService {\n    private final ObjectProvider<TokenGenerator> provider;\n    public String get() { return provider.getObject().getToken(); }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "ObjectProvider",
+              "explanation": "Inject the provider instead of the bean. Call getObject() to fetch a fresh instance.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use ObjectProvider. It's the cleanest way to request a fresh bean from the container on demand. It keeps your code readable and your scopes honest.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-scopes",
+          "kind": "compare",
+          "title": "Scope Lifetime",
+          "top": {
+            "label": "Singleton",
+            "badge": "Default",
+            "tone": "neutral",
+            "code": "One per ApplicationContext",
+            "points": [
+              "Shared across threads",
+              "Must be stateless"
+            ]
+          },
+          "bottom": {
+            "label": "Request",
+            "badge": "Web",
+            "tone": "good",
+            "code": "One per HTTP Request",
+            "points": [
+              "Thread-local storage",
+              "Automatically cleaned up"
+            ]
+          },
+          "narration": "Singletons are shared. If you store state in them, you will have race conditions. Use Request scope for per-user metadata like tenant IDs or correlation headers.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Scopes Resolved",
+          "takeaways": [
+            "Singletons must be stateless",
+            "Use ObjectProvider for prototype lookup",
+            "Request scope handles thread-local state"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Debugging Auto-Configuration →",
+          "narration": "Scopes are now handled. In Part 4, we demystify Spring Boot auto-configuration and show you how to debug why a bean is missing using the --debug flag.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-auto-configuration",
+      "partTitle": "Debugging Auto-Configuration",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Internals • Part 4 of 4",
+          "headline": "Why did Spring Boot ignore your DataSource?",
+          "highlightWord": "ignore",
+          "subline": "It's not magic—it's conditional logic based on what you have on the classpath.",
+          "narration": "Spring Boot auto-configuration feels like magic until it breaks. Why did it ignore your custom bean? It's all about the ConditionalOnMissingBean check.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow-autoconfig",
+          "kind": "flow-diagram",
+          "title": "How Auto-Config Works",
+          "nodes": [
+            {
+              "label": "Imports",
+              "detail": "META-INF/spring/*.imports",
+              "tag": "Candidates",
+              "accent": "sky"
+            },
+            {
+              "label": "Conditions",
+              "detail": "@ConditionalOnMissingBean",
+              "tag": "Filter",
+              "accent": "amber"
+            },
+            {
+              "label": "Registration",
+              "detail": "Bean added to Context",
+              "tag": "Final",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Spring Boot scans imports for candidates. It then runs conditions. If you define your own bean, the MissingBean condition evaluates to false, and Spring Boot backs off automatically.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal-debug",
+          "kind": "terminal",
+          "title": "Debugging the Context",
+          "caption": "The --debug flag is your best friend",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java -jar app.jar --debug"
+            },
+            {
+              "kind": "output",
+              "text": "Positive matches:"
+            },
+            {
+              "kind": "success",
+              "text": "  DataSourceAutoConfiguration matched"
+            },
+            {
+              "kind": "output",
+              "text": "Negative matches:"
+            },
+            {
+              "kind": "error",
+              "text": "  MyCustomConfig did not match: @ConditionalOnProperty missing"
+            }
+          ],
+          "narration": "Stop guessing. Run your app with the dash-dash-debug flag. It prints the ConditionEvaluationReport, showing you exactly why a bean was skipped or why a configuration failed to load.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-code-conditional",
+          "kind": "code-spotlight",
+          "title": "Custom Auto-Config Logic",
+          "filename": "MyAutoConfig.java",
+          "code": "@AutoConfiguration\n@ConditionalOnClass(DataSource.class)\npublic class MyAutoConfig {\n    @Bean\n    @ConditionalOnMissingBean\n    public DataSource ds() { ... }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Conditional",
+              "explanation": "Only runs if DataSource is on the classpath. Prevents NoClassDefFoundErrors.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "MissingBean",
+              "explanation": "The key to effortless overrides. If a user defines a bean, this one stays out.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "This is how you write robust libraries. By using ConditionalOnMissingBean, you allow your users to override your defaults without needing to exclude your auto-configuration class.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Spring Internals Mastered",
+          "takeaways": [
+            "Use --debug to see condition reports",
+            "ConditionalOnMissingBean enables overrides",
+            "Auto-config is just standard beans"
+          ],
+          "command": "git checkout topic/level-8/spring-core-internals",
+          "nextPartTeaser": "Full guide + Lab at ravishankar2463.github.io/java_hub",
+          "narration": "You now understand the Spring container's heart. Checkout the branch in the roadmap to run the lab and see these internals in action. Go build something great.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
