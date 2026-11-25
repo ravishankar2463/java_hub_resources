@@ -1,0 +1,506 @@
+{
+  "chapterId": "level-2/network-socket-programming",
+  "level": "level-2",
+  "levelLabel": "Level 2",
+  "slug": "network-socket-programming",
+  "chapterTitle": "Network Socket Programming",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-2/network-socket-programming",
+  "branchName": "topic/level-2/network-socket-programming",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-tcp-framing-pitfalls",
+      "partTitle": "Why TCP Needs Message Framing",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Network Sockets • Part 1 of 4",
+          "headline": "TCP is a stream, not a message queue.",
+          "highlightWord": "not a message queue",
+          "subline": "One write does not equal one read. Here is why your socket code is likely broken.",
+          "narration": "TCP is a raw byte stream. If you write 'Hello' then 'World', the receiver might get 'HelloWorld' or 'Hel' and 'loWorld'. TCP has no concept of message boundaries.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The TCP Stream Reality",
+          "nodes": [
+            {
+              "label": "Sender",
+              "detail": "Writes 5 bytes then 5 bytes",
+              "tag": "App",
+              "accent": "sky"
+            },
+            {
+              "label": "OS Buffer",
+              "detail": "Coalesces or splits segments",
+              "tag": "Kernel",
+              "accent": "amber"
+            },
+            {
+              "label": "Receiver",
+              "detail": "Reads whatever arrived",
+              "tag": "App",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The OS networking stack optimizes throughput by coalescing or splitting segments. You must define a framing protocol to reconstruct your messages from the stream.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-framing",
+          "kind": "code-spotlight",
+          "title": "Length-Prefixed Framing",
+          "filename": "Codec.java",
+          "code": "public static String readFrame(DataInputStream in) throws IOException {\n    int length = in.readInt();\n    if (length < 0 || length > MAX_SIZE) throw new IOException();\n    byte[] payload = new byte[length];\n    in.readFully(payload);\n    return new String(payload, StandardCharsets.UTF_8);\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Header",
+              "explanation": "Read 4-byte length prefix first.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Safety",
+              "explanation": "Guard against malicious huge allocations.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "readFully",
+              "explanation": "Blocks until the exact length is filled.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use length-prefixed framing. Read the 4-byte header, validate the size to prevent OOM attacks, and use readFully to ensure you get the complete payload.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Read vs ReadFully",
+          "top": {
+            "label": "InputStream.read()",
+            "badge": "Dangerous",
+            "tone": "bad",
+            "code": "in.read(buffer);",
+            "points": [
+              "Returns partial data",
+              "Non-deterministic"
+            ]
+          },
+          "bottom": {
+            "label": "DataInputStream.readFully()",
+            "badge": "Correct",
+            "tone": "good",
+            "code": "in.readFully(buffer);",
+            "points": [
+              "Loops until full",
+              "Safe for frames"
+            ]
+          },
+          "narration": "Never use standard read for frames. It returns as soon as any bytes arrive. Use readFully to guarantee the entire message is in memory before processing.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Framing Secured",
+          "takeaways": [
+            "TCP is a byte stream",
+            "Always use length-prefixed framing",
+            "readFully is mandatory"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): ServerSocket binding traps →",
+          "narration": "Framing is the foundation. Next, we fix the ServerSocket binding bugs that cause 'Address already in use' errors.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-serversocket-tuning",
+      "partTitle": "ServerSocket Binding & Tuning",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Network Sockets • Part 2 of 4",
+          "headline": "Your ServerSocket is bound too early.",
+          "highlightWord": "bound too early",
+          "subline": "Calling setReuseAddress after the constructor is a silent no-op.",
+          "narration": "If you call new ServerSocket(8080), it binds immediately. If you need to reuse the address after a crash, you're already too late.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-bind",
+          "kind": "code-spotlight",
+          "title": "The Correct Binding Pattern",
+          "filename": "Server.java",
+          "code": "ServerSocket ss = new ServerSocket();\nss.setReuseAddress(true);\nss.bind(new InetSocketAddress(8080), 128);\n\n// vs\n\nServerSocket ss = new ServerSocket(8080); // Too late!",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Unbound",
+              "explanation": "Create without a port first.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "SO_REUSEADDR",
+              "explanation": "Enable before binding.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Bind",
+              "explanation": "Now it's safe to bind.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Create an unbound socket, set your options, then bind. This ensures SO_REUSEADDR actually works, preventing BindExceptions during server restarts.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Latency vs Throughput",
+          "top": {
+            "label": "Nagle's Algorithm",
+            "badge": "Default",
+            "tone": "bad",
+            "code": "socket.setTcpNoDelay(false);",
+            "points": [
+              "Buffers small writes",
+              "Adds 40ms+ latency"
+            ]
+          },
+          "bottom": {
+            "label": "TCP_NODELAY",
+            "badge": "Optimized",
+            "tone": "good",
+            "code": "socket.setTcpNoDelay(true);",
+            "points": [
+              "Sends immediately",
+              "Crucial for RPC"
+            ]
+          },
+          "narration": "Nagle's algorithm buffers small writes to save bandwidth. For RPC, it's a latency killer. Always set TCP_NODELAY to true for request-response services.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "TIME_WAIT State",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Check for sockets in TIME_WAIT"
+            },
+            {
+              "kind": "command",
+              "text": "netstat -an | grep 8080"
+            },
+            {
+              "kind": "output",
+              "text": "tcp4 0 0 *.8080 *.* LISTEN"
+            },
+            {
+              "kind": "output",
+              "text": "tcp4 0 0 127.0.0.1.8080 127.0.0.1.54321 TIME_WAIT"
+            }
+          ],
+          "narration": "When a connection closes, it sits in TIME_WAIT for 60 seconds. Without SO_REUSEADDR, you cannot restart your server on the same port until it clears.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Socket Options Mastered",
+          "takeaways": [
+            "Bind unbound sockets",
+            "Enable SO_REUSEADDR",
+            "Use TCP_NODELAY for RPC"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): UDP and the silent truncation trap →",
+          "narration": "Binding is now bulletproof. Next, we look at UDP, where packets can be silently truncated without warning.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-udp-datagrams",
+      "partTitle": "UDP Datagrams & Truncation",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Network Sockets • Part 3 of 4",
+          "headline": "UDP will silently drop your data.",
+          "highlightWord": "silently drop",
+          "subline": "If your buffer is too small, the OS just chops the packet off.",
+          "narration": "UDP is connectionless. If you receive a packet larger than your buffer, the kernel silently truncates it. No error, no exception, just missing data.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-udp",
+          "kind": "code-spotlight",
+          "title": "Safe UDP Receiving",
+          "filename": "UdpReceiver.java",
+          "code": "DatagramPacket packet = new DatagramPacket(buf, buf.length);\nwhile (true) {\n    packet.setLength(buf.length); // Reset!\n    socket.receive(packet);\n    process(packet.getData(), packet.getLength());\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Reset",
+              "explanation": "Length shrinks after receive().",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Receive",
+              "explanation": "Blocks until packet arrives.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Length",
+              "explanation": "Use the actual received length.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "After receive, the packet's length property updates to the received size. You must reset it to your buffer size before the next iteration.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "UDP Packet Lifecycle",
+          "nodes": [
+            {
+              "label": "Sender",
+              "detail": "Send 1400 bytes",
+              "tag": "UDP",
+              "accent": "sky"
+            },
+            {
+              "label": "Network",
+              "detail": "Potential fragmentation",
+              "tag": "Path",
+              "accent": "amber"
+            },
+            {
+              "label": "Receiver",
+              "detail": "Buffer 1024 bytes",
+              "tag": "Truncation",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Keep UDP payloads under the MTU, around 1200 bytes. Larger packets risk fragmentation and truncation, which destroys your data integrity.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "TCP vs UDP Reliability",
+          "top": {
+            "label": "TCP",
+            "badge": "Reliable",
+            "tone": "good",
+            "code": "Handshake + ACKs",
+            "points": [
+              "Guaranteed order",
+              "Flow control"
+            ]
+          },
+          "bottom": {
+            "label": "UDP",
+            "badge": "Best-Effort",
+            "tone": "neutral",
+            "code": "Fire and forget",
+            "points": [
+              "No handshake",
+              "Packets can drop"
+            ]
+          },
+          "narration": "TCP handles retransmission and ordering for you. UDP is raw speed. Use it for metrics or game state, but never for critical business transactions.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "UDP Safety",
+          "takeaways": [
+            "Reset packet length",
+            "Stay under 1200 bytes",
+            "Best-effort only"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Scaling with Virtual Threads →",
+          "narration": "UDP is dangerous but fast. Finally, we scale these sockets to 100k connections using Java 21 Virtual Threads.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-scaling-virtual-threads",
+      "partTitle": "Scaling with Virtual Threads",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Network Sockets • Part 4 of 4",
+          "headline": "Stop using thread pools for sockets.",
+          "highlightWord": "thread pools",
+          "subline": "Virtual threads make blocking I/O scale to 100k+ connections.",
+          "narration": "Platform threads are expensive. Virtual threads are cheap. You can now write simple blocking code that handles massive concurrency without complex NIO selectors.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-vthread",
+          "kind": "code-spotlight",
+          "title": "Virtual Thread Server",
+          "filename": "Server.java",
+          "code": "try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {\n    while (true) {\n        Socket client = ss.accept();\n        executor.submit(() -> handle(client));\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "VThreads",
+              "explanation": "One thread per socket.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Accept",
+              "explanation": "Blocks until connection.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Submit",
+              "explanation": "Cheap task creation.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Virtual threads unmount from the carrier thread when blocking. This allows you to write readable, blocking code that scales to hundreds of thousands of sockets.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "Scaling Strategy",
+          "top": {
+            "label": "NIO Selector",
+            "badge": "Complex",
+            "tone": "neutral",
+            "code": "Event Loop",
+            "points": [
+              "High performance",
+              "Hard to debug"
+            ]
+          },
+          "bottom": {
+            "label": "Virtual Threads",
+            "badge": "Simple",
+            "tone": "good",
+            "code": "Blocking I/O",
+            "points": [
+              "Easy to read",
+              "Massive scale"
+            ]
+          },
+          "narration": "NIO is great for proxies, but Virtual Threads are the new standard for application logic. Keep your code simple and let the JVM handle the scheduling.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Socket Tuning Check",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Verify socket timeout settings"
+            },
+            {
+              "kind": "command",
+              "text": "jstack <pid> | grep 'socketRead'"
+            },
+            {
+              "kind": "output",
+              "text": "at java.net.SocketInputStream.socketRead0"
+            },
+            {
+              "kind": "success",
+              "text": "Always set SO_TIMEOUT to prevent leaks!"
+            }
+          ],
+          "narration": "Even with virtual threads, set your SO_TIMEOUT. A dead client should not hold a thread and memory forever. Always enforce backpressure.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Networking Mastered",
+          "takeaways": [
+            "Use Virtual Threads",
+            "Set SO_TIMEOUT",
+            "Avoid blocking in locks"
+          ],
+          "command": "git checkout topic/level-2/network-socket-programming",
+          "nextPartTeaser": "Full lab at https://ravishankar2463.github.io/java_hub/roadmap/level-2/network-socket-programming",
+          "narration": "You've mastered Java networking. Run the lab to see these patterns in action. Checkout the branch and build your own high-concurrency server.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
