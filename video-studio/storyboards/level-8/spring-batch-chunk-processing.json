@@ -1,0 +1,485 @@
+{
+  "chapterId": "level-8/spring-batch-chunk-processing",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "spring-batch-chunk-processing",
+  "chapterTitle": "Spring Batch: Chunk Processing",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/spring-batch-chunk-processing",
+  "branchName": "topic/level-8/spring-batch-chunk-processing",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-chunk-model",
+      "partTitle": "Why Batch Jobs Need Chunks",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Batch • Part 1 of 4",
+          "headline": "Why does your batch job crash at 20 million rows?",
+          "highlightWord": "crash",
+          "subline": "Loading everything into memory is a rookie mistake. Here is how to process massive datasets safely.",
+          "narration": "If you load 20 million rows into a list, you will trigger an OutOfMemoryError instantly. Spring Batch solves this with chunk-oriented processing, streaming your data in small, manageable bites.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Naive Loop vs. Chunked Pipeline",
+          "top": {
+            "label": "Naive Loop",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "for (Tx tx : repo.findAll()) {\n    process(tx);\n}",
+            "points": [
+              "Loads entire table into heap",
+              "Single massive transaction lock"
+            ]
+          },
+          "bottom": {
+            "label": "Chunk Pipeline",
+            "badge": "Good",
+            "tone": "good",
+            "code": "stepBuilder.chunk(500)\n  .reader(reader)\n  .writer(writer)",
+            "points": [
+              "Constant memory footprint",
+              "Transactional integrity per chunk"
+            ]
+          },
+          "narration": "The naive loop pulls everything into RAM and holds a database lock for hours. The chunk approach processes items in small batches, committing to the database incrementally.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Chunk Cycle",
+          "subtitle": "Read, Process, Write, Commit",
+          "nodes": [
+            {
+              "label": "Reader",
+              "detail": "Fetches 1 item at a time",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "Processor",
+              "detail": "Transforms or filters data",
+              "tag": "Logic",
+              "accent": "amber"
+            },
+            {
+              "label": "Writer",
+              "detail": "Writes chunk of N items",
+              "tag": "Output",
+              "accent": "purple"
+            },
+            {
+              "label": "Transaction",
+              "detail": "Commits the full chunk",
+              "tag": "Atomic",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The reader pulls one item, the processor transforms it, and the writer buffers them until the chunk size is hit. Only then does the transaction commit, ensuring data consistency.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-writer",
+          "kind": "code-spotlight",
+          "title": "Writing Chunks in Spring Batch 5",
+          "filename": "Writer.java",
+          "code": "public class MyWriter implements ItemWriter<Tx> {\n    @Override\n    public void write(Chunk<? extends Tx> chunk) {\n        log.info(\"Batch size: {}\", chunk.size());\n        for (Tx tx : chunk.getItems()) {\n            saveToDb(tx);\n        }\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Chunk<T>",
+              "explanation": "Spring Batch 5 uses the Chunk container instead of a simple List.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "getItems()",
+              "explanation": "Access the buffered items to perform your bulk database operations.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "In Spring Batch 5, the writer receives a Chunk container. This is your signal to perform bulk operations, keeping database round-trips to a minimum.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Never load full datasets into memory",
+            "Chunk size is a memory/throughput trade-off",
+            "Use Chunk<T> for Spring Batch 5 writers"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How to handle failures with Skip and Retry policies →",
+          "narration": "That is the foundation. In Part 2, we look at how to handle poisoned records without killing your entire job.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-fault-tolerance",
+      "partTitle": "Handling Failures: Skip & Retry",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Fault Tolerance • Part 2 of 4",
+          "headline": "What happens when one bad row kills your job?",
+          "highlightWord": "bad row",
+          "subline": "Don't let a single malformed record roll back hours of work. Use declarative skip policies.",
+          "narration": "One malformed row can crash a 10-hour job. You need a strategy to isolate the failure, log it, and keep the rest of the pipeline moving.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-config",
+          "kind": "code-spotlight",
+          "title": "Configuring Fault Tolerance",
+          "filename": "StepConfig.java",
+          "code": ".faultTolerant()\n.retry(TransientDataAccessException.class)\n.retryLimit(3)\n.skip(IllegalArgumentException.class)\n.skipLimit(100)",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Retry",
+              "explanation": "Use for transient errors like network blips or deadlocks.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Skip",
+              "explanation": "Use for data validation errors that will never succeed.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Retry is for transient infrastructure issues. Skip is for data errors. By setting a skip limit, you prevent a bad data explosion while still allowing the job to finish.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Scanning Mode Mechanism",
+          "subtitle": "How Spring Batch isolates failures",
+          "nodes": [
+            {
+              "label": "Rollback",
+              "detail": "Chunk transaction fails",
+              "tag": "Step 1",
+              "accent": "amber"
+            },
+            {
+              "label": "Scan",
+              "detail": "Process items one-by-one",
+              "tag": "Step 2",
+              "accent": "purple"
+            },
+            {
+              "label": "Isolate",
+              "detail": "Commit good, skip bad",
+              "tag": "Step 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When a chunk fails, Spring Batch rolls back and enters scanning mode. It re-processes items individually, committing valid ones and isolating the poisoned record for your listener.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-term-listener",
+          "kind": "terminal",
+          "title": "Dead-Letter Strategy",
+          "caption": "Always log skipped items to a table!",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// Use Propagation.REQUIRES_NEW"
+            },
+            {
+              "kind": "command",
+              "text": "onSkipInProcess(item, t) {"
+            },
+            {
+              "kind": "output",
+              "text": "  jdbcClient.sql(\"INSERT INTO dead_letter...\")"
+            },
+            {
+              "kind": "output",
+              "text": "  .params(item.id(), t.getMessage()).update();"
+            },
+            {
+              "kind": "success",
+              "text": "}"
+            }
+          ],
+          "narration": "Never skip silently. Use a SkipListener with REQUIRES_NEW propagation to save the bad record to a dead-letter table. This ensures you can audit failures after the job finishes.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Retry for infrastructure, Skip for data",
+            "Scanning mode isolates poisoned records",
+            "Always use a SkipListener for auditing"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Restartability and the JobRepository →",
+          "narration": "Fault tolerance is now handled. In Part 3, we dive into the JobRepository and how to resume failed jobs from the exact point of interruption.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-restartability",
+      "partTitle": "Restartability & Metadata",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Metadata • Part 3 of 4",
+          "headline": "Does your job know where it left off?",
+          "highlightWord": "left off",
+          "subline": "Spring Batch tracks every execution in the database. Here is how to resume after a crash.",
+          "narration": "If your server crashes at 2:00 AM, you don't want to restart from zero. Spring Batch uses the JobRepository to track state, allowing you to pick up exactly where you left off.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Metadata Persistence",
+          "subtitle": "The JobRepository schema",
+          "nodes": [
+            {
+              "label": "JobInstance",
+              "detail": "Logical run identity",
+              "tag": "ID",
+              "accent": "sky"
+            },
+            {
+              "label": "JobExecution",
+              "detail": "Specific attempt status",
+              "tag": "Attempt",
+              "accent": "amber"
+            },
+            {
+              "label": "ExecutionContext",
+              "detail": "Key-value state storage",
+              "tag": "State",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The JobInstance defines the logical run. Each attempt is a JobExecution. The ExecutionContext stores the commit count, so the reader knows exactly which record to fetch next.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-paging",
+          "kind": "code-spotlight",
+          "title": "The Paging Trap",
+          "filename": "Reader.java",
+          "code": "queryProvider.setWhereClause(\n  \"WHERE status = 'PENDING' AND id > :lastId\"\n);",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Keyset Paging",
+              "explanation": "Use a monotonic ID range to avoid skipping rows during status updates.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Be careful with status flags. If you update rows to 'PROCESSED' while reading, your offset shifts and you will skip data. Always use a stable keyset range for paging.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-restart",
+          "kind": "terminal",
+          "title": "Resuming a Job",
+          "caption": "Metadata enables automatic resume",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Job crashes at 50%..."
+            },
+            {
+              "kind": "command",
+              "text": "java -jar batch.jar --job.name=myJob"
+            },
+            {
+              "kind": "success",
+              "text": "Found existing JobInstance"
+            },
+            {
+              "kind": "output",
+              "text": "Resuming from ExecutionContext..."
+            },
+            {
+              "kind": "success",
+              "text": "Starting at chunk 2450"
+            }
+          ],
+          "narration": "Just relaunch the job with the same parameters. Spring Batch detects the failed execution, loads the context, and resumes from the last committed chunk automatically.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "JobRepository tracks state in DB",
+            "Use keyset paging (id > :lastId)",
+            "Relaunching with same params enables resume"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Scaling with Partitioning →",
+          "narration": "Restartability is solid. In Part 4, we scale your batch jobs horizontally using partitioning to crush massive workloads.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-partitioning",
+      "partTitle": "Horizontal Scaling",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Scaling • Part 4 of 4",
+          "headline": "One thread isn't enough?",
+          "highlightWord": "not enough",
+          "subline": "Partitioning splits your workload into parallel slices. Here is how to scale across CPU cores.",
+          "narration": "When one thread hits a performance wall, don't just optimize. Partition the workload. Split your data into logical slices and process them in parallel.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Partitioning Strategy",
+          "subtitle": "Manager vs Worker steps",
+          "nodes": [
+            {
+              "label": "Manager",
+              "detail": "Splits data range",
+              "tag": "Orchestrator",
+              "accent": "sky"
+            },
+            {
+              "label": "Worker 1",
+              "detail": "ID range 1-250k",
+              "tag": "Parallel",
+              "accent": "amber"
+            },
+            {
+              "label": "Worker 2",
+              "detail": "ID range 250k-500k",
+              "tag": "Parallel",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The manager step calculates ID ranges. Each worker gets its own context and reader, running in parallel. If one worker fails, only that partition needs a restart.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-stepscope",
+          "kind": "code-spotlight",
+          "title": "StepScope Reader",
+          "filename": "Reader.java",
+          "code": "@Bean @StepScope\npublic JdbcPagingItemReader reader(\n  @Value(\"#{stepExecutionContext['minId']}\") Long minId\n) { ... }",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@StepScope",
+              "explanation": "Creates a new reader instance for every partition.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "SpEL",
+              "explanation": "Injects the partition-specific minId into the query.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Use @StepScope to create a unique reader for every worker. The SpEL expression pulls the range bounds directly from the partition's execution context.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-scaling",
+          "kind": "terminal",
+          "title": "Scaling Checklist",
+          "caption": "Align your resources!",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Match GridSize to ThreadPool"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Increase HikariCP pool size"
+            },
+            {
+              "kind": "comment",
+              "text": "# 3. Ensure DB indexes on sort keys"
+            },
+            {
+              "kind": "success",
+              "text": "Scaling successful!"
+            }
+          ],
+          "narration": "Scaling is a balancing act. Match your grid size to the thread pool, increase your database connection pool, and ensure your sort keys are indexed, or your workers will just stall.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Partitioning scales jobs horizontally",
+            "@StepScope enables dynamic reader config",
+            "Align thread pools with database connections"
+          ],
+          "command": "git checkout topic/level-8/spring-batch-chunk-processing",
+          "nextPartTeaser": "Explore the full lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered Spring Batch. Checkout the branch on screen to run the partitioning lab and see these concepts in action. See you in the next level.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
