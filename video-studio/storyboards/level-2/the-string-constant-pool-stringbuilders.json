@@ -1,0 +1,515 @@
+{
+  "chapterId": "level-2/the-string-constant-pool-stringbuilders",
+  "level": "level-2",
+  "levelLabel": "Level 2",
+  "slug": "the-string-constant-pool-stringbuilders",
+  "chapterTitle": "The String Constant Pool & StringBuilders",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-2/the-string-constant-pool-stringbuilders",
+  "branchName": "topic/level-2/the-string-constant-pool-stringbuilders",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-immutability-and-compact-strings",
+      "partTitle": "Why String Is Immutable & Compact Strings",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "String Memory • Part 1 of 4",
+          "headline": "Strings consume 40% of your heap.",
+          "highlightWord": "40% of your heap",
+          "subline": "Java string immutability isn't syntactic sugar—it powers caching, security, and memory pooling.",
+          "narration": "In busy enterprise microservices, string objects swallow up to 40 percent of total heap space. Java enforces strict string immutability to guarantee memory safety, cached hash codes, and thread-safe reference sharing.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "The Hidden Power of Immutability",
+          "top": {
+            "label": "If String Were Mutable",
+            "badge": "❌ Security Risk",
+            "tone": "bad",
+            "code": "String path = \"/app/public/\";\nif (isValid(path)) {\n    // Thread B mutates path to \"/etc/passwd\"\n    openFile(path); // Security bypass!\n}",
+            "points": [
+              "Time-of-check to time-of-use vulnerability",
+              "HashMap keys drift and break bucket lookups"
+            ]
+          },
+          "bottom": {
+            "label": "Java Final String",
+            "badge": "✅ Immutable",
+            "tone": "good",
+            "code": "public final class String {\n    private final byte[] value;\n    private final byte coder;\n    private int hash; // Computed once, cached forever\n}",
+            "points": [
+              "Safe sharing across threads without locks",
+              "Hash code cached permanently after first check"
+            ]
+          },
+          "narration": "If strings were mutable, a separate thread could alter a validated path before execution. Java prevents this by marking string final, caching its hash code, and allowing safe sharing across threads.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Compact Strings Layout (Java 9+ JEP 254)",
+          "subtitle": "Replacing 2-byte char arrays with adaptive byte arrays",
+          "nodes": [
+            {
+              "label": "String Object Header",
+              "detail": "12-16 byte object overhead + cached int hash",
+              "tag": "Header",
+              "accent": "sky"
+            },
+            {
+              "label": "Coder Field (1 Byte)",
+              "detail": "0 for LATIN1 (1 byte/char), 1 for UTF16 (2 bytes/char)",
+              "tag": "JEP 254",
+              "accent": "amber"
+            },
+            {
+              "label": "Backing byte[] Array",
+              "detail": "Stores Latin-1 ASCII text at 1 byte per character",
+              "tag": "Heap",
+              "accent": "emerald"
+            },
+            {
+              "label": "Memory Savings",
+              "detail": "Cuts memory footprint by 50% for English & JSON keys",
+              "tag": "Result",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Before Java 9, strings used UTF-16 char arrays taking two bytes per character. Compact Strings replaced char array with a byte array and a coder flag, cutting heap memory usage by half for Latin-1 text.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code-compact",
+          "kind": "code-spotlight",
+          "title": "Latin-1 vs. UTF-16 Encoding in Action",
+          "filename": "CompactStringDemo.java",
+          "code": "public class CompactStringDemo {\n    public static void main(String[] args) {\n        String text = \"Java21\"; // coder = 0 (LATIN1: 6 bytes)\n        String emoji = \"Java21🚀\"; // coder = 1 (UTF16: 16 bytes)\n        \n        System.out.println(text.length());  // 6\n        System.out.println(emoji.length()); // 8 (surrogate pair!)\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "coder = 0 (LATIN1)",
+              "explanation": "Fits in ISO-8859-1, allocating exactly one byte per character on heap.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "coder = 1 (UTF16)",
+              "explanation": "Emoji forces entire backing array to expand to 2 bytes per character.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "When text contains only Latin-1 characters, Java sets coder to zero, taking one byte per char. Adding an emoji forces coder to one, expanding the backing byte array to two bytes per character.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Immutability & Compact Strings Locked In",
+          "takeaways": [
+            "Immutability enables safe sharing & cached hash codes",
+            "Compact Strings save 50% heap for Latin-1 text",
+            "coder flag switches dynamically between LATIN1 and UTF16"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Inside the String Constant Pool & == vs .equals() →",
+          "narration": "That is why string immutability and memory optimization matter. In Part 2, we go inside the JVM String Constant Pool to see why equality checks break.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-string-constant-pool-and-intern",
+      "partTitle": "The String Constant Pool & Memory Deduplication",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Pool Internals • Part 2 of 4",
+          "headline": "literal1 == dynamicString returns false.",
+          "highlightWord": "returns false",
+          "subline": "String literals share pool references, but runtime strings create separate heap objects.",
+          "narration": "Comparing strings with double equals works fine in local tests, then fails in production. Let's inspect how the String Constant Pool handles literals versus dynamic heap objects.",
+          "durationSec": 8,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "String Constant Pool (StringTable) Architecture",
+          "subtitle": "Native hash table inside Java Heap (moved out of PermGen in Java 7)",
+          "nodes": [
+            {
+              "label": "Thread Stack References",
+              "detail": "s1 and s2 point to pool, s3 points to distinct heap string",
+              "tag": "Stack",
+              "accent": "sky"
+            },
+            {
+              "label": "String Constant Pool",
+              "detail": "HotSpot StringTable deduplicates shared literals",
+              "tag": "Pool",
+              "accent": "emerald"
+            },
+            {
+              "label": "Heap Memory Objects",
+              "detail": "new String() creates separate unpooled heap instances",
+              "tag": "Heap",
+              "accent": "amber"
+            },
+            {
+              "label": "Garbage Collector",
+              "detail": "Reclaims unused pooled strings automatically since Java 7",
+              "tag": "GC",
+              "accent": "purple"
+            }
+          ],
+          "narration": "String literals reside in the String Constant Pool, a native hash table inside the Java heap. Variables holding identical literals share the same object, while new String calls allocate unnecessary heap duplicates.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Reference Equality vs. Content Equality",
+          "top": {
+            "label": "Double Equals Check (==)",
+            "badge": "❌ Identity Bug",
+            "tone": "bad",
+            "code": "String poolStr = \"Java\";\nString heapStr = new StringBuilder(\"Ja\").append(\"va\").toString();\n\nSystem.out.println(poolStr == heapStr); // false!",
+            "points": [
+              "Compares memory addresses, not characters",
+              "Fails when dynamic text comes from DB or JSON"
+            ]
+          },
+          "bottom": {
+            "label": ".equals() Value Check",
+            "badge": "✅ Safe Value Compare",
+            "tone": "good",
+            "code": "System.out.println(poolStr.equals(heapStr)); // true!\n\n// NPE-Safe Literal Guard:\nif (\"COMPLETED\".equals(orderStatus)) { ... }",
+            "points": [
+              "Compares actual character sequences byte by byte",
+              "Placing literal on left avoids NullPointerException"
+            ]
+          },
+          "narration": "Double equals checks if two references share the exact same memory address. Always use equals to compare characters, and put literals on the left to prevent null pointer exceptions automatically.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-term",
+          "kind": "terminal",
+          "title": "Manual intern() vs. G1GC Deduplication",
+          "caption": "Avoid native StringTable lock contention under load",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Manual interning paid native lookup & locking costs"
+            },
+            {
+              "kind": "command",
+              "text": "String pooled = jsonField.intern();"
+            },
+            {
+              "kind": "output",
+              "text": "Warning: High cardinality strings fill native StringTable"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Modern JDK solution: Enable G1GC String Deduplication"
+            },
+            {
+              "kind": "command",
+              "text": "java -XX:+UseG1GC -XX:+UseStringDeduplication -jar app.jar"
+            },
+            {
+              "kind": "success",
+              "text": "GC repoints identical byte arrays to 1 shared array in background"
+            }
+          ],
+          "narration": "Calling intern manually forces native table lookups that slow down high-concurrency apps. Instead, enable G1GC String Deduplication to let garbage collection merge identical backing byte arrays transparently.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Pool Mechanics Mastered",
+          "takeaways": [
+            "Always compare string content using .equals()",
+            "Compile-time constant strings fold into pool automatically",
+            "Prefer -XX:+UseStringDeduplication over manual intern()"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The O(n²) loop concatenation trap & invokedynamic →",
+          "narration": "Now you understand the pool. In Part 3, we reveal why appending strings in a loop destroys CPU performance and how invokedynamic optimizes single expressions.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-concatenation-and-invokedynamic",
+      "partTitle": "The O(n²) Concatenation Trap & invokedynamic",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Performance Trap • Part 3 of 4",
+          "headline": "Using + in a loop creates an O(n²) garbage avalanche.",
+          "highlightWord": "O(n²) garbage avalanche",
+          "subline": "Immutable strings force every loop iteration to copy all accumulated characters into new arrays.",
+          "narration": "Appending strings with the plus operator inside a loop is an enterprise memory disaster. Every single iteration copies all previously accumulated characters into a brand new heap array.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Loop Appending vs. Single Expression Concatenation",
+          "top": {
+            "label": "Loop String Appending (+)",
+            "badge": "❌ O(n²) Quadratic Cost",
+            "tone": "bad",
+            "code": "String csv = \"\";\nfor (int i = 0; i < 50_000; i++) {\n    csv = csv + i + \",\"; // Copies entire array every step!\n}",
+            "points": [
+              "Allocates 50,000 intermediate String objects",
+              "Copies billions of bytes, melting CPU & GC"
+            ]
+          },
+          "bottom": {
+            "label": "Single Expression (+)",
+            "badge": "✅ Java 9+ invokedynamic",
+            "tone": "good",
+            "code": "String log = \"User \" + id + \" logged in at \" + time;\n// Uses StringConcatFactory.makeConcatWithConstants",
+            "points": [
+              "Computes exact total length upfront in 1 pass",
+              "Allocates a single byte array with zero buffer resizes"
+            ]
+          },
+          "narration": "Outside loops, single expression concatenation uses invokedynamic and StringConcatFactory to compute length upfront. Inside loops, plus causes quadratic character copying and floods the heap with garbage.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "Linear Performance with Pre-Sized StringBuilder",
+          "filename": "CsvGenerator.java",
+          "code": "public class CsvGenerator {\n    public static String buildCsv(int count) {\n        // Pre-size capacity to prevent buffer resizing\n        StringBuilder sb = new StringBuilder(count * 6);\n        for (int i = 0; i < count; i++) {\n            if (i > 0) sb.append(',');\n            sb.append(i);\n        }\n        return sb.toString(); // O(n) linear execution\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Pre-sized Capacity",
+              "explanation": "Pass estimated capacity upfront so backing byte array never resizes.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "O(1) Append",
+              "explanation": "Writes directly into internal buffer without creating intermediate strings.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Using StringBuilder in loops converts quadratic allocations into linear time. Pre-sizing capacity upfront prevents internal array growth overhead, keeping string construction fast and lean.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term",
+          "kind": "terminal",
+          "title": "Bytecode Inspection with javap -c",
+          "caption": "See invokedynamic vs StringBuilder in bytecode",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "javap -c target/classes/com/javahub/ConcatDemo.class"
+            },
+            {
+              "kind": "comment",
+              "text": "# Single-expression '+' in Java 9+ emits invokedynamic:"
+            },
+            {
+              "kind": "output",
+              "text": " 0: invokedynamic #7, 0 // StringConcatFactory.makeConcatWithConstants"
+            },
+            {
+              "kind": "comment",
+              "text": "# Loop '+' emits repetitive StringBuilder allocations inside loop body:"
+            },
+            {
+              "kind": "output",
+              "text": "12: new           #14 // class java/lang/StringBuilder"
+            },
+            {
+              "kind": "output",
+              "text": "15: invokespecial #16 // Method StringBuilder.\"<init>\":()V"
+            }
+          ],
+          "narration": "Disassembling bytecode with javap reveals that single line concatenation emits a fast invokedynamic instruction. But loop concatenation compiles into repeated builder instantiations inside the loop.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Concatenation Mastered",
+          "takeaways": [
+            "Never append strings with + inside loops",
+            "Single expression + uses invokedynamic in Java 9+",
+            "Pre-size StringBuilder buffers for linear O(n) runtime"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): StringBuilder vs StringBuffer & capacity expansion →",
+          "narration": "Now you know concatenation mechanics. In Part 4, we compare StringBuilder against legacy StringBuffer and explore internal buffer growth rules.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-stringbuilder-vs-stringbuffer",
+      "partTitle": "StringBuilder vs StringBuffer & Buffer Mechanics",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Builder Architecture • Part 4 of 4",
+          "headline": "Stop using StringBuffer in modern Java.",
+          "highlightWord": "Stop using StringBuffer",
+          "subline": "Method-level synchronization adds monitor lock overhead without making multi-step calls atomic.",
+          "narration": "Synchronizing individual append calls does not make multithreaded string operations atomic. Legacy StringBuffer only adds lock acquisition overhead without offering true thread safety.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "StringBuffer vs. StringBuilder vs. String.join",
+          "top": {
+            "label": "StringBuffer (Java 1.0 Legacy)",
+            "badge": "❌ Lock Overhead",
+            "tone": "bad",
+            "code": "StringBuffer sb = new StringBuffer();\nsb.append(\"user=\"); // synchronized method\nsb.append(userId);  // synchronized method\n// Concurrent threads can still interleave appends!",
+            "points": [
+              "Synchronizes every method call individually",
+              "Locks monitor even when object is local to one thread"
+            ]
+          },
+          "bottom": {
+            "label": "StringBuilder & String.join",
+            "badge": "✅ Fast & Thread-Local",
+            "tone": "good",
+            "code": "// Default thread-local choice:\nStringBuilder sb = new StringBuilder(1024);\n\n// Clean delimited formatting:\nString csv = String.join(\", \", List.of(\"A\", \"B\", \"C\"));",
+            "points": [
+              "Zero synchronization overhead on single-threaded ops",
+              "StringJoiner handles delimiters cleanly without loop logic"
+            ]
+          },
+          "narration": "StringBuffer synchronizes every method call individually, creating unnecessary lock contention. Use unsynchronized StringBuilder for local code, or String dot join for clean delimited output.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code",
+          "kind": "code-spotlight",
+          "title": "Buffer Capacity Growth & UTF-16 Inflation",
+          "filename": "BufferGrowthDemo.java",
+          "code": "public class BufferGrowthDemo {\n    public static void main(String[] args) {\n        StringBuilder sb = new StringBuilder(); // default capacity 16\n        \n        sb.append(\"Hello World Java\"); // 16 bytes (LATIN1)\n        sb.append(\"!\");               // Exceeds 16 -> Grows to (16*2)+2 = 34\n        sb.append(\"🚀\");              // Emoji inflates entire buffer to UTF16!\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                6
+              ],
+              "badge": "Growth Formula",
+              "explanation": "Exceeding capacity allocates a new array sized (oldCapacity * 2) + 2.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "UTF16 Inflation",
+              "explanation": "Single multi-byte Unicode char doubles byte array size for all characters.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "StringBuilder starts with a default capacity of 16 characters. When exceeded, it resizes using double old capacity plus two, and adding a Unicode character inflates the whole array to UTF-16.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "StringBuilder Internal Lifecycle",
+          "subtitle": "Buffer allocation, growth, coder inflation, and final materialization",
+          "nodes": [
+            {
+              "label": "New StringBuilder(16)",
+              "detail": "Initial byte[16] array with coder = 0 (LATIN1)",
+              "tag": "Init",
+              "accent": "sky"
+            },
+            {
+              "label": "Capacity Expansion",
+              "detail": "Grows via (oldCapacity * 2) + 2 using Arrays.copyOf",
+              "tag": "Resize",
+              "accent": "amber"
+            },
+            {
+              "label": "UTF16 Coder Inflation",
+              "detail": "Inflates backing array from LATIN1 to UTF16 if emoji appended",
+              "tag": "Inflate",
+              "accent": "purple"
+            },
+            {
+              "label": "toString() Call",
+              "detail": "Materializes final immutable String instance on heap",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Under the hood, StringBuilder manages a resizable byte array. It grows using double plus two expansion, inflates to UTF-16 when needed, and materializes into an immutable String when toString is called.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Use StringBuilder over legacy synchronized StringBuffer",
+            "Pre-size builder capacity to avoid double-plus-two array copies",
+            "Use String.join or StringJoiner for clean delimited output"
+          ],
+          "command": "git checkout topic/level-2/the-string-constant-pool-stringbuilders",
+          "nextPartTeaser": "Full roadmap & JUnit labs at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered String Constant Pool mechanics, immutability, and builders. Checkout the companion branch on GitHub to run the interactive lab and JUnit tests yourself.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
