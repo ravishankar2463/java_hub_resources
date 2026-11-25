@@ -1,0 +1,457 @@
+{
+  "chapterId": "level-12/cloud-native-serverless-java",
+  "level": "level-12",
+  "levelLabel": "Level 12",
+  "slug": "cloud-native-serverless-java",
+  "chapterTitle": "Cloud Native & Serverless Java",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-12/cloud-native-serverless-java",
+  "branchName": "topic/level-12/cloud-native-serverless-java",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-aot-vs-jit",
+      "partTitle": "GraalVM AOT vs HotSpot JIT",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Cloud Native Java • Part 1 of 4",
+          "headline": "Why does your Java app take 10 seconds to boot?",
+          "highlightWord": "10 seconds",
+          "subline": "HotSpot JVM is built for long-running servers, but serverless environments demand instant startup.",
+          "narration": "HotSpot JVM is a beast for long-running servers, but in serverless environments, its JIT warmup and memory footprint are massive liabilities. Let's look at the modern alternatives.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "JIT vs AOT Compilation",
+          "nodes": [
+            {
+              "label": "HotSpot",
+              "detail": "JIT compiles at runtime; high peak throughput.",
+              "tag": "Standard",
+              "accent": "sky"
+            },
+            {
+              "label": "GraalVM",
+              "detail": "AOT compiles to native binary; instant startup.",
+              "tag": "Native",
+              "accent": "amber"
+            },
+            {
+              "label": "Substrate VM",
+              "detail": "Minimal runtime for native binaries.",
+              "tag": "Runtime",
+              "accent": "purple"
+            }
+          ],
+          "narration": "HotSpot optimizes as it runs, which is great for throughput but slow for startup. GraalVM Native Image shifts that work to build-time, producing a standalone binary that boots in milliseconds.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-metadata",
+          "kind": "code-spotlight",
+          "title": "Reachability Metadata",
+          "filename": "reachability-metadata.json",
+          "code": "[\n  {\n    \"name\": \"com.acme.PaymentDTO\",\n    \"allDeclaredConstructors\": true,\n    \"allDeclaredFields\": true\n  }\n]",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Reflection",
+              "explanation": "Native Image uses static analysis. Reflection breaks it.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Hints",
+              "explanation": "You must explicitly tell the compiler what to keep.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Because Native Image uses a closed-world assumption, it strips unused code. If you use reflection, you need reachability metadata to keep those classes alive, or your app will crash.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "HotSpot vs GraalVM",
+          "top": {
+            "label": "HotSpot JIT",
+            "badge": "Throughput",
+            "tone": "good",
+            "code": "Best for long-lived microservices",
+            "points": [
+              "Fast build",
+              "High peak performance"
+            ]
+          },
+          "bottom": {
+            "label": "GraalVM AOT",
+            "badge": "Startup",
+            "tone": "neutral",
+            "code": "Best for Serverless/CLI",
+            "points": [
+              "Fast startup",
+              "Low memory footprint"
+            ]
+          },
+          "narration": "Choose HotSpot for long-lived services where throughput is king. Choose GraalVM if you're building scale-to-zero functions where every millisecond of startup counts.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "HotSpot = JIT throughput",
+            "GraalVM = AOT startup",
+            "Reflection requires metadata"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Spring Boot 3, Quarkus, and Micronaut strategies →",
+          "narration": "That's the trade-off. Next, we compare how Spring Boot 3, Quarkus, and Micronaut handle the move to cloud-native.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-framework-strategies",
+      "partTitle": "Spring Boot 3, Quarkus, and Micronaut",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Frameworks • Part 2 of 4",
+          "headline": "Is Spring Boot 3 actually cloud-native?",
+          "highlightWord": "cloud-native",
+          "subline": "It's not just about the framework; it's about how they handle build-time augmentation.",
+          "narration": "Spring Boot 3, Quarkus, and Micronaut all claim to be cloud-native, but they use wildly different strategies to move work from runtime to build-time.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-spring",
+          "kind": "code-spotlight",
+          "title": "Spring AOT Hints",
+          "filename": "PaymentNativeConfig.java",
+          "code": "@Configuration\n@ImportRuntimeHints(PaymentRuntimeHints.class)\npublic class PaymentNativeConfig {\n    // Spring generates bean definitions at build time\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Spring AOT",
+              "explanation": "Processes beans and conditions during build.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Spring Boot 3 uses an AOT build phase to inspect your context and generate plain Java code for bean wiring, bypassing the heavy runtime reflection.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Framework Approaches",
+          "top": {
+            "label": "Quarkus",
+            "badge": "ArC",
+            "tone": "good",
+            "code": "Build-time bytecode augmentation",
+            "points": [
+              "Curated extensions",
+              "Fast dev mode"
+            ]
+          },
+          "bottom": {
+            "label": "Micronaut",
+            "badge": "APT",
+            "tone": "neutral",
+            "code": "Compile-time annotation processing",
+            "points": [
+              "Zero reflection",
+              "Low memory"
+            ]
+          },
+          "narration": "Quarkus uses build-time bytecode augmentation, while Micronaut relies on annotation processing to generate everything at compile-time. Both are built for native speed.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Build-Time vs Runtime",
+          "nodes": [
+            {
+              "label": "Source",
+              "detail": "Your code",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "Build-Time",
+              "detail": "Augmentation / APT",
+              "tag": "Processing",
+              "accent": "amber"
+            },
+            {
+              "label": "Runtime",
+              "detail": "Fast startup",
+              "tag": "Output",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "By moving dependency injection and proxy generation to build-time, these frameworks eliminate the need for costly classpath scanning when your container starts.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Spring AOT = Build-time wiring",
+            "Quarkus = Bytecode augmentation",
+            "Micronaut = Annotation processing"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Solving cold starts with SnapStart and CRaC →",
+          "narration": "All three are solid, just pick your ecosystem. Next, we tackle the cold start problem in serverless using SnapStart and CRaC.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-serverless-cold-starts",
+      "partTitle": "SnapStart and CRaC",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Serverless • Part 3 of 4",
+          "headline": "Stop the 5-second cold start.",
+          "highlightWord": "5-second",
+          "subline": "AWS Lambda SnapStart and Project CRaC let you checkpoint your JVM state.",
+          "narration": "If your Lambda takes 5 seconds to boot, you're losing users. SnapStart and CRaC solve this by taking a snapshot of your initialized JVM and restoring it instantly.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Checkpoint & Restore",
+          "nodes": [
+            {
+              "label": "Init",
+              "detail": "Boot JVM, load classes",
+              "tag": "Startup",
+              "accent": "sky"
+            },
+            {
+              "label": "Checkpoint",
+              "detail": "Snapshot memory/disk",
+              "tag": "Save",
+              "accent": "amber"
+            },
+            {
+              "label": "Restore",
+              "detail": "Resume from snapshot",
+              "tag": "Instant",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "SnapStart runs your init logic once, then snapshots the entire microVM. When a request arrives, it restores that snapshot, skipping the heavy classloading phase.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-crac",
+          "kind": "code-spotlight",
+          "title": "CRaC Lifecycle Hooks",
+          "filename": "LambdaResources.java",
+          "code": "public void beforeCheckpoint(Context c) {\n    dataSource.softEvictConnections();\n}\npublic void afterRestore(Context c) {\n    this.secureRandom = new SecureRandom();\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Evict",
+              "explanation": "Close sockets before snapshotting.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Re-seed",
+              "explanation": "Refresh entropy after restore.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The danger? State. If you have open sockets or random seeds, they get cloned. Use CRaC hooks to clean up before the checkpoint and re-initialize after the restore.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "SnapStart vs Native",
+          "top": {
+            "label": "SnapStart",
+            "badge": "Compatibility",
+            "tone": "good",
+            "code": "Full JVM features",
+            "points": [
+              "No metadata needed",
+              "Standard Spring"
+            ]
+          },
+          "bottom": {
+            "label": "Native Image",
+            "badge": "Density",
+            "tone": "neutral",
+            "code": "Smallest footprint",
+            "points": [
+              "Fastest cold start",
+              "Harder to build"
+            ]
+          },
+          "narration": "SnapStart keeps full JVM compatibility, while Native Image gives you the smallest possible footprint. Choose based on your memory constraints.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "SnapStart = Instant restore",
+            "CRaC = Lifecycle hooks",
+            "Beware of cloned state"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Optimizing containers with Jib and jlink →",
+          "narration": "SnapStart is a game changer for Java on Lambda. Finally, we'll look at optimizing your container images to keep your deployments lean.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-container-optimization",
+      "partTitle": "Jib, Buildpacks, and jlink",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Containers • Part 4 of 4",
+          "headline": "Stop shipping 500MB container images.",
+          "highlightWord": "500MB",
+          "subline": "Jib, Buildpacks, and jlink can slash your image size and speed up CI.",
+          "narration": "Shipping a 500MB image for a simple service is wasteful. Let's optimize your container delivery with Jib, Buildpacks, and jlink.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-jib",
+          "kind": "code-spotlight",
+          "title": "Jib Plugin",
+          "filename": "pom.xml",
+          "code": "<plugin>\n    <groupId>com.google.cloud.tools</groupId>\n    <artifactId>jib-maven-plugin</artifactId>\n    <configuration>\n        <from><image>distroless/java21</image></from>\n    </configuration>\n</plugin>",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Distroless",
+              "explanation": "Minimal base image, no shell.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Jib builds OCI images without a Docker daemon. It layers your app perfectly, so changing one line of code only rebuilds the tiny classes layer, not the whole image.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "Custom Runtime with jlink",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "jlink --add-modules java.base,java.sql --output /custom-jre"
+            },
+            {
+              "kind": "output",
+              "text": "Creating custom runtime image..."
+            },
+            {
+              "kind": "success",
+              "text": "Image size reduced by 150MB!"
+            }
+          ],
+          "narration": "Use jlink to strip the JDK down to only the modules your app needs. It trims away man pages and headers, saving over 100MB per image.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Optimization Tools",
+          "top": {
+            "label": "Jib",
+            "badge": "CI Speed",
+            "tone": "good",
+            "code": "Daemonless builds",
+            "points": [
+              "Layered caching",
+              "No Dockerfile"
+            ]
+          },
+          "bottom": {
+            "label": "jlink",
+            "badge": "Size",
+            "tone": "neutral",
+            "code": "Custom JRE",
+            "points": [
+              "Minimal runtime",
+              "Smaller attack surface"
+            ]
+          },
+          "narration": "Jib wins on CI speed and ease of use, while jlink is the ultimate tool for shrinking your runtime footprint. Use them together for maximum impact.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Jib = Layered builds",
+            "Buildpacks = Auto-config",
+            "jlink = Minimal JRE"
+          ],
+          "command": "git checkout topic/level-12/cloud-native-serverless-java",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You're now ready to build production-grade cloud-native Java. Checkout the companion branch and roadmap for the full lab. Go build something fast.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
