@@ -1,0 +1,484 @@
+{
+  "chapterId": "level-10/schema-registry-and-apache-avro",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "schema-registry-and-apache-avro",
+  "chapterTitle": "Schema Registry and Apache Avro",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/schema-registry-and-apache-avro",
+  "branchName": "topic/level-10/schema-registry-and-apache-avro",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-avro-vs-json",
+      "partTitle": "Why JSON Fails at Kafka Scale",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Contracts • Part 1 of 4",
+          "headline": "Is JSON destroying your Kafka performance?",
+          "highlightWord": "destroying",
+          "subline": "Stop treating events like text files. Here is why high-scale pipelines demand binary schemas.",
+          "narration": "JSON is great for debugging, but it is a disaster for high-throughput Kafka. Every field name is repeated in every message, inflating your storage and network egress by up to 75 percent.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Payload Bloat: JSON vs Avro",
+          "top": {
+            "label": "JSON",
+            "badge": "Text-Based",
+            "tone": "bad",
+            "code": "{\"userId\": 123, \"amount\": 99.99}",
+            "points": [
+              "Repeats keys (userId, amount)",
+              "No built-in schema enforcement"
+            ]
+          },
+          "bottom": {
+            "label": "Avro",
+            "badge": "Binary",
+            "tone": "good",
+            "code": "00 00 00 00 2A [binary-data]",
+            "points": [
+              "Zero field names on wire",
+              "Zig-zag encoding for integers"
+            ]
+          },
+          "narration": "JSON repeats every key as ASCII text. Avro is purely binary. It uses zig-zag encoding for numbers and omits field names entirely, saving massive bandwidth and reducing GC pressure on your JVM.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Avro Schema Resolution",
+          "subtitle": "How the consumer decodes raw bytes",
+          "nodes": [
+            {
+              "label": "Writer Schema",
+              "detail": "Original schema used by producer",
+              "tag": "Producer",
+              "accent": "sky"
+            },
+            {
+              "label": "Binary Bytes",
+              "detail": "Raw data without field tags",
+              "tag": "Kafka",
+              "accent": "amber"
+            },
+            {
+              "label": "Reader Schema",
+              "detail": "Consumer's local Java class",
+              "tag": "Consumer",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Because Avro bytes lack field identifiers, you need the writer schema to decode them. The consumer resolves the writer schema against its own reader schema, filling missing fields with defaults.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-schema",
+          "kind": "code-spotlight",
+          "title": "The Avro .avsc Contract",
+          "filename": "order.avsc",
+          "code": "{\n  \"type\": \"record\",\n  \"name\": \"Order\",\n  \"fields\": [\n    {\"name\": \"id\", \"type\": \"string\"},\n    {\"name\": \"notes\", \n     \"type\": [\"null\", \"string\"], \n     \"default\": null}\n  ]\n}",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Strict Types",
+              "explanation": "No more guessing if a number is an int or long.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Union/Default",
+              "explanation": "Must place null first to match the default value.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Define your contract in an avsc file. Note the union type for optional fields: null must come first to match the default. This is the source of truth that prevents breaking changes.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "JSON repeats keys; Avro is binary",
+            "Avro uses schema resolution for evolution",
+            "Always put null first in union types"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): The 5-byte magic header and Schema Registry →",
+          "narration": "That is the foundation. In Part 2, we look at the 5-byte wire format and how the Schema Registry acts as a gatekeeper for your event contracts.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-schema-registry",
+      "partTitle": "The 5-Byte Confluent Wire Format",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Schema Registry • Part 2 of 4",
+          "headline": "Why does every Avro message start with 5 bytes?",
+          "highlightWord": "5 bytes",
+          "subline": "It is not just a header—it is the secret to decoupling your producers and consumers.",
+          "narration": "You cannot embed a 1KB schema in every message. The Confluent wire format solves this by prepending a tiny 5-byte header to every payload.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The 5-Byte Header Anatomy",
+          "subtitle": "Magic byte + 4-byte Schema ID",
+          "nodes": [
+            {
+              "label": "0x00",
+              "detail": "Magic byte identifying Confluent format",
+              "tag": "Byte 0",
+              "accent": "sky"
+            },
+            {
+              "label": "00 00 00 2A",
+              "detail": "4-byte big-endian Schema Registry ID",
+              "tag": "Bytes 1-4",
+              "accent": "amber"
+            },
+            {
+              "label": "Payload",
+              "detail": "Raw Avro binary data",
+              "tag": "Bytes 5-N",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Byte zero is the magic byte. Bytes one through four are the Schema ID. The consumer reads this ID, fetches the schema from the registry once, and caches it in memory.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term-registry",
+          "kind": "terminal",
+          "title": "Registry Caching Logic",
+          "caption": "Avoid the registry as a bottleneck",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Producer looks up schema ID"
+            },
+            {
+              "kind": "command",
+              "text": "GET /subjects/orders-value/versions/latest"
+            },
+            {
+              "kind": "output",
+              "text": "{\"id\": 42, ...}"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Subsequent messages use cached ID"
+            },
+            {
+              "kind": "success",
+              "text": "No HTTP calls for steady-state traffic"
+            }
+          ],
+          "narration": "The registry is not a single point of failure. Once the producer or consumer resolves an ID, it is cached in the JVM. Only new schemas trigger an HTTP call.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Subjects & Naming",
+          "top": {
+            "label": "TopicNameStrategy",
+            "badge": "Default",
+            "tone": "neutral",
+            "code": "orders-value",
+            "points": [
+              "One schema per topic",
+              "Simple to manage"
+            ]
+          },
+          "bottom": {
+            "label": "RecordNameStrategy",
+            "badge": "Advanced",
+            "tone": "good",
+            "code": "com.company.OrderCreated",
+            "points": [
+              "Multiple event types per topic",
+              "Better for event-driven design"
+            ]
+          },
+          "narration": "Use TopicNameStrategy for simple pipelines. If your topic carries multiple event types, switch to RecordNameStrategy to keep your schema subjects clean and organized.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "5-byte header = Magic Byte + Schema ID",
+            "Registry is cached in-memory per JVM",
+            "Use RecordNameStrategy for complex topics"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Compatibility modes that block bad code →",
+          "narration": "Registry caching keeps your pipeline fast. In Part 3, we cover compatibility modes that stop breaking changes at the CI/CD gate.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-compatibility",
+      "partTitle": "Blocking Breaking Changes",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Compatibility • Part 3 of 4",
+          "headline": "How to stop breaking changes before production?",
+          "highlightWord": "stop breaking",
+          "subline": "Schema Registry is your automated gatekeeper. Here is how to configure your safety net.",
+          "narration": "Breaking a consumer in production is a nightmare. Schema Registry compatibility modes block incompatible changes during your CI/CD build, failing the pipeline before code ever reaches the broker.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Compatibility Modes",
+          "top": {
+            "label": "BACKWARD (Default)",
+            "badge": "Consumer-First",
+            "tone": "neutral",
+            "code": "New consumer reads old data",
+            "points": [
+              "Delete fields allowed",
+              "Add fields with defaults"
+            ]
+          },
+          "bottom": {
+            "label": "FULL_TRANSITIVE",
+            "badge": "Strict Safety",
+            "tone": "good",
+            "code": "Check against ALL versions",
+            "points": [
+              "Safest for long-lived topics",
+              "Prevents subtle historical breaks"
+            ]
+          },
+          "narration": "Backward compatibility lets new consumers read old data. Full transitive is the gold standard, checking your new schema against every historical version to ensure total safety.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "CI/CD Compatibility Gate",
+          "subtitle": "Fail fast, deploy safely",
+          "nodes": [
+            {
+              "label": "Schema PR",
+              "detail": "Developer updates .avsc file",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Registry Test",
+              "detail": "mvn schema-registry:test-compatibility",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "409 Conflict",
+              "detail": "IncompatibleSchemaException",
+              "tag": "Fail",
+              "accent": "red"
+            }
+          ],
+          "narration": "Run compatibility tests in your CI pipeline. If a change violates your mode, the registry returns a 409 error, forcing the developer to fix the schema before merging.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-maven",
+          "kind": "terminal",
+          "title": "Maven Plugin Setup",
+          "caption": "Generate type-safe Java classes",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "mvn generate-sources"
+            },
+            {
+              "kind": "output",
+              "text": "[INFO] Generated OrderCreatedEvent.java"
+            },
+            {
+              "kind": "comment",
+              "text": "# Use SpecificRecord for type safety"
+            },
+            {
+              "kind": "success",
+              "text": "event.getTotalAmount() // returns BigDecimal"
+            }
+          ],
+          "narration": "Use the avro-maven-plugin to generate Java classes. Always set stringType to String to avoid Utf8 objects, and use SpecificRecord to get type-safe getters for your decimals and timestamps.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use FULL_TRANSITIVE for maximum safety",
+            "Test compatibility in CI/CD pipelines",
+            "Use SpecificRecord for type-safe Java"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Spring Boot integration and final tips →",
+          "narration": "Compatibility is your best defense. In Part 4, we wrap it all up with Spring Boot configuration and the final production-grade patterns.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-spring-boot",
+      "partTitle": "Spring Boot Avro Implementation",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Boot • Part 4 of 4",
+          "headline": "Stop casting objects in your Kafka listeners.",
+          "highlightWord": "Stop casting",
+          "subline": "Here is how to wire up Avro with Spring Boot for production-ready, type-safe messaging.",
+          "narration": "Stop using GenericRecord and manual casting. With proper Spring configuration, your Kafka listeners can inject generated Avro classes directly.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-config",
+          "kind": "code-spotlight",
+          "title": "Spring Kafka Configuration",
+          "filename": "application.yml",
+          "code": "spring:\n  kafka:\n    producer:\n      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer\n    consumer:\n      properties:\n        specific.avro.reader: true\n        auto.register.schemas: false",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Serializer",
+              "explanation": "Use the Confluent serializer for the 5-byte header.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "specific.avro.reader",
+              "explanation": "Crucial: injects your generated class, not GenericRecord.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Set specific dot avro dot reader to true. This forces Spring to use your generated classes. Disable auto-register schemas in production to ensure your CI/CD pipeline remains the only source of truth.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-listener",
+          "kind": "code-spotlight",
+          "title": "Type-Safe Listener",
+          "filename": "AvroOrderPipeline.java",
+          "code": "@KafkaListener(topics = \"orders\")\npublic void consume(\n    ConsumerRecord<String, OrderCreatedEvent> record\n) {\n    OrderCreatedEvent event = record.value();\n    log.info(\"Amount: {}\", event.getTotalAmount());\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Type-Safe",
+              "explanation": "Directly inject your generated Avro class.",
+              "accent": "purple"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "BigDecimal",
+              "explanation": "Logical types handle decimal precision automatically.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Your listener is now clean and type-safe. Logical types like decimal and timestamp-millis are automatically converted to BigDecimal and Instant, eliminating manual parsing errors.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Avro vs Protobuf",
+          "top": {
+            "label": "Avro",
+            "badge": "Data-Centric",
+            "tone": "good",
+            "code": "Kafka, Spark, Iceberg",
+            "points": [
+              "No field tags on wire",
+              "Native BigQuery/Iceberg support"
+            ]
+          },
+          "bottom": {
+            "label": "Protobuf",
+            "badge": "API-Centric",
+            "tone": "neutral",
+            "code": "gRPC, Microservices",
+            "points": [
+              "Embeds field tags",
+              "Great for synchronous RPC"
+            ]
+          },
+          "narration": "Choose Avro for data-heavy streaming and analytical pipelines. Choose Protobuf if you need to share the same definitions across gRPC services and Kafka topics.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "Set specific.avro.reader: true",
+            "Disable auto-register in production",
+            "Use Avro for data, Protobuf for APIs"
+          ],
+          "command": "git checkout topic/level-10/schema-registry-and-apache-avro",
+          "nextPartTeaser": "Full guide + lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered Avro and Schema Registry. Checkout the companion branch to run the full lab and see these patterns in action.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
