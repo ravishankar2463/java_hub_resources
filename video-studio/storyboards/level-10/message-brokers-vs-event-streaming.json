@@ -1,0 +1,470 @@
+{
+  "chapterId": "level-10/message-brokers-vs-event-streaming",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "message-brokers-vs-event-streaming",
+  "chapterTitle": "Message Brokers vs Event Streaming",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/message-brokers-vs-event-streaming",
+  "branchName": "topic/level-10/message-brokers-vs-event-streaming",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-broker-vs-log",
+      "partTitle": "Broker vs Log: Where State Resides",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Messaging Architectures • Part 1 of 4",
+          "headline": "Is your message broker actually a database?",
+          "highlightWord": "database",
+          "subline": "RabbitMQ and Kafka aren't just pipes; they store state in fundamentally different ways.",
+          "narration": "Stop treating RabbitMQ and Kafka as identical message pipes. One is a smart post office that deletes mail after delivery, the other is an immutable ledger that keeps everything forever. Choosing wrong is a production disaster.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "State Ownership Models",
+          "subtitle": "Broker-managed vs. Consumer-managed",
+          "nodes": [
+            {
+              "label": "RabbitMQ",
+              "detail": "Broker tracks delivery state and deletes on ack",
+              "tag": "Transient",
+              "accent": "amber"
+            },
+            {
+              "label": "Kafka",
+              "detail": "Broker stores append-only log; consumers track offset",
+              "tag": "Persistent",
+              "accent": "emerald"
+            },
+            {
+              "label": "Impact",
+              "detail": "Broker controls routing; Log enables replay",
+              "tag": "Trade-off",
+              "accent": "sky"
+            }
+          ],
+          "narration": "In RabbitMQ, the broker keeps the state. It routes messages and deletes them once acknowledged. In Kafka, the broker is a dumb, append-only log. The consumers track their own progress, which makes replay trivial.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Read Semantics",
+          "top": {
+            "label": "RabbitMQ (Destructive)",
+            "badge": "Queue",
+            "tone": "neutral",
+            "code": "channel.basicAck(tag, false); // Message deleted!",
+            "points": [
+              "Perfect for work queues",
+              "No native replay"
+            ]
+          },
+          "bottom": {
+            "label": "Kafka (Non-Destructive)",
+            "badge": "Log",
+            "tone": "good",
+            "code": "ack.acknowledge(); // Advances offset only",
+            "points": [
+              "Supports multiple readers",
+              "Native event replay"
+            ]
+          },
+          "narration": "RabbitMQ is destructive. Once you ack, the message is gone. Kafka is non-destructive. You just move your bookmark, allowing multiple independent services to read the same data at their own pace.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-logic",
+          "kind": "code-spotlight",
+          "title": "The Kafka Offset Advantage",
+          "filename": "OrderEventStream.java",
+          "code": "@KafkaListener(topics = \"orders\", groupId = \"billing\")\npublic void process(ConsumerRecord<String, Event> rec, Acknowledgment ack) {\n    // 1. Process business logic\n    ledger.save(rec.value());\n    \n    // 2. Advance bookmark for this group only\n    ack.acknowledge(); \n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "groupId",
+              "explanation": "Each group gets its own independent position in the log.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "ack",
+              "explanation": "Only moves the pointer; data remains on disk for others.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Notice the groupId. Because Kafka stores the log, a new service can join tomorrow, set its groupId, and start reading from the beginning of time. RabbitMQ simply cannot do this without custom audit tables.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "RabbitMQ = transient work queue",
+            "Kafka = persistent append-only log",
+            "Kafka allows independent consumer replay"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Push vs Pull and the backpressure trap →",
+          "narration": "That is the storage model. In Part 2, we look at how RabbitMQ pushes data while Kafka waits for you to pull, and why that matters for your JVM heap.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-push-pull-backpressure",
+      "partTitle": "Push vs Pull Consumption Models",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Backpressure • Part 2 of 4",
+          "headline": "Why your consumer is crashing with OOM.",
+          "highlightWord": "OOM",
+          "subline": "The delivery model dictates how your service handles traffic spikes.",
+          "narration": "If your consumer is crashing with OutOfMemory errors, you are likely mismanaging backpressure. RabbitMQ pushes data at you, while Kafka lets you pull at your own speed. The difference is critical.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Delivery Dynamics",
+          "subtitle": "Push (Broker-driven) vs Pull (Consumer-driven)",
+          "nodes": [
+            {
+              "label": "RabbitMQ Push",
+              "detail": "Broker floods consumer until prefetch limit",
+              "tag": "Active",
+              "accent": "amber"
+            },
+            {
+              "label": "Kafka Pull",
+              "detail": "Consumer requests batches when ready",
+              "tag": "Passive",
+              "accent": "emerald"
+            },
+            {
+              "label": "Result",
+              "detail": "Pull model provides natural backpressure",
+              "tag": "Safety",
+              "accent": "purple"
+            }
+          ],
+          "narration": "RabbitMQ pushes messages as they arrive. If you don't set a prefetch limit, it will fill your memory until you crash. Kafka waits for you to poll, so if you are slow, the data just sits on the broker.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-prefetch",
+          "kind": "code-spotlight",
+          "title": "RabbitMQ Prefetch Control",
+          "filename": "application.yml",
+          "code": "spring:\n  rabbitmq:\n    listener:\n      simple:\n        acknowledge-mode: manual\n        prefetch: 20 # <--- The safety valve",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "prefetch: 20",
+              "explanation": "Limits unacknowledged messages to 20. Broker stops pushing until you ack.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The prefetch value is your safety valve. Setting it to 20 means the broker stops sending data once 20 messages are unacknowledged. Without this, your consumer is a sitting duck for a traffic spike.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Kafka Pull Batching",
+          "caption": "Configuring poll behavior",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Consumer requests batches on demand"
+            },
+            {
+              "kind": "output",
+              "text": "max.poll.records: 100"
+            },
+            {
+              "kind": "output",
+              "text": "fetch.min.bytes: 10240"
+            },
+            {
+              "kind": "comment",
+              "text": "# If processing slows, poll() is called later"
+            },
+            {
+              "kind": "success",
+              "text": "Natural backpressure achieved."
+            }
+          ],
+          "narration": "Kafka's pull model is inherently safer. If your database slows down, your consumer just calls poll less frequently. The broker doesn't care; it just holds the data on disk until you're ready.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "RabbitMQ = push (needs prefetch limit)",
+            "Kafka = pull (natural backpressure)",
+            "Pull model prevents heap exhaustion"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Ordering pitfalls and partition keys →",
+          "narration": "Push is for low latency, pull is for high throughput and safety. In Part 3, we dive into the nightmare of ordering guarantees and why partition keys are non-negotiable in Kafka.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-ordering-and-keys",
+      "partTitle": "Ordering Guarantees & Partitioning",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Ordering • Part 3 of 4",
+          "headline": "Your messages are arriving out of order.",
+          "highlightWord": "out of order",
+          "subline": "Ordering is easy in a single queue, but breaks instantly at scale.",
+          "narration": "Think your system is FIFO? Think again. As soon as you add a second consumer to a queue or partition, race conditions will destroy your data integrity. Here is how to keep it strict.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Ordering Constraints",
+          "top": {
+            "label": "RabbitMQ",
+            "badge": "Queue-based",
+            "tone": "bad",
+            "code": "Multiple Consumers = Race Conditions",
+            "points": [
+              "Ordering breaks with competing consumers",
+              "Requeuing disrupts sequence"
+            ]
+          },
+          "bottom": {
+            "label": "Kafka",
+            "badge": "Partition-based",
+            "tone": "good",
+            "code": "Partition Key = Strict FIFO",
+            "points": [
+              "Strict order per partition",
+              "Scale via partition count"
+            ]
+          },
+          "narration": "RabbitMQ ordering is fragile. If Consumer A takes longer than Consumer B, your sequence is gone. Kafka forces order by pinning keys to specific partitions, ensuring one consumer handles that entity's stream.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-partition",
+          "kind": "code-spotlight",
+          "title": "Kafka Partition Keying",
+          "filename": "OrderEventStream.java",
+          "code": "public CompletableFuture<?> publish(OrderEvent event) {\n    // Hashing orderId ensures all events for this\n    // specific order land on the same partition.\n    return kafkaTemplate.send(\n        \"orders\", \n        event.orderId(), \n        event\n    );\n}",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "event.orderId()",
+              "explanation": "The key determines the partition. Same key = same partition = strict order.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always use a partition key. By passing orderId, Kafka hashes it to a specific partition. This guarantees that every update for that order is processed in exact sequence by a single consumer.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "The Scaling Trap",
+          "caption": "Why you shouldn't change partitions",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Changing partition count breaks hash mapping"
+            },
+            {
+              "kind": "error",
+              "text": "Warning: Re-partitioning changes key-to-partition mapping!"
+            },
+            {
+              "kind": "output",
+              "text": "Old events: Partition 0"
+            },
+            {
+              "kind": "output",
+              "text": "New events: Partition 1"
+            },
+            {
+              "kind": "comment",
+              "text": "# Order is now lost across the topic"
+            }
+          ],
+          "narration": "Careful. If you increase partitions on an active topic, the hash mapping changes. Suddenly, new events for an order go to a different partition than the old ones. Your ordering is now broken.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "RabbitMQ ordering breaks with concurrency",
+            "Kafka guarantees order per partition",
+            "Use partition keys to maintain sequence"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Choosing the right tool for your stack →",
+          "narration": "Ordering is a design choice, not a configuration toggle. In Part 4, we wrap up with a decision matrix to pick the right tool for your specific architecture.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-decision-matrix",
+      "partTitle": "Choosing the Right Tool",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Strategy • Part 4 of 4",
+          "headline": "Stop over-engineering your infrastructure.",
+          "highlightWord": "over-engineering",
+          "subline": "Use this decision matrix to pick the right tool every time.",
+          "narration": "Stop picking Kafka because it's cool. Stop picking RabbitMQ because it's old. Use the tool that matches your data lifecycle. Here is the final decision matrix.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Decision Matrix",
+          "top": {
+            "label": "RabbitMQ",
+            "badge": "Use Case",
+            "tone": "neutral",
+            "code": "Complex Routing & Work Queues",
+            "points": [
+              "Per-message priorities",
+              "Dynamic wildcard routing"
+            ]
+          },
+          "bottom": {
+            "label": "Kafka",
+            "badge": "Use Case",
+            "tone": "good",
+            "code": "Event Streams & Analytics",
+            "points": [
+              "Historical data replay",
+              "High-throughput fan-out"
+            ]
+          },
+          "narration": "Need complex routing or per-message TTL? RabbitMQ. Need to replay events or feed multiple downstream services from one source? Kafka. It's really that simple.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The 'When to Pick' Guide",
+          "subtitle": "Architecture decision tree",
+          "nodes": [
+            {
+              "label": "Task Queue",
+              "detail": "Competing workers, retries",
+              "tag": "RabbitMQ",
+              "accent": "amber"
+            },
+            {
+              "label": "Event Store",
+              "detail": "Audit logs, replay, CDC",
+              "tag": "Kafka",
+              "accent": "emerald"
+            },
+            {
+              "label": "Hybrid",
+              "detail": "Use both for their strengths",
+              "tag": "Mature",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Don't force Kafka to be a task queue. It lacks per-message ack and priority logic. Don't force RabbitMQ to be an event store. It will explode your RAM. Use both where they belong.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Final Pro-Tip",
+          "caption": "The most common mistake",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Don't do this!"
+            },
+            {
+              "kind": "error",
+              "text": "Using Kafka for per-item priority queues"
+            },
+            {
+              "kind": "comment",
+              "text": "# Do this instead"
+            },
+            {
+              "kind": "success",
+              "text": "Use RabbitMQ, or a workflow engine like Temporal"
+            }
+          ],
+          "narration": "The biggest mistake? Treating Kafka like a priority queue. It isn't. If you need to jump the line, use RabbitMQ or a workflow engine. Kafka is for the stream, not the individual task.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "RabbitMQ for complex routing/tasks",
+            "Kafka for event streams/replay",
+            "Avoid using Kafka as a priority queue"
+          ],
+          "command": "git checkout topic/level-10/message-brokers-vs-event-streaming",
+          "nextPartTeaser": "Full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You now know the difference between a broker and a log. Checkout the branch below for the full implementation samples and the deep-dive lab. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
