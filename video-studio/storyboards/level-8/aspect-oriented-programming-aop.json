@@ -1,0 +1,475 @@
+{
+  "chapterId": "level-8/aspect-oriented-programming-aop",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "aspect-oriented-programming-aop",
+  "chapterTitle": "Aspect-Oriented Programming (AOP)",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/aspect-oriented-programming-aop",
+  "branchName": "topic/level-8/aspect-oriented-programming-aop",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-aop-fundamentals",
+      "partTitle": "Stop Copy-Pasting Boilerplate",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "AOP Architecture • Part 1 of 4",
+          "headline": "Why is your business logic buried in 50 lines of infrastructure?",
+          "highlightWord": "infrastructure",
+          "subline": "Stop polluting your services with logging, metrics, and transaction code.",
+          "narration": "If your transferMoney method is 80 percent boilerplate, you have a cross-cutting concern problem. AOP extracts this noise into reusable aspects, keeping your domain logic clean and focused.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Aspects vs Services",
+          "nodes": [
+            {
+              "label": "Aspects",
+              "detail": "Security, Tx, Logging",
+              "tag": "Logic",
+              "accent": "amber"
+            },
+            {
+              "label": "Proxy",
+              "detail": "Runtime Interceptor",
+              "tag": "Weaving",
+              "accent": "purple"
+            },
+            {
+              "label": "Service",
+              "detail": "Core Business Logic",
+              "tag": "Domain",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Aspects sit outside your services. Through a process called weaving, Spring wraps your beans in a proxy that intercepts calls, running your cross-cutting logic before or after the target method.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-pointcut",
+          "kind": "code-spotlight",
+          "title": "Defining Pointcuts",
+          "filename": "CommonPointcuts.java",
+          "code": "@Pointcut(\"execution(public * com.example.service..*(..))\")\npublic void serviceLayer() {}\n\n@Pointcut(\"@annotation(com.example.aop.Loggable)\")\npublic void loggableMethod() {}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "execution",
+              "explanation": "Matches method signatures across packages.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "@annotation",
+              "explanation": "Targets methods marked with your custom tag.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Pointcuts are predicates. They define exactly where your advice runs. You can match by package, bean type, or custom annotations, combining them with boolean logic to target specific operations.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Spring AOP vs AspectJ",
+          "top": {
+            "label": "Spring AOP",
+            "badge": "Runtime Proxy",
+            "tone": "good",
+            "code": "Managed Beans Only",
+            "points": [
+              "Zero build setup",
+              "Method execution only"
+            ]
+          },
+          "bottom": {
+            "label": "AspectJ",
+            "badge": "Bytecode Weaving",
+            "tone": "neutral",
+            "code": "Any Object",
+            "points": [
+              "Field access/Constructor",
+              "Requires agent"
+            ]
+          },
+          "narration": "Spring AOP is sufficient for 99 percent of enterprise apps. Use full AspectJ only if you need to advise private methods, field access, or objects created with the new keyword.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "AOP extracts cross-cutting concerns",
+            "Pointcuts define injection targets",
+            "Spring AOP uses runtime proxies"
+          ],
+          "nextPartTeaser": "Up Next: The hidden proxy trap that breaks your transactions →",
+          "narration": "That is the AOP foundation. In Part 2, we expose the self-invocation trap that silently bypasses your proxies.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-proxy-traps",
+      "partTitle": "Why Self-Invocation Breaks AOP",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "AOP Pitfalls • Part 2 of 4",
+          "headline": "Why does your @Transactional annotation suddenly stop working?",
+          "highlightWord": "stop working",
+          "subline": "It is not a bug—it is a fundamental limitation of the proxy pattern.",
+          "narration": "If you call a method on this inside the same class, you bypass the proxy entirely. Your transaction and logging annotations will simply never fire.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-bug",
+          "kind": "code-spotlight",
+          "title": "The Self-Invocation Trap",
+          "filename": "OrderService.java",
+          "code": "public void process(List<Order> orders) {\n    for(Order o : orders) {\n        this.save(o); // Bypasses Proxy!\n    }\n}\n\n@Transactional\npublic void save(Order o) { ... }",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "this.save",
+              "explanation": "Calls raw target instance directly.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "@Transactional",
+              "explanation": "Ignored because the proxy was never entered.",
+              "accent": "red"
+            }
+          ],
+          "narration": "When you call this.save, you are hitting the raw object. The proxy is never triggered, so the transaction manager never starts. The database update happens without any transactional safety.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Proxy Bypass Sequence",
+          "nodes": [
+            {
+              "label": "Caller",
+              "detail": "Controller",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Proxy",
+              "detail": "Interceptor",
+              "tag": "Wrapped",
+              "accent": "amber"
+            },
+            {
+              "label": "Target",
+              "detail": "this.save()",
+              "tag": "Bypass",
+              "accent": "red"
+            }
+          ],
+          "narration": "The call enters the proxy, then the target. Once inside, the target calls itself via this. The proxy is completely skipped. The advice chain is never executed.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code-fix",
+          "kind": "code-spotlight",
+          "title": "The Fix: Self-Injection",
+          "filename": "OrderService.java",
+          "code": "private final ObjectProvider<OrderService> self;\n\npublic void process(List<Order> orders) {\n    var proxy = self.getObject();\n    orders.forEach(proxy::save);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "ObjectProvider",
+              "explanation": "Lazily fetches the proxy bean.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "proxy::save",
+              "explanation": "Forces the call through the proxy.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The cleanest fix is injecting an ObjectProvider for the service itself. Calling the proxy bean ensures the interceptor chain executes, keeping your transactions and logging intact.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Self-invocation bypasses proxies",
+            "Use ObjectProvider to fix",
+            "Refactor to separate beans"
+          ],
+          "nextPartTeaser": "Up Next: Building a custom @Loggable annotation →",
+          "narration": "Avoid the self-invocation trap by always calling through the proxy. In Part 3, we build a custom @Loggable annotation to measure method latency.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-custom-aspects",
+      "partTitle": "Building a Custom @Loggable Aspect",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Custom Aspects • Part 3 of 4",
+          "headline": "How do you log execution time without touching business code?",
+          "highlightWord": "execution time",
+          "subline": "Custom annotations combined with @Around advice are your secret weapon.",
+          "narration": "Stop writing System.currentTimeMillis in every service. Let's create a declarative @Loggable annotation that automatically profiles your methods and warns on slow performance.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-anno",
+          "kind": "code-spotlight",
+          "title": "The Annotation",
+          "filename": "Loggable.java",
+          "code": "@Target(ElementType.METHOD)\n@Retention(RetentionPolicy.RUNTIME)\npublic @interface Loggable {\n    long slowThresholdMs() default 500;\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Meta-annotations",
+              "explanation": "Required for runtime reflection.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Attributes",
+              "explanation": "Configurable thresholds per method.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Retention Policy Runtime is mandatory. Without it, the JVM discards the annotation before Spring can see it. Now, we define our threshold to flag slow methods.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-aspect",
+          "kind": "code-spotlight",
+          "title": "The Advice",
+          "filename": "LoggingAspect.java",
+          "code": "@Around(\"@annotation(loggable)\")\npublic Object log(ProceedingJoinPoint jp, Loggable loggable) throws Throwable {\n    long start = System.nanoTime();\n    Object result = jp.proceed();\n    logLatency(start, loggable);\n    return result;\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@Around",
+              "explanation": "Wraps the target execution.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "jp.proceed()",
+              "explanation": "Executes the actual method.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The @Around advice gives you full control. You capture the start time, call proceed to run the target, and then calculate the elapsed duration. It is clean, reusable, and testable.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Advice Types",
+          "top": {
+            "label": "@Before",
+            "badge": "Validation",
+            "tone": "neutral",
+            "code": "Runs before method",
+            "points": [
+              "Security checks",
+              "Input validation"
+            ]
+          },
+          "bottom": {
+            "label": "@Around",
+            "badge": "Full Control",
+            "tone": "good",
+            "code": "Wraps execution",
+            "points": [
+              "Profiling",
+              "Caching",
+              "Retries"
+            ]
+          },
+          "narration": "Choose your advice wisely. Use @Before for simple validation, but reach for @Around when you need to manipulate the return value or measure latency across the entire call.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "RetentionPolicy.RUNTIME is required",
+            "@Around wraps execution",
+            "Choose narrowest advice type"
+          ],
+          "nextPartTeaser": "Up Next: Mastering aspect order and precedence →",
+          "narration": "You have a custom aspect. In Part 4, we tackle aspect ordering—ensuring your security checks run before your transactions.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-aspect-ordering",
+      "partTitle": "Mastering Aspect Precedence",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "AOP Precedence • Part 4 of 4",
+          "headline": "What happens when your transaction starts before your security check?",
+          "highlightWord": "starts before",
+          "subline": "You waste database connections and leak data. Ordering is not optional.",
+          "narration": "If your transaction opens before your security check, you risk leaking database connections on unauthorized requests. Precedence is the final piece of the AOP puzzle.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Onion Layers",
+          "nodes": [
+            {
+              "label": "Security",
+              "detail": "@Order(1)",
+              "tag": "Outer",
+              "accent": "red"
+            },
+            {
+              "label": "Logging",
+              "detail": "@Order(10)",
+              "tag": "Middle",
+              "accent": "amber"
+            },
+            {
+              "label": "Transaction",
+              "detail": "Default",
+              "tag": "Inner",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Spring aspects behave like an onion. Lower order numbers run first on the way in, and last on the way out. Always put security at the very outer layer.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-order",
+          "kind": "code-spotlight",
+          "title": "Enforcing Order",
+          "filename": "SecurityAspect.java",
+          "code": "@Aspect\n@Component\n@Order(1) // Runs first!\npublic class SecurityAspect { ... }",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "@Order(1)",
+              "explanation": "Lowest number has highest precedence.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Precedence",
+              "explanation": "Wraps all higher-order aspects.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use the @Order annotation to explicitly define precedence. By setting security to 1, you guarantee it executes before any other aspect, protecting your downstream resources effectively.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Verification",
+          "caption": "Check your bean order in logs",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "logging.level.org.springframework.aop=DEBUG"
+            },
+            {
+              "kind": "output",
+              "text": "DEBUG: Advised [SecurityAspect] with order 1"
+            },
+            {
+              "kind": "output",
+              "text": "DEBUG: Advised [TransactionAspect] with order 2147483647"
+            }
+          ],
+          "narration": "Enable debug logging for the AOP package to see the chain order. It confirms exactly how your aspects wrap the target, preventing hidden performance or security bugs.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "AOP Mastery Complete",
+          "takeaways": [
+            "Lower @Order runs first",
+            "Security goes on the outside",
+            "Debug logs verify precedence"
+          ],
+          "command": "git checkout topic/level-8/aspect-oriented-programming-aop",
+          "nextPartTeaser": "Full AOP lab and docs at ravishankar2463.github.io/java_hub",
+          "narration": "You now have total control over cross-cutting concerns. Checkout the companion branch to run the lab and verify your aspect order in practice.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
