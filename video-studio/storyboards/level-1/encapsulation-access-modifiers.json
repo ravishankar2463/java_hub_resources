@@ -1,0 +1,497 @@
+{
+  "chapterId": "level-1/encapsulation-access-modifiers",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "encapsulation-access-modifiers",
+  "chapterTitle": "Encapsulation & Access Modifiers",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/encapsulation-access-modifiers",
+  "branchName": "topic/level-1/encapsulation-access-modifiers",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-encapsulation-trap",
+      "partTitle": "Why Getters & Setters Break Your Code",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Encapsulation • Part 1 of 4",
+          "headline": "Is your code an anemic bag of getters?",
+          "highlightWord": "anemic bag",
+          "subline": "Public fields and blind setters are the primary cause of fragile, unmaintainable domain models.",
+          "narration": "If you mark every field private but expose every single setter, you have zero encapsulation. You are just creating an anemic model where domain logic leaks into every service class.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Anemic vs. Behavior-Focused",
+          "top": {
+            "label": "Anemic (Bad)",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "public void setBalance(long b) { \n    this.balance = b; \n}",
+            "points": [
+              "No validation logic",
+              "State can be corrupted"
+            ]
+          },
+          "bottom": {
+            "label": "Encapsulated (Good)",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "public void withdraw(long amount) {\n    if (amount > balance) throw ...;\n    this.balance -= amount;\n}",
+            "points": [
+              "Enforces invariants",
+              "Logic stays in domain"
+            ]
+          },
+          "narration": "Stop asking objects for their state to modify it externally. Tell the object what to do. By moving logic inside the class, you guarantee that the object remains in a valid state.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The Tell-Don't-Ask Pattern",
+          "filename": "BankAccount.java",
+          "code": "public void withdraw(long amountCents) {\n    ensureActive();\n    if (amountCents <= 0) throw new \n        IllegalArgumentException();\n    if (amountCents > balanceCents) throw new \n        IllegalStateException();\n    this.balanceCents -= amountCents;\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Internal Guard",
+              "explanation": "Private helper method ensures the account isn't frozen before any operation runs.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3,
+                5
+              ],
+              "badge": "Invariant Check",
+              "explanation": "Validates inputs immediately, preventing the object from ever entering an invalid state.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This is real encapsulation. The class guards its own invariants. If the account is frozen or the withdrawal amount is invalid, the object rejects the operation before it even touches the data.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Information Hiding Strategy",
+          "subtitle": "Hide the how, expose the what",
+          "nodes": [
+            {
+              "label": "Private Fields",
+              "detail": "Internal state representation",
+              "tag": "Hidden",
+              "accent": "sky"
+            },
+            {
+              "label": "Public Methods",
+              "detail": "Stable business operations",
+              "tag": "Contract",
+              "accent": "emerald"
+            },
+            {
+              "label": "Refactoring",
+              "detail": "Change internals without breaking callers",
+              "tag": "Freedom",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Information hiding means callers only depend on your public methods. You can change your internal storage from double to BigDecimal or long cents, and zero external code will break.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Avoid anemic models",
+            "Tell, don't ask",
+            "Guard invariants inside class"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): The hidden dangers of protected and package-private →",
+          "narration": "That is the core of encapsulation. In Part 2, we dissect the four access modifiers and the subtle traps of protected inheritance.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-access-modifiers",
+      "partTitle": "Mastering Java Visibility",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Access Modifiers • Part 2 of 4",
+          "headline": "Why is protected actually dangerous?",
+          "highlightWord": "protected",
+          "subline": "It isn't just 'package-private plus'. It creates a permanent API contract for subclasses.",
+          "narration": "Most developers think protected is just a slightly wider package-private. It is actually a massive design commitment that exposes your internals to any subclass in the entire application.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Visibility Hierarchy",
+          "subtitle": "Narrower is always safer",
+          "nodes": [
+            {
+              "label": "private",
+              "detail": "Same class only",
+              "tag": "Safest",
+              "accent": "sky"
+            },
+            {
+              "label": "default",
+              "detail": "Same package only",
+              "tag": "Internal",
+              "accent": "emerald"
+            },
+            {
+              "label": "protected",
+              "detail": "Package + Subclasses",
+              "tag": "API",
+              "accent": "amber"
+            },
+            {
+              "label": "public",
+              "detail": "Everywhere",
+              "tag": "Contract",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Start with private. Use package-private for internal collaborators. Only use protected if you explicitly design your class to be extended, because you cannot easily change it later.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The Protected Trap",
+          "filename": "Parent.java",
+          "code": "package a;\npublic class Parent {\n    protected int count;\n}\n\npackage b;\npublic class Child extends Parent {\n    public void test(Parent p) {\n        this.count = 1; // Works\n        p.count = 2;    // Fails!\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                9
+              ],
+              "badge": "Subclass Access",
+              "explanation": "You can access protected members on your own instance.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                10
+              ],
+              "badge": "Cross-Package Limit",
+              "explanation": "You cannot reach into a parent instance's protected members from a different package.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This is the classic protected trap. You can access protected members on your own subclass instance, but you cannot reach into a parent instance from another package. It is a common source of confusion.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Package-Private Organization",
+          "caption": "Structure your modules",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "com.acme.billing/"
+            },
+            {
+              "kind": "output",
+              "text": "  InvoiceService.java (public)"
+            },
+            {
+              "kind": "output",
+              "text": "  TaxCalculator.java (package-private)"
+            },
+            {
+              "kind": "output",
+              "text": "  DiscountPolicy.java (package-private)"
+            },
+            {
+              "kind": "comment",
+              "text": "# Everything except Service is hidden from other packages"
+            }
+          ],
+          "narration": "Package-private is your best friend for modularity. Keep your internal collaborators package-private, and only expose the service class. It shrinks your public API surface and makes refactoring painless.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Default to private",
+            "Use package-private for modules",
+            "Protected is a permanent API"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Why immutability is the ultimate encapsulation →",
+          "narration": "Visibility is about controlling your footprint. In Part 3, we dive into immutability—the ultimate way to protect your object state from accidental corruption.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-immutability",
+      "partTitle": "Immutability & Defensive Copying",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Immutability • Part 3 of 4",
+          "headline": "Is your object actually immutable?",
+          "highlightWord": "actually immutable",
+          "subline": "A final field doesn't mean your object is safe. It only means the reference can't change.",
+          "narration": "If you have a final list field, you aren't safe. Callers can still call dot add on that list. True immutability requires defensive copying and unmodifiable views.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The Immutability Checklist",
+          "filename": "AuditEvent.java",
+          "code": "public final class AuditEvent {\n    private final List<String> hosts;\n\n    public AuditEvent(List<String> hosts) {\n        this.hosts = List.copyOf(hosts);\n    }\n\n    public List<String> getHosts() {\n        return hosts;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Final Class",
+              "explanation": "Prevents subclasses from overriding methods to introduce mutability.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Defensive Copy",
+              "explanation": "List.copyOf creates an unmodifiable, deep-ish copy that protects against external changes.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "To be truly immutable, the class must be final, fields must be private and final, and you must defensively copy mutable inputs. List dot copyOf is your best friend here.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Why Immutability Matters",
+          "top": {
+            "label": "Mutable",
+            "badge": "Thread Unsafe",
+            "tone": "bad",
+            "code": "map.put(key, val);\nkey.setName(\"new\");",
+            "points": [
+              "Hashcode changes",
+              "Map entry lost"
+            ]
+          },
+          "bottom": {
+            "label": "Immutable",
+            "badge": "Thread Safe",
+            "tone": "good",
+            "code": "map.put(key, val);\n// key is constant",
+            "points": [
+              "Safe for concurrency",
+              "Perfect map keys"
+            ]
+          },
+          "narration": "Mutable objects as map keys are a recipe for disaster. If the hashcode changes, your data vanishes. Immutable objects are inherently thread-safe and make your code significantly easier to reason about.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Modern Records (Java 16+)",
+          "filename": "AuditRecord.java",
+          "code": "public record AuditRecord(\n    String id, \n    List<String> hosts\n) {\n    public AuditRecord {\n        hosts = List.copyOf(hosts);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Concise",
+              "explanation": "Automatically generates final fields, constructor, and accessors.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Compact Constructor",
+              "explanation": "Crucial: always defensively copy mutable components here.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Records are perfect for data carriers. But remember, they are only shallowly immutable. You must still defensively copy mutable components like lists in the compact constructor.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Final class + final fields",
+            "Defensive copy in constructors",
+            "Records need defensive copying"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The final summary and lab checkout →",
+          "narration": "Immutability is the ultimate form of encapsulation. In Part 4, we wrap up with the final checklist and get you to the lab.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-summary-and-lab",
+      "partTitle": "Encapsulation & Lab Checkout",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Summary • Part 4 of 4",
+          "headline": "Can you refactor without breaking callers?",
+          "highlightWord": "refactor",
+          "subline": "Encapsulation isn't just about syntax. It is the key to building systems that evolve over years, not months.",
+          "narration": "If your code is hard to change, you have failed at encapsulation. It is the architectural foundation that allows you to refactor internals while keeping your public contracts stable.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Encapsulation Checklist",
+          "subtitle": "Review your classes against these rules",
+          "nodes": [
+            {
+              "label": "Visibility",
+              "detail": "Use private by default",
+              "tag": "Control",
+              "accent": "sky"
+            },
+            {
+              "label": "Invariants",
+              "detail": "Validate inside the class",
+              "tag": "Safety",
+              "accent": "emerald"
+            },
+            {
+              "label": "Immutability",
+              "detail": "Defensive copy everything",
+              "tag": "Stability",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Follow this checklist. Default to private, guard your invariants inside the class, and use immutability to prevent accidental state corruption. This is how you build production-grade Java.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "Ready to Practice?",
+          "caption": "Run the lab exercises",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Checkout the lab branch"
+            },
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-1/encapsulation-access-modifiers"
+            },
+            {
+              "kind": "comment",
+              "text": "# Run the tests"
+            },
+            {
+              "kind": "command",
+              "text": "./gradlew test"
+            },
+            {
+              "kind": "success",
+              "text": "BUILD SUCCESSFUL"
+            }
+          ],
+          "narration": "The lab is waiting. Checkout the branch, run the tests, and fix the broken encapsulation patterns yourself. You will find the full guide at the roadmap URL below.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "The Big Picture",
+          "top": {
+            "label": "Beginner",
+            "badge": "Getter/Setter",
+            "tone": "bad",
+            "code": "public class User {\n    public String name;\n}",
+            "points": [
+              "Exposes internals",
+              "Hard to refactor"
+            ]
+          },
+          "bottom": {
+            "label": "Senior",
+            "badge": "Encapsulated",
+            "tone": "good",
+            "code": "public record User(\n    String name\n) {}",
+            "points": [
+              "Immutable data",
+              "Safe API"
+            ]
+          },
+          "narration": "Stop writing public fields. Start designing robust, encapsulated domain models. It is the difference between a codebase that rots and one that scales.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Level 1 Complete",
+          "takeaways": [
+            "Encapsulate state & logic",
+            "Use narrow visibility",
+            "Favor immutability"
+          ],
+          "command": "git checkout topic/level-1/encapsulation-access-modifiers",
+          "nextPartTeaser": "Full guide at https://ravishankar2463.github.io/java_hub/roadmap/level-1/encapsulation-access-modifiers",
+          "narration": "You have mastered encapsulation. Check the roadmap link for the full guide and lab. Keep building.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
