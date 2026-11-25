@@ -1,0 +1,514 @@
+{
+  "chapterId": "level-9/graphql-with-netflix-dgs",
+  "level": "level-9",
+  "levelLabel": "Level 9",
+  "slug": "graphql-with-netflix-dgs",
+  "chapterTitle": "GraphQL with Netflix DGS",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-9/graphql-with-netflix-dgs",
+  "branchName": "topic/level-9/graphql-with-netflix-dgs",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-schema-first",
+      "partTitle": "Schema-First API Contracts",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Netflix DGS • Part 1 of 4",
+          "headline": "Why REST endpoints fail mobile apps?",
+          "highlightWord": "REST endpoints",
+          "subline": "Over-fetching and under-fetching are killing your performance. GraphQL fixes this at the contract level.",
+          "narration": "REST forces mobile apps to either download massive payloads or chain dozens of tiny requests. GraphQL shifts control to the client, letting them fetch exactly what they need in one trip.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Netflix DGS Pipeline",
+          "subtitle": "Schema-first contract-driven development",
+          "nodes": [
+            {
+              "label": "schema.graphqls",
+              "detail": "The source of truth for your API contract",
+              "tag": "Contract",
+              "accent": "sky"
+            },
+            {
+              "label": "DGS Codegen",
+              "detail": "Generates Java POJOs and DgsConstants",
+              "tag": "Build Time",
+              "accent": "amber"
+            },
+            {
+              "label": "DgsComponent",
+              "detail": "Spring beans resolving specific fields",
+              "tag": "Runtime",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Netflix DGS is schema-first. You define the contract in graphqls files, and the build plugin generates Java types. If the schema changes, your build breaks before you even deploy.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-schema",
+          "kind": "code-spotlight",
+          "title": "Defining the Contract",
+          "filename": "schema.graphqls",
+          "code": "type Query {\n    show(id: ID!): Show\n}\n\ntype Show {\n    id: ID!\n    title: String!\n    reviews: [Review!]!\n}\n\ninput ReviewInput {\n    starRating: Int!\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                3
+              ],
+              "badge": "Query",
+              "explanation": "Root operation for fetching data.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                9
+              ],
+              "badge": "Types",
+              "explanation": "Output types define what the client can request.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                11
+              ],
+              "badge": "Input",
+              "explanation": "Input types are strictly separated from output types.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Notice the strict separation between output types and input types. Output types support computed fields and nested relations, while input types remain plain data trees for mutations.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Code-First vs Schema-First",
+          "top": {
+            "label": "Code-First",
+            "badge": "Annotation Heavy",
+            "tone": "neutral",
+            "code": "@GraphQLQuery\npublic Show getShow() { ... }",
+            "points": [
+              "Schema is a side effect",
+              "Harder to review in PRs"
+            ]
+          },
+          "bottom": {
+            "label": "Schema-First (DGS)",
+            "badge": "Contract Driven",
+            "tone": "good",
+            "code": "type Show { ... }",
+            "points": [
+              "Contract is the source of truth",
+              "Compile-time safety"
+            ]
+          },
+          "narration": "Code-first libraries generate schemas from annotations, which often leads to messy drift. DGS uses the schema file as the contract, making it easier to discuss with frontend teams.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Schema-first prevents contract drift",
+            "Codegen ensures type safety at compile time",
+            "Separate input and output types"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Implementing DataFetchers and Subscriptions →",
+          "narration": "That's the contract. In Part 2, we implement DgsComponents to actually resolve those fields and push real-time updates via WebSockets.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-resolvers",
+      "partTitle": "Resolving Data & Subscriptions",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Netflix DGS • Part 2 of 4",
+          "headline": "How do you resolve nested fields?",
+          "highlightWord": "nested fields",
+          "subline": "Don't write one massive query. Use DgsComponent to map resolvers to specific schema fields.",
+          "narration": "In GraphQL, every field is a function. You don't just fetch a whole object; you resolve fields on demand. Let's see how DGS maps these to Java methods.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-fetcher",
+          "kind": "code-spotlight",
+          "title": "The @DgsComponent",
+          "filename": "ShowDataFetcher.java",
+          "code": "@DgsComponent\npublic class ShowDataFetcher {\n    @DgsQuery\n    public Show show(@InputArgument String id) {\n        return service.findById(id);\n    }\n    @DgsSubscription\n    public Publisher<Review> reviewAdded(...) {\n        return sink.asFlux();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@DgsComponent",
+              "explanation": "Stereotype annotation that registers the class as a resolver.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "@DgsQuery",
+              "explanation": "Maps the method to the root Query type.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "@DgsSubscription",
+              "explanation": "Returns a Reactive Publisher for streaming events.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "DgsComponent is a Spring stereotype. Use DgsQuery for fetches, DgsMutation for changes, and DgsSubscription for long-lived streams. Subscriptions use Project Reactor to push data over WebSockets.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-term-sub",
+          "kind": "terminal",
+          "title": "Subscription Transport",
+          "caption": "WebSockets vs SSE",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Enable WebSocket support in application.yaml"
+            },
+            {
+              "kind": "command",
+              "text": "spring.graphql.websocket.path=/graphql"
+            },
+            {
+              "kind": "output",
+              "text": "INFO: WebSocket handler initialized at /graphql"
+            },
+            {
+              "kind": "comment",
+              "text": "# SSE is supported natively over HTTP"
+            },
+            {
+              "kind": "success",
+              "text": "Accept: text/event-stream"
+            }
+          ],
+          "narration": "Subscriptions run over WebSockets for full-duplex communication. But if you're behind strict corporate proxies, DGS also supports Server-Sent Events over standard HTTP.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Subscription Lifecycle",
+          "subtitle": "From event to client",
+          "nodes": [
+            {
+              "label": "Event Source",
+              "detail": "Kafka or internal Sinks",
+              "tag": "Producer",
+              "accent": "amber"
+            },
+            {
+              "label": "Publisher",
+              "detail": "Project Reactor Flux",
+              "tag": "Stream",
+              "accent": "sky"
+            },
+            {
+              "label": "WebSocket",
+              "detail": "Client-side connection",
+              "tag": "Transport",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Subscriptions are just streams. When you trigger an event, the Publisher pushes it to all connected clients. In production, back these with Redis or Kafka to sync across pods.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "@DgsComponent handles all resolver logic",
+            "Use Publisher for reactive subscriptions",
+            "Back subscriptions with Redis/Kafka for scale"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Solving the N+1 problem with DataLoader →",
+          "narration": "Resolvers are easy, but they can kill your database. In Part 3, we use DataLoader to batch those 50 queries into one.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-dataloader",
+      "partTitle": "Solving the N+1 Problem",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Netflix DGS • Part 3 of 4",
+          "headline": "Is your GraphQL API firing 500 queries?",
+          "highlightWord": "500 queries",
+          "subline": "The N+1 problem is the silent killer of GraphQL performance. DataLoader is the cure.",
+          "narration": "If you fetch 50 shows and then resolve reviews for each, you've just fired 51 queries. That is the N+1 problem. DataLoader batches these requests into a single call.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Naive vs Batched Fetching",
+          "top": {
+            "label": "Naive Resolver",
+            "badge": "N+1 Queries",
+            "tone": "bad",
+            "code": "for (Show s : shows) {\n    repo.findReviews(s.id);\n}",
+            "points": [
+              "One query per show",
+              "Database connection exhaustion"
+            ]
+          },
+          "bottom": {
+            "label": "DataLoader",
+            "badge": "1 Batch Query",
+            "tone": "good",
+            "code": "loader.load(showIds);\n// SELECT * FROM reviews WHERE id IN (...)",
+            "points": [
+              "Single batch query",
+              "Request-scoped caching"
+            ]
+          },
+          "narration": "The naive approach hits the DB for every single item. DataLoader waits for the execution tree to finish, then dispatches one batch query for all requested IDs.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-loader",
+          "kind": "code-spotlight",
+          "title": "Implementing MappedBatchLoader",
+          "filename": "ReviewsDataLoader.java",
+          "code": "@DgsDataLoader(name = \"reviews\")\npublic class ReviewsDataLoader \n    implements MappedBatchLoader<String, List<Review>> {\n    \n    public CompletionStage<Map<String, List<Review>>> load(Set<String> keys) {\n        return CompletableFuture.supplyAsync(() -> \n            repo.findReviewsGroupedBy(keys));\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@DgsDataLoader",
+              "explanation": "Registers the loader in the DGS registry.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "MappedBatchLoader",
+              "explanation": "Handles keys that might not exist in the database.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "load()",
+              "explanation": "Returns a map of keys to results for efficient batching.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "MappedBatchLoader is safer than standard BatchLoader because it handles missing keys gracefully. It returns a map, so you don't have to worry about index mismatches.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "DataLoader Caching",
+          "subtitle": "Per-request memoization",
+          "nodes": [
+            {
+              "label": "Request Start",
+              "detail": "Fresh DataLoaderRegistry",
+              "tag": "Init",
+              "accent": "sky"
+            },
+            {
+              "label": "load(key)",
+              "detail": "Queue key + check cache",
+              "tag": "Execution",
+              "accent": "amber"
+            },
+            {
+              "label": "Batch Dispatch",
+              "detail": "Execute SQL IN clause",
+              "tag": "Dispatch",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "DataLoader caches results for the duration of a single request. If you ask for the same actor twice in one query, it hits the cache instead of the database.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "DataLoader solves N+1 with batching",
+            "Use MappedBatchLoader for robustness",
+            "Cache is scoped to the request"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Federation and Security →",
+          "narration": "DataLoader is your performance superpower. In Part 4, we scale to microservices with Apollo Federation and lock it down with Spring Security.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-federation-security",
+      "partTitle": "Federation & Security",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Netflix DGS • Part 4 of 4",
+          "headline": "How to scale GraphQL across teams?",
+          "highlightWord": "across teams",
+          "subline": "Don't build a monolith. Use Apollo Federation to compose independent services into one supergraph.",
+          "narration": "One giant GraphQL server is a deployment bottleneck. Apollo Federation lets teams own their subgraphs, which a central router then stitches together.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Apollo Federation",
+          "subtitle": "Supergraph composition",
+          "nodes": [
+            {
+              "label": "Show Service",
+              "detail": "Owns core Show data",
+              "tag": "Subgraph",
+              "accent": "sky"
+            },
+            {
+              "label": "Review Service",
+              "detail": "Extends Show with reviews",
+              "tag": "Subgraph",
+              "accent": "amber"
+            },
+            {
+              "label": "Router",
+              "detail": "Stitches everything together",
+              "tag": "Gateway",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The router receives the client request, breaks it down, and fetches data from multiple subgraphs. Each subgraph uses DgsEntityFetcher to resolve shared types.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-security",
+          "kind": "code-spotlight",
+          "title": "Field-Level Security",
+          "filename": "FinancialsFetcher.java",
+          "code": "@PreAuthorize(\"hasRole('FINANCE_ADMIN')\")\n@DgsData(parentType = \"Show\", field = \"cost\")\npublic Double licensingCost(...) {\n    return service.getCost();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@PreAuthorize",
+              "explanation": "Spring Security works directly on resolvers.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "@DgsData",
+              "explanation": "Protects specific fields, not just the endpoint.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Since DGS uses Spring, standard security annotations work out of the box. You can secure individual fields, ensuring sensitive data is only accessible to authorized roles.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-limit",
+          "kind": "terminal",
+          "title": "Query Protection",
+          "caption": "Preventing DoS attacks",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Define complexity limits in config"
+            },
+            {
+              "kind": "command",
+              "text": "MaxQueryDepthInstrumentation(7)"
+            },
+            {
+              "kind": "command",
+              "text": "MaxQueryComplexityInstrumentation(200)"
+            },
+            {
+              "kind": "comment",
+              "text": "# Disable introspection in production"
+            },
+            {
+              "kind": "output",
+              "text": "dgs.graphql.introspection.enabled=false"
+            }
+          ],
+          "narration": "Never expose your full schema in production. Use complexity and depth limits to prevent malicious circular queries from crashing your server.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Federation scales teams via subgraphs",
+            "Use @PreAuthorize for field-level security",
+            "Limit query depth and complexity"
+          ],
+          "command": "git checkout topic/level-9/graphql-with-netflix-dgs",
+          "nextPartTeaser": "Full guide + lab at ravishankar2463.github.io/java_hub",
+          "narration": "You now have the tools to build production-grade GraphQL services. Checkout the branch in the roadmap to run the full DGS lab and test federation yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
