@@ -1,0 +1,601 @@
+{
+  "chapterId": "level-6/behavioral-patterns",
+  "level": "level-6",
+  "levelLabel": "Level 6",
+  "slug": "behavioral-patterns",
+  "chapterTitle": "Behavioral Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-6/behavioral-patterns",
+  "branchName": "topic/level-6/behavioral-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-strategy-pattern",
+      "partTitle": "Ditching If-Else Sprawl with Strategy",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Behavioral Patterns • Part 1 of 5",
+          "headline": "Stop writing 500-line service methods.",
+          "highlightWord": "500-line",
+          "subline": "If-else chains are a maintenance nightmare. Strategy patterns turn logic into interchangeable components.",
+          "narration": "If your service methods are drowning in if-else chains checking status enums, your code is rigid. Let's replace that sprawl with the Strategy pattern.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Branching vs. Strategy",
+          "top": {
+            "label": "The Anti-Pattern",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "if (\"FEDEX\".equals(c)) calcFedEx();\nelse if (\"UPS\".equals(c)) calcUps();",
+            "points": [
+              "Violates Open/Closed Principle",
+              "Hard to test in isolation"
+            ]
+          },
+          "bottom": {
+            "label": "Strategy Pattern",
+            "badge": "Clean",
+            "tone": "good",
+            "code": "strategy.computeTotal(basePrice);",
+            "points": [
+              "Interchangeable algorithms",
+              "Easy to extend without edits"
+            ]
+          },
+          "narration": "Hard-coded branches force you to edit working code every time a new carrier arrives. Strategy encapsulates those rules, letting you swap algorithms at runtime.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-lambda",
+          "kind": "code-spotlight",
+          "title": "Functional Strategy",
+          "filename": "PricingStrategy.java",
+          "code": "@FunctionalInterface\npublic interface PricingStrategy {\n    BigDecimal computeTotal(BigDecimal base);\n}\n\n// Usage\nPricingStrategy vip = p -> p.subtract(new BigDecimal(\"15.00\"));",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "FunctionalInterface",
+              "explanation": "Allows passing logic as a lambda, removing the need for verbose concrete classes.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Lambda",
+              "explanation": "Clean, stateless logic that is easy to test and maintain.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "In modern Java, you don't need a class for every rule. Use a functional interface and pass lambdas directly for stateless formulas.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Strategy Lookup Map",
+          "nodes": [
+            {
+              "label": "List<Strategy>",
+              "detail": "Injected list of all available implementations",
+              "tag": "DI",
+              "accent": "sky"
+            },
+            {
+              "label": "Map<String, Strategy>",
+              "detail": "Unmodifiable map keyed by carrier code",
+              "tag": "Lookup",
+              "accent": "amber"
+            },
+            {
+              "label": "Strategy.quote()",
+              "detail": "Invoked dynamically at runtime",
+              "tag": "Execution",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For complex stateful strategies, use a lookup map. Inject all implementations, map them by key, and call them without a single branch.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Strategy Locked In",
+          "takeaways": [
+            "Replace if-else with Strategy",
+            "Use lambdas for simple logic",
+            "Use lookup maps for DI-managed beans"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Fixing the Lapsed Listener memory leak →",
+          "narration": "Strategy keeps your services lean. In Part 2, we tackle the Observer pattern and the silent memory leaks that kill long-running JVMs.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-observer-pattern",
+      "partTitle": "Observer & The Lapsed Listener Trap",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Behavioral Patterns • Part 2 of 5",
+          "headline": "Your event listeners are leaking memory.",
+          "highlightWord": "leaking memory",
+          "subline": "The Lapsed Listener Problem is a silent killer in long-running Java apps.",
+          "narration": "Think your event system is solid? If your publisher holds strong references to short-lived listeners, you've got a memory leak waiting to happen.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-leak",
+          "kind": "code-spotlight",
+          "title": "The Lapsed Listener Fix",
+          "filename": "OrderEventPublisher.java",
+          "code": "public interface Subscription extends AutoCloseable {\n    void close();\n}\n\npublic Subscription subscribe(OrderListener l) {\n    listeners.add(l);\n    return () -> listeners.remove(l);\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "AutoCloseable",
+              "explanation": "Forces callers to acknowledge the lifecycle of the subscription.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Removal",
+              "explanation": "Returns a handle that removes the listener, preventing the leak.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never let listeners subscribe without a way to unsubscribe. Return an AutoCloseable handle so callers can clean up in a try-with-resources block.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Safe Event Broadcast",
+          "nodes": [
+            {
+              "label": "Publisher",
+              "detail": "Holds CopyOnWriteArrayList of listeners",
+              "tag": "Subject",
+              "accent": "purple"
+            },
+            {
+              "label": "Iterator",
+              "detail": "Safe snapshot iteration during broadcast",
+              "tag": "Thread-Safe",
+              "accent": "sky"
+            },
+            {
+              "label": "Try-Catch",
+              "detail": "Isolates failing listeners",
+              "tag": "Resilience",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use CopyOnWriteArrayList to keep iteration thread-safe. Wrap every listener call in a try-catch so one broken subscriber doesn't crash your entire event chain.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Lifecycle Management",
+          "caption": "Deterministic unsubscription",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// Scoped subscription"
+            },
+            {
+              "kind": "command",
+              "text": "try (var sub = pub.subscribe(l)) {"
+            },
+            {
+              "kind": "output",
+              "text": "  pub.publish(event);"
+            },
+            {
+              "kind": "command",
+              "text": "}"
+            },
+            {
+              "kind": "success",
+              "text": "// Listener removed automatically!"
+            }
+          ],
+          "narration": "By using try-with-resources, the listener is removed the moment the block exits. No more dangling references, no more heap bloat.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Observer Locked In",
+          "takeaways": [
+            "Return AutoCloseable handles",
+            "Use CopyOnWriteArrayList",
+            "Isolate listener exceptions"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The Command Pattern & Undo logic →",
+          "narration": "Observer is now leak-proof. In Part 3, we turn actions into objects with the Command pattern, enabling undo-stacks and transaction logs.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-command-pattern",
+      "partTitle": "Command Pattern: Beyond Runnables",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Behavioral Patterns • Part 3 of 5",
+          "headline": "Turn your operations into objects.",
+          "highlightWord": "into objects",
+          "subline": "Commands let you queue, log, and undo actions with ease.",
+          "narration": "When an action needs more than just execution—like undo history or audit logs—it's time to graduate from simple Runnables to the Command pattern.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-cmd",
+          "kind": "code-spotlight",
+          "title": "Command with Undo",
+          "filename": "AccountCommand.java",
+          "code": "public interface AccountCommand {\n    void execute();\n    void undo();\n}\n\npublic class TransferCommand implements AccountCommand {\n    // State: from, to, amount\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Contract",
+              "explanation": "Defines the action and its inverse operation.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Stateful",
+              "explanation": "Captures all context needed to perform or reverse the action.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "A Command object encapsulates the receiver and the parameters. By storing the state, you can easily implement an undo stack for your transactions.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Invoker & History",
+          "nodes": [
+            {
+              "label": "Invoker",
+              "detail": "Manages execution and history stack",
+              "tag": "Manager",
+              "accent": "purple"
+            },
+            {
+              "label": "Command",
+              "detail": "Encapsulates logic + state",
+              "tag": "Action",
+              "accent": "amber"
+            },
+            {
+              "label": "Receiver",
+              "detail": "Domain object performing the work",
+              "tag": "Target",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The invoker tracks history. When a rollback is requested, it pops the last command and calls undo. It's clean, decoupled, and highly testable.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Runnable vs. Command",
+          "top": {
+            "label": "Runnable",
+            "badge": "Simple",
+            "tone": "neutral",
+            "code": "executor.submit(() -> doWork());",
+            "points": [
+              "Good for fire-and-forget",
+              "No undo, no audit"
+            ]
+          },
+          "bottom": {
+            "label": "Command Object",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "manager.execute(new TransferCmd());",
+            "points": [
+              "Supports undo/redo",
+              "Serialized for audit logs"
+            ]
+          },
+          "narration": "Don't over-engineer. Use Runnables for simple tasks. Use full Command objects only when you need state, undo, or auditability.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Command Locked In",
+          "takeaways": [
+            "Use Command for undo/audit",
+            "Keep Command stateful",
+            "Use Runnable for simple tasks"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Java 21 Sealed State Machines →",
+          "narration": "Command patterns make your system reversible. In Part 4, we use Java 21's sealed interfaces to build bulletproof state machines.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-sealed-state-machines",
+      "partTitle": "Java 21 Sealed State Machines",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Behavioral Patterns • Part 4 of 5",
+          "headline": "Stop checking nulls for state transitions.",
+          "highlightWord": "nulls",
+          "subline": "Java 21 sealed interfaces make state machines type-safe and exhaustive.",
+          "narration": "State machines used to be a mess of enums and null checks. With Java 21, we can use sealed interfaces to make illegal states unrepresentable.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-sealed",
+          "kind": "code-spotlight",
+          "title": "Sealed State Machine",
+          "filename": "OrderState.java",
+          "code": "public sealed interface OrderState permits Created, Paid {\n    record Created(String id) implements OrderState {}\n    record Paid(String id, String tx) implements OrderState {}\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Sealed",
+              "explanation": "Explicitly defines allowed states, preventing unexpected extensions.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Records",
+              "explanation": "Holds only the data relevant to that specific state.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Records are perfect for states. A 'Paid' state holds a transaction ID, while 'Created' doesn't. No more null fields for data that doesn't exist yet.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-switch",
+          "kind": "code-spotlight",
+          "title": "Exhaustive Switch",
+          "filename": "Workflow.java",
+          "code": "currentState = switch (currentState) {\n    case Created c -> new Paid(c.id(), tx);\n    case Paid p -> throw new IllegalStateException();\n};",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Switch",
+              "explanation": "Compiler ensures all states are handled.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Exhaustive",
+              "explanation": "Adding a new state triggers a compiler error if not handled.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The compiler now forces you to handle every state. If you add a 'Delivered' state, the code won't compile until you update your transitions.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "State Transition",
+          "nodes": [
+            {
+              "label": "Created",
+              "detail": "Initial state",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Paid",
+              "detail": "Transitioned via pay()",
+              "tag": "Action",
+              "accent": "amber"
+            },
+            {
+              "label": "Illegal",
+              "detail": "Blocked by switch logic",
+              "tag": "Safety",
+              "accent": "red"
+            }
+          ],
+          "narration": "This is type-safe state management. You can't pay for an already paid order, and the compiler guarantees you haven't missed any edge cases.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "State Locked In",
+          "takeaways": [
+            "Use sealed interfaces",
+            "Records for state data",
+            "Exhaustive switch expressions"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Template Method & Cleanup →",
+          "narration": "Sealed state machines are the gold standard for lifecycle logic. In Part 5, we wrap up with Template Method and avoiding inheritance pitfalls.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-template-method",
+      "partTitle": "Template Method & Final Thoughts",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Behavioral Patterns • Part 5 of 5",
+          "headline": "Don't let subclasses break your workflow.",
+          "highlightWord": "break your workflow",
+          "subline": "Template Method enforces the skeleton, while hooks allow customization.",
+          "narration": "Need a fixed workflow but flexible steps? Template Method keeps the skeleton final, ensuring no one skips your critical audit or auth steps.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code-template",
+          "kind": "code-spotlight",
+          "title": "Template Method",
+          "filename": "Pipeline.java",
+          "code": "public final void run() {\n    auth();\n    extract();\n    persist();\n}\nprotected abstract void extract();",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "final",
+              "explanation": "The workflow skeleton is locked. Subclasses cannot reorder steps.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "abstract",
+              "explanation": "Hooks allow customization of specific steps.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The final method defines the sequence. Subclasses only implement the abstract hooks, keeping the overall pipeline logic safe and predictable.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-compare",
+          "kind": "compare",
+          "title": "Template vs. Composition",
+          "top": {
+            "label": "Template Method",
+            "badge": "Inheritance",
+            "tone": "neutral",
+            "code": "extends BasePipeline",
+            "points": [
+              "Enforces strict order",
+              "Shares protected helpers"
+            ]
+          },
+          "bottom": {
+            "label": "Functional Hooks",
+            "badge": "Composition",
+            "tone": "good",
+            "code": "new Pipeline(extractor, parser);",
+            "points": [
+              "More flexible",
+              "Avoids inheritance traps"
+            ]
+          },
+          "narration": "Inheritance is rigid. If you don't need shared protected state, prefer composition with functional interfaces. It's easier to test and reuse.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b4-terminal",
+          "kind": "terminal",
+          "title": "The Constructor Trap",
+          "caption": "Avoid this common mistake",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "public abstract class Base {"
+            },
+            {
+              "kind": "error",
+              "text": "  Base() { init(); } // DANGER"
+            },
+            {
+              "kind": "error",
+              "text": "}"
+            },
+            {
+              "kind": "comment",
+              "text": "// Subclass fields are null here!"
+            }
+          ],
+          "narration": "Never call overridable methods from a constructor. Subclass fields aren't initialized yet, leading to nasty NullPointerExceptions.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Patterns Mastered",
+          "takeaways": [
+            "Use final for workflow skeletons",
+            "Prefer composition over inheritance",
+            "Never call abstract methods in constructors"
+          ],
+          "command": "git checkout topic/level-6/behavioral-patterns",
+          "nextPartTeaser": "Full lab at https://ravishankar2463.github.io/java_hub/roadmap/level-6/behavioral-patterns",
+          "narration": "You've mastered behavioral patterns. Checkout the branch, run the lab, and start refactoring those if-else chains into clean, testable code.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
