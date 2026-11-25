@@ -1,0 +1,489 @@
+{
+  "chapterId": "level-5/structured-concurrency-and-scoped-values",
+  "level": "level-5",
+  "levelLabel": "Level 5",
+  "slug": "structured-concurrency-and-scoped-values",
+  "chapterTitle": "Structured Concurrency and Scoped Values",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-5/structured-concurrency-and-scoped-values",
+  "branchName": "topic/level-5/structured-concurrency-and-scoped-values",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-orphan-thread-problem",
+      "partTitle": "Why ExecutorService is Dangerous",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Concurrency • Part 1 of 4",
+          "headline": "Your background tasks are leaking memory.",
+          "highlightWord": "leaking memory",
+          "subline": "Standard ExecutorService creates orphan threads that run forever even after the parent fails.",
+          "narration": "If your travel booking service fails, does it actually stop the background flight and hotel calls? With standard ExecutorService, those tasks become orphans, wasting resources and potentially booking ghost trips.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Unstructured vs Structured",
+          "top": {
+            "label": "ExecutorService",
+            "badge": "Unstructured",
+            "tone": "bad",
+            "code": "Future<Flight> f = exec.submit(task);\n// If this fails, 'task' keeps running!",
+            "points": [
+              "No lexical relationship",
+              "Orphan threads persist",
+              "Manual cancellation required"
+            ]
+          },
+          "bottom": {
+            "label": "StructuredTaskScope",
+            "badge": "Structured",
+            "tone": "good",
+            "code": "try (var scope = new ...) {\n    scope.fork(task);\n    scope.join();\n}",
+            "points": [
+              "Lexical containment",
+              "Automatic cleanup",
+              "No orphan threads"
+            ]
+          },
+          "narration": "In unstructured code, the parent thread doesn't own the subtask lifecycle. Structured concurrency forces subtasks to finish before the block exits, ensuring no background work escapes your control.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-scope",
+          "kind": "code-spotlight",
+          "title": "ShutdownOnFailure Policy",
+          "filename": "TravelService.java",
+          "code": "try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {\n    var flight = scope.fork(() -> reserveFlight());\n    var hotel = scope.fork(() -> reserveHotel());\n\n    scope.join();\n    scope.throwIfFailed();\n\n    return new Package(flight.get(), hotel.get());\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "AutoCloseable",
+              "explanation": "The try-with-resources block ensures that if any task fails, the scope cleans up everything.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "fork()",
+              "explanation": "Spawns a virtual thread. If one fails, the other is automatically interrupted.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "ShutdownOnFailure is the gold standard for atomic operations. If reserveHotel fails, the scope immediately interrupts the flight task, preventing any partial state corruption.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Cancellation Cascade",
+          "nodes": [
+            {
+              "label": "Parent Thread",
+              "detail": "Enters try block",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Subtask 1 (Flight)",
+              "detail": "Running",
+              "tag": "Active",
+              "accent": "amber"
+            },
+            {
+              "label": "Subtask 2 (Hotel)",
+              "detail": "CRASHED!",
+              "tag": "Fail",
+              "accent": "red"
+            },
+            {
+              "label": "Scope",
+              "detail": "Interrupts Subtask 1",
+              "tag": "Cleanup",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When a subtask fails, the scope triggers a cancellation cascade. It interrupts all siblings, waits for them to terminate, and only then throws the exception to the parent.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "ExecutorService creates orphans",
+            "StructuredTaskScope ensures lifetime bounds",
+            "ShutdownOnFailure cancels siblings on error"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Racing providers with ShutdownOnSuccess →",
+          "narration": "That's the foundation of structured concurrency. In Part 2, we explore how to race multiple redundant service providers and pick the fastest result.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-racing-and-deadlines",
+      "partTitle": "Racing Providers & Deadlines",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Concurrency • Part 2 of 4",
+          "headline": "Stop waiting for the slowest provider.",
+          "highlightWord": "slowest provider",
+          "subline": "ShutdownOnSuccess automatically kills redundant calls the moment you get a winner.",
+          "narration": "Why wait for three pricing feeds when you only need one? ShutdownOnSuccess lets you race providers, taking the first valid result and killing the losers instantly.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-race",
+          "kind": "code-spotlight",
+          "title": "Racing Redundant Feeds",
+          "filename": "ExchangeService.java",
+          "code": "try (var scope = new StructuredTaskScope.ShutdownOnSuccess<Rate>()) {\n    scope.fork(() -> bloomberg.fetch());\n    scope.fork(() -> reuters.fetch());\n    scope.fork(() -> fixer.fetch());\n\n    scope.join();\n    return scope.result();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "ShutdownOnSuccess",
+              "explanation": "As soon as one task succeeds, the scope cancels the other two.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "scope.result()",
+              "explanation": "Returns the winner. If all fail, it throws an ExecutionException.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Unlike CompletableFuture, this handles early failures gracefully. If Bloomberg fails but Reuters succeeds, you get the Reuters rate. The scope only fails if every single provider throws an error.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-deadline",
+          "kind": "code-spotlight",
+          "title": "Enforcing Hard Deadlines",
+          "filename": "TimeoutService.java",
+          "code": "Instant deadline = Instant.now().plusSeconds(2);\n\ntry (var scope = new StructuredTaskScope.ShutdownOnFailure()) {\n    scope.fork(() -> service.call());\n    scope.joinUntil(deadline);\n    scope.throwIfFailed();\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "joinUntil",
+              "explanation": "Throws TimeoutException if the scope doesn't finish by the deadline.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Automatic Cleanup",
+              "explanation": "On timeout, the scope shuts down and interrupts all pending tasks.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Never let a request hang forever. joinUntil sets a hard limit. If the deadline passes, the scope automatically cancels all pending work, keeping your system responsive.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Java 25 API Evolution",
+          "caption": "The API is moving to static factories",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// Java 21/22/23/24 Style"
+            },
+            {
+              "kind": "output",
+              "text": "new StructuredTaskScope.ShutdownOnFailure()"
+            },
+            {
+              "kind": "comment",
+              "text": "// Java 25+ Style (JEP 505)"
+            },
+            {
+              "kind": "output",
+              "text": "StructuredTaskScope.open()"
+            }
+          ],
+          "narration": "Java 25 simplifies the API. Instead of constructors, you use static factories. The underlying mechanics of lexical containment and sibling cancellation remain identical.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "ShutdownOnSuccess races providers",
+            "joinUntil prevents infinite hangs",
+            "Java 25 uses static open() factories"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Why ScopedValue kills ThreadLocal →",
+          "narration": "You now have total control over subtask lifecycles. In Part 3, we replace the leaky ThreadLocal with ScopedValue to pass context safely across virtual threads.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-scoped-values",
+      "partTitle": "ScopedValue vs ThreadLocal",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Context Sharing • Part 3 of 4",
+          "headline": "ThreadLocal is a memory leak waiting to happen.",
+          "highlightWord": "memory leak",
+          "subline": "ScopedValue provides immutable, bounded context sharing that is perfect for virtual threads.",
+          "narration": "ThreadLocal is a trap. It's mutable, leaks memory in thread pools, and is expensive to copy. ScopedValue is the modern, immutable replacement for passing context like trace IDs.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "ThreadLocal vs ScopedValue",
+          "top": {
+            "label": "ThreadLocal",
+            "badge": "Legacy",
+            "tone": "bad",
+            "code": "threadLocal.set(val);\n// Must remove() or leak!",
+            "points": [
+              "Mutable state",
+              "Unbounded lifetime",
+              "Expensive map copying"
+            ]
+          },
+          "bottom": {
+            "label": "ScopedValue",
+            "badge": "Modern",
+            "tone": "good",
+            "code": "ScopedValue.where(VAL, x).run(() -> ...);",
+            "points": [
+              "Immutable bindings",
+              "Lexically bounded",
+              "Zero-copy inheritance"
+            ]
+          },
+          "narration": "ScopedValue is immutable. Once bound, it stays that way for the duration of the block. No more manual removal, no more cross-request data leaks.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-binding",
+          "kind": "code-spotlight",
+          "title": "Binding Context",
+          "filename": "Context.java",
+          "code": "public static final ScopedValue<String> USER = ScopedValue.newInstance();\n\npublic void handle() {\n    ScopedValue.where(USER, \"admin\").run(() -> {\n        process();\n    });\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Public Static Final",
+              "explanation": "Define your context key as a constant.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "where().run()",
+              "explanation": "Binds the value only for the duration of the lambda.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The binding is strictly scoped to the run block. Once the lambda finishes, the value is unbound. It's impossible to leak this context into other threads.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Zero-Copy Inheritance",
+          "nodes": [
+            {
+              "label": "Parent Thread",
+              "detail": "Binds ScopedValue",
+              "tag": "Root",
+              "accent": "sky"
+            },
+            {
+              "label": "Structured Scope",
+              "detail": "Creates Subtask",
+              "tag": "Fork",
+              "accent": "amber"
+            },
+            {
+              "label": "Child Thread",
+              "detail": "Reads parent's binding",
+              "tag": "Inherit",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When you fork a subtask inside a StructuredTaskScope, it automatically sees the parent's ScopedValue. It's a direct reference, not a copy, making it incredibly fast.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "ScopedValue is immutable",
+            "Bindings are lexically bounded",
+            "Zero-copy sharing with subtasks"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Debugging and Thread Dumps →",
+          "narration": "You've mastered context sharing. In Part 4, we look at how the JVM makes these task hierarchies visible in thread dumps for production debugging.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-observability-and-final-thoughts",
+      "partTitle": "Observability & Debugging",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Observability • Part 4 of 4",
+          "headline": "Stop debugging flat thread lists.",
+          "highlightWord": "flat thread lists",
+          "subline": "Structured concurrency groups threads by hierarchy, making production debugging actually readable.",
+          "narration": "Ever looked at a thread dump and seen thousands of unrelated threads? Structured concurrency fixes this. The JVM now groups virtual threads by their scope hierarchy.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-terminal",
+          "kind": "terminal",
+          "title": "Hierarchical Thread Dumps",
+          "caption": "jcmd shows the task tree",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "jcmd <pid> Thread.dump_to_file dump.json"
+            },
+            {
+              "kind": "output",
+              "text": "Scope: CheckoutOrchestrator"
+            },
+            {
+              "kind": "output",
+              "text": "  └─ Subtask: PaymentService"
+            },
+            {
+              "kind": "output",
+              "text": "  └─ Subtask: ReceiptService"
+            }
+          ],
+          "narration": "When you dump threads, you see the tree. You can instantly identify which parent request spawned a stuck subtask, drastically reducing your mean time to resolution.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "The Golden Rule of Interruption",
+          "top": {
+            "label": "Bad Practice",
+            "badge": "Swallowing",
+            "tone": "bad",
+            "code": "catch (InterruptedException e) {\n    // Ignore\n}",
+            "points": [
+              "Breaks cancellation",
+              "Stalls the scope",
+              "Prevents cleanup"
+            ]
+          },
+          "bottom": {
+            "label": "Good Practice",
+            "badge": "Restoring",
+            "tone": "good",
+            "code": "catch (InterruptedException e) {\n    Thread.currentThread().interrupt();\n}",
+            "points": [
+              "Preserves interrupt flag",
+              "Allows scope to exit",
+              "Enables clean shutdown"
+            ]
+          },
+          "narration": "Cancellation is cooperative. If you swallow an InterruptedException, the scope can't kill your task. Always restore the flag to allow the scope to terminate properly.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b4-code-summary",
+          "kind": "code-spotlight",
+          "title": "The Unified Model",
+          "filename": "Orchestrator.java",
+          "code": "ScopedValue.where(TRACE, id).run(() -> {\n    try (var scope = StructuredTaskScope.open()) {\n        var t1 = scope.fork(this::task1);\n        scope.join();\n        return t1.get();\n    }\n});",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Context",
+              "explanation": "ScopedValue provides the immutable context.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Structure",
+              "explanation": "StructuredTaskScope provides the life-cycle bounds.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Combine these two and you get a robust, observable, and leak-free concurrency model. This is how modern, high-scale Java services are built today.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Hierarchy visible in thread dumps",
+            "Always restore interrupt flags",
+            "Combine ScopedValue & StructuredTaskScope"
+          ],
+          "command": "git checkout topic/level-5/structured-concurrency-and-scoped-values",
+          "nextPartTeaser": "Full lab at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered structured concurrency. Checkout the branch, run the labs, and start building safer, more resilient Java services. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
