@@ -1,0 +1,458 @@
+{
+  "chapterId": "level-7/jdbc-and-connection-pooling",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "jdbc-and-connection-pooling",
+  "chapterTitle": "JDBC and Connection Pooling",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/jdbc-and-connection-pooling",
+  "branchName": "topic/level-7/jdbc-and-connection-pooling",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-jdbc-fundamentals",
+      "partTitle": "JDBC: Beyond the Boilerplate",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JDBC Internals • Part 1 of 4",
+          "headline": "Why does your DB pool keep crashing?",
+          "highlightWord": "crashing",
+          "subline": "It isn't just bad luck. It's usually a leaked connection or a missing try-with-resources.",
+          "narration": "Most devs treat JDBC like a black box. But when your service throws a connection pool error, you need to know exactly how the driver talks to the database wire.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The JDBC Execution Path",
+          "subtitle": "From Java Service to Database Wire",
+          "nodes": [
+            {
+              "label": "DataSource",
+              "detail": "HikariCP factory for connections",
+              "tag": "Pool",
+              "accent": "sky"
+            },
+            {
+              "label": "Connection",
+              "detail": "TCP session boundary",
+              "tag": "Session",
+              "accent": "amber"
+            },
+            {
+              "label": "PreparedStatement",
+              "detail": "Pre-parsed SQL template",
+              "tag": "Safe",
+              "accent": "purple"
+            },
+            {
+              "label": "ResultSet",
+              "detail": "Forward-only cursor",
+              "tag": "Data",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The flow is simple: borrow from the pool, prepare the statement, bind parameters, and stream the result. If you don't close these in reverse order, you leak resources.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-try",
+          "kind": "code-spotlight",
+          "title": "The Essential Try-With-Resources",
+          "filename": "OrderRepo.java",
+          "code": "try (Connection conn = ds.getConnection();\n     PreparedStatement ps = conn.prepareStatement(sql)) {\n    ps.setLong(1, customerId);\n    try (ResultSet rs = ps.executeQuery()) {\n        // Process rows\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "AutoCloseable",
+              "explanation": "Ensures the connection returns to the pool even if an exception occurs.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Nested Try",
+              "explanation": "Strict LIFO closing order prevents memory leaks.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Never manually close connections in a finally block. Use try-with-resources. It guarantees that the ResultSet, Statement, and Connection close in the correct order, every time.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare-sql",
+          "kind": "compare",
+          "title": "SQL Injection vs. Parameterization",
+          "top": {
+            "label": "Vulnerable",
+            "badge": "Concatenation",
+            "tone": "bad",
+            "code": "stmt.execute(\"SELECT * FROM users WHERE name = '\" + input + \"'\");"
+          },
+          "bottom": {
+            "label": "Safe",
+            "badge": "PreparedStatement",
+            "tone": "good",
+            "code": "ps.setString(1, input);\nps.executeQuery();"
+          },
+          "narration": "Never concatenate strings. PreparedStatement sends the SQL template first, then the data. The database treats your input as literal text, not executable code. It's the only way to stay safe.",
+          "durationSec": 11,
+          "sfx": "error"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Use try-with-resources for all JDBC",
+            "PreparedStatement is mandatory for security",
+            "Always use column labels in ResultSet"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Handling SQL NULLs and custom RowMappers →",
+          "narration": "That's the foundation. In Part 2, we tackle the silent null-to-zero bug and build a clean RowMapper abstraction to kill the boilerplate.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-mapping-and-streaming",
+      "partTitle": "Mapping Data and Streaming Rows",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Data Mapping • Part 2 of 4",
+          "headline": "Why is your SQL NULL becoming a zero?",
+          "highlightWord": "becoming a zero",
+          "subline": "JDBC primitives have no concept of null. Here is how to fix your data integrity.",
+          "narration": "Calling getInt on a SQL NULL returns zero. That's a silent data bug. Let's fix your mapping logic before it corrupts your production database.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-null",
+          "kind": "code-spotlight",
+          "title": "Safe Null Handling",
+          "filename": "Mapper.java",
+          "code": "int raw = rs.getInt(\"points\");\nInteger points = rs.wasNull() ? null : raw;\n\n// Or better (JDBC 4.1+):\nInteger p = rs.getObject(\"points\", Integer.class);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "wasNull()",
+              "explanation": "The manual check for primitive nullability.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "getObject",
+              "explanation": "The modern, clean way to map nullable types.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Stop using raw primitives for nullable columns. Use getObject with the wrapper class. It handles the null check internally and keeps your domain models clean.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-mapper",
+          "kind": "code-spotlight",
+          "title": "The RowMapper Abstraction",
+          "filename": "JdbcHelper.java",
+          "code": "@FunctionalInterface\npublic interface RowMapper<T> {\n    T mapRow(ResultSet rs, int rowNum) throws SQLException;\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Functional",
+              "explanation": "Decouples query execution from object mapping.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Signature",
+              "explanation": "Allows passing a lambda for every query.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Extracting a RowMapper interface is the secret to readable code. It separates the 'how to fetch' from the 'how to map', making your DAOs testable and DRY.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare-stream",
+          "kind": "compare",
+          "title": "Memory Safety: Buffering vs. Streaming",
+          "top": {
+            "label": "Default",
+            "badge": "OOM Risk",
+            "tone": "bad",
+            "code": "rs.executeQuery(); // Buffers all rows"
+          },
+          "bottom": {
+            "label": "Streaming",
+            "badge": "Cursor",
+            "tone": "good",
+            "code": "conn.setAutoCommit(false);\nps.setFetchSize(500);"
+          },
+          "narration": "Loading 2 million rows into memory will crash your JVM. To stream, you must disable auto-commit and set a fetch size. The driver then pulls rows in chunks.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use getObject for null safety",
+            "RowMapper keeps DAOs clean",
+            "Disable auto-commit for streaming"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): HikariCP Sizing and Leak Detection →",
+          "narration": "That's mapping and streaming. In Part 3, we dive into HikariCP, the industry-standard pool, and how to detect connection leaks before they take down your service.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-hikaricp-tuning",
+      "partTitle": "HikariCP: Sizing and Performance",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Connection Pooling • Part 3 of 4",
+          "headline": "Is your pool size actually hurting performance?",
+          "highlightWord": "hurting performance",
+          "subline": "More connections don't mean more speed. Here is the math for optimal pool sizing.",
+          "narration": "Most devs set their pool size to 100 and wonder why latency spikes. Oversized pools cause context switching and lock contention. Let's calculate the real number.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "ConcurrentBag Borrow Path",
+          "subtitle": "How HikariCP avoids global locks",
+          "nodes": [
+            {
+              "label": "ThreadLocal",
+              "detail": "Fastest path, no locks",
+              "tag": "L1",
+              "accent": "sky"
+            },
+            {
+              "label": "CAS Scan",
+              "detail": "Lock-free shared search",
+              "tag": "L2",
+              "accent": "amber"
+            },
+            {
+              "label": "Handoff",
+              "detail": "Direct queue for waiters",
+              "tag": "L3",
+              "accent": "purple"
+            }
+          ],
+          "narration": "HikariCP uses ConcurrentBag. It checks your thread's local cache first, then does a lock-free scan. It's designed to stay fast even under heavy contention.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-term-formula",
+          "kind": "terminal",
+          "title": "The Golden Sizing Formula",
+          "caption": "Baseline for Postgres/MySQL",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Connections = (cores * 2) + spindle_count"
+            },
+            {
+              "kind": "output",
+              "text": "4-vCPU DB = ~10 connections total"
+            },
+            {
+              "kind": "error",
+              "text": "✗ Don't match pool size to web threads!"
+            }
+          ],
+          "narration": "The formula is simple: cores times two plus disks. If you have 8 replicas, your pool size should be tiny. Oversized pools just fight over the same CPU cores.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-code-leak",
+          "kind": "code-spotlight",
+          "title": "Detecting Connection Leaks",
+          "filename": "HikariConfig.java",
+          "code": "config.setLeakDetectionThreshold(5000);\n// Logs stack trace if borrowed > 5s",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Threshold",
+              "explanation": "Warns you when a connection is held too long.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Debug",
+              "explanation": "Helps find missing close() calls.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Enable leak detection in production. If a connection is held for more than 5 seconds, Hikari logs the exact line of code that leaked it. It's a lifesaver.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Pool size = (cores * 2) + disks",
+            "ConcurrentBag is lock-free",
+            "Leak detection is mandatory"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Batching and Final Best Practices →",
+          "narration": "That's pooling. In Part 4, we wrap up with batching strategies to speed up your bulk writes and final production tips.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-batching-and-summary",
+      "partTitle": "Batching and Final Summary",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "High Throughput • Part 4 of 4",
+          "headline": "Why are your bulk inserts taking forever?",
+          "highlightWord": "taking forever",
+          "subline": "Network round-trips are the silent killer. Batching is the cure.",
+          "narration": "Executing 10,000 inserts in a loop is a network disaster. Batching turns 10,000 round-trips into a handful of packets. Let's optimize your throughput.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-batch",
+          "kind": "code-spotlight",
+          "title": "Efficient Batching",
+          "filename": "BatchRepo.java",
+          "code": "for (Event e : events) {\n    ps.addBatch();\n    if (++count % 500 == 0) ps.executeBatch();\n}\nps.executeBatch();",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "addBatch",
+              "explanation": "Queues the statement locally.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "executeBatch",
+              "explanation": "Flushes to the DB in one round-trip.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Batching is key. Use a batch size like 500 and flush regularly. Pair this with the driver's rewrite flag in your JDBC URL to get maximum performance.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-term-url",
+          "kind": "terminal",
+          "title": "The Rewrite Flag",
+          "caption": "Essential for bulk inserts",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Postgres URL"
+            },
+            {
+              "kind": "output",
+              "text": "jdbc:postgresql://host/db?reWriteBatchedInserts=true"
+            },
+            {
+              "kind": "comment",
+              "text": "# MySQL URL"
+            },
+            {
+              "kind": "output",
+              "text": "jdbc:mysql://host/db?rewriteBatchedStatements=true"
+            }
+          ],
+          "narration": "This flag is magic. It rewrites your batched statements into multi-row inserts, cutting your ingestion time by an order of magnitude.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare-summary",
+          "kind": "compare",
+          "title": "JDBC Checklist",
+          "top": {
+            "label": "Bad Habits",
+            "badge": "Legacy",
+            "tone": "bad",
+            "code": "DriverManager, String concatenation, Auto-commit true"
+          },
+          "bottom": {
+            "label": "Modern",
+            "badge": "Production",
+            "tone": "good",
+            "code": "DataSource, PreparedStatement, Batching, Leak Detection"
+          },
+          "narration": "Stop using legacy patterns. Modern JDBC is fast, safe, and reliable if you follow these rules. Your database will thank you for the reduced load.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "Batch inserts with rewrite flags",
+            "Use DataSource, not DriverManager",
+            "Monitor pool health with leak detection"
+          ],
+          "command": "git checkout topic/level-7/jdbc-and-connection-pooling",
+          "nextPartTeaser": "Full lab and docs at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered JDBC. Checkout the branch, run the lab, and check the roadmap for the full deep dive. Go build something fast.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
