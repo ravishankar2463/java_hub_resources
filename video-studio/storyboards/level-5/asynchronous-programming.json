@@ -1,0 +1,529 @@
+{
+  "chapterId": "level-5/asynchronous-programming",
+  "level": "level-5",
+  "levelLabel": "Level 5",
+  "slug": "asynchronous-programming",
+  "chapterTitle": "Asynchronous Programming",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-5/asynchronous-programming",
+  "branchName": "topic/level-5/asynchronous-programming",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-callback-hell-and-completablefuture",
+      "partTitle": "Why Raw Futures & Callback Hell Break Async Java",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Async Java • Part 1 of 4",
+          "headline": "Sequential HTTP calls stack latency into slow APIs.",
+          "highlightWord": "stack latency",
+          "subline": "Calling future.get() parks your thread, and nested callbacks turn code sideways.",
+          "narration": "Sequential backend calls add every downstream latency together into a slow response. Calling raw Future get parks the caller thread, while nested completion handlers shatter your control flow and error handling.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Nested Callbacks vs. CompletableFuture DAG",
+          "top": {
+            "label": "Nested Callback Hell",
+            "badge": "❌ Unmaintainable",
+            "tone": "bad",
+            "code": "userClient.fetchProfile(id, profile -> {\n    pricingClient.fetchTier(profile, tier -> {\n        inventoryClient.checkStock(tier, stock -> {\n            onSuccess.accept(new Summary(profile, tier, stock));\n        }, onError);\n    }, onError);\n}, onError);",
+            "points": [
+              "Deep indentation obscures happy path",
+              "Try-catch cannot cross thread boundaries"
+            ]
+          },
+          "bottom": {
+            "label": "CompletableFuture Pipeline",
+            "badge": "✅ Clean DAG",
+            "tone": "good",
+            "code": "fetchProfileAsync(id)\n    .thenCompose(this::fetchTierAsync)\n    .thenCombine(fetchStockAsync(), Summary::new)\n    .exceptionally(this::fallbackSummary);",
+            "points": [
+              "Declarative stages form a clean directed graph",
+              "Exceptions automatically flow to end handlers"
+            ]
+          },
+          "narration": "Nested callbacks obscure the happy path and force manual exception forwarding. CompletableFuture replaces callbacks with a clean directed graph where stages transform data and exceptions flow naturally to end handlers.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Creating CompletableFutures Correctly",
+          "filename": "FutureCreationExamples.java",
+          "code": "public class FutureCreationExamples {\n    private final ExecutorService ioPool = Executors.newFixedThreadPool(8);\n\n    public void demonstrateCreation() {\n        CompletableFuture<String> f1 = CompletableFuture.supplyAsync(() -> fetchProfile(\"u42\"), ioPool);\n        CompletableFuture<Void> f2 = CompletableFuture.runAsync(() -> writeAudit(\"u42\"), ioPool);\n        CompletableFuture<String> f3 = CompletableFuture.completedFuture(\"cached-profile\");\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "supplyAsync",
+              "explanation": "Starts background task returning a result value, explicitly bound to a dedicated thread pool.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "runAsync",
+              "explanation": "Executes background Runnable for side-effects or fire-and-forget tasks returning Void.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "completedFuture",
+              "explanation": "Returns an already-completed future, ideal for short-circuiting cache hits without thread switching.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use supplyAsync for background tasks returning values and runAsync for side effects. Always supply an explicit pool, and use completedFuture for instant cache returns with zero thread context switching.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Async Directed Acyclic Graph (DAG)",
+          "subtitle": "Declarative pipeline execution flow",
+          "nodes": [
+            {
+              "label": "Incoming Request",
+              "detail": "Triggers concurrent fan-out tasks",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Fan-Out Tasks",
+              "detail": "Profile, Pricing & Stock run on I/O Pool",
+              "tag": "Parallel",
+              "accent": "amber"
+            },
+            {
+              "label": "Combine & Timeout",
+              "detail": "thenCombine merges; completeOnTimeout defaults",
+              "tag": "Pipeline",
+              "accent": "purple"
+            },
+            {
+              "label": "Response / Fallback",
+              "detail": "Aggregate payload or exceptionally handler",
+              "tag": "Terminal",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Incoming requests fan out into parallel background tasks on an I/O pool. Stages transform data declaratively, while timeouts and recovery handlers route failure paths into safe default responses.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Future get blocks threads; callbacks nest sideways",
+            "CompletableFuture builds non-blocking DAG pipelines",
+            "Use completedFuture for zero-cost cache returns"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): thenApply vs thenCompose & thread pool starvation →",
+          "narration": "That is the async foundation. In Part 2, we compare thenApply versus thenCompose and see why omitting the executor stalls your entire JVM.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-chaining-and-thread-pools",
+      "partTitle": "thenApply vs thenCompose & The commonPool Trap",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Async Java • Part 2 of 4",
+          "headline": "Omitting the Executor parameter can stall your JVM.",
+          "highlightWord": "stall your JVM",
+          "subline": "Blocking HTTP calls inside ForkJoinPool.commonPool starve all parallel features.",
+          "narration": "Omitting the executor in supplyAsync defaults to ForkJoinPool commonPool. In a container with two CPUs, just three blocking network calls freeze background processing across your entire JVM.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "thenApply vs. thenCompose",
+          "top": {
+            "label": "thenApply (Map)",
+            "badge": "Synchronous Mapping",
+            "tone": "neutral",
+            "code": "CompletableFuture<String> email = fetchProfileAsync(id)\n    .thenApply(UserProfile::email);",
+            "points": [
+              "Takes Function<T, R>",
+              "Transforms value synchronously into CompletableFuture<R>"
+            ]
+          },
+          "bottom": {
+            "label": "thenCompose (FlatMap)",
+            "badge": "Async Chaining",
+            "tone": "good",
+            "code": "CompletableFuture<AccountCredit> credit = fetchProfileAsync(id)\n    .thenCompose(profile -> fetchCreditAsync(profile));",
+            "points": [
+              "Takes Function<T, CompletionStage<R>>",
+              "Flattens nested futures into single CompletableFuture<R>"
+            ]
+          },
+          "narration": "Use thenApply when your mapping function returns a normal value, just like Stream map. Use thenCompose when your function returns another CompletableFuture to flatten the nested result into a single stage.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Chaining Dependent Async Pipelines",
+          "filename": "CreditPipeline.java",
+          "code": "public class CreditPipeline {\n    public CompletableFuture<AccountCredit> getUserCreditScore(String userId) {\n        return fetchProfileAsync(userId)\n            .thenCompose(this::fetchCreditAsync);\n    }\n\n    public CompletableFuture<String> getUserEmail(String userId) {\n        return fetchProfileAsync(userId)\n            .thenApply(UserProfile::email);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3,
+                4
+              ],
+              "badge": "thenCompose (flatMap)",
+              "explanation": "Avoids double-wrapped CompletableFuture<CompletableFuture<AccountCredit>> by flattening downstream stage.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                7,
+                8,
+                9
+              ],
+              "badge": "thenApply (map)",
+              "explanation": "Transforms UserProfile to String email synchronously in-place.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Passing an async function into thenCompose flattens the result into a single future. Using thenApply there instead creates a double-wrapped future that requires awkward manual unwrapping.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "The ForkJoinPool.commonPool() Starvation Trap",
+          "subtitle": "Blocking I/O exhausts available CPU workers",
+          "nodes": [
+            {
+              "label": "Worker 1",
+              "detail": "Blocked on HTTP Payment API",
+              "tag": "Blocked",
+              "accent": "rose"
+            },
+            {
+              "label": "Worker 2",
+              "detail": "Blocked on JDBC SQL Query",
+              "tag": "Blocked",
+              "accent": "rose"
+            },
+            {
+              "label": "Worker 3",
+              "detail": "Blocked on Inventory RPC",
+              "tag": "Blocked",
+              "accent": "rose"
+            },
+            {
+              "label": "Parallel Streams",
+              "detail": "Queued indefinitely waiting for commonPool",
+              "tag": "Starved",
+              "accent": "amber"
+            }
+          ],
+          "narration": "By default, commonPool creates only CPU-count minus one workers. Blocking those workers on socket reads queues up parallel streams and async tasks across your entire JVM.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "thenApply maps values; thenCompose flattens futures",
+            "Never execute blocking I/O on ForkJoinPool.commonPool",
+            "Isolate CPU and I/O tasks on dedicated Executors"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): thenCombine, allOf barriers & anyOf hedged races →",
+          "narration": "Now you know how to chain stages safely. In Part 3, we look at combining dynamic futures with allOf and the race conditions hidden inside anyOf.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-combining-futures-allof-anyof",
+      "partTitle": "Combining Futures: thenCombine, allOf & anyOf Gotchas",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Async Java • Part 3 of 4",
+          "headline": "CompletableFuture allOf does not cancel on failure.",
+          "highlightWord": "does not cancel",
+          "subline": "If one task fails in 10ms, allOf still waits 2 seconds for every slow task to finish.",
+          "narration": "CompletableFuture allOf creates a barrier for multiple tasks. But if one task fails in ten milliseconds, allOf still waits two seconds for every other task to complete before throwing an exception.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Fanning In N Futures with allOf",
+          "filename": "CatalogAggregator.java",
+          "code": "public CompletableFuture<List<String>> fetchAllCatalogs(List<String> vendorUrls) {\n    List<CompletableFuture<String>> futures = vendorUrls.stream()\n        .map(url -> CompletableFuture.supplyAsync(() -> queryVendor(url), ioPool))\n        .toList();\n\n    CompletableFuture<Void> allDone = CompletableFuture.allOf(\n        futures.toArray(CompletableFuture[]::new)\n    );\n\n    return allDone.thenApply(v ->\n        futures.stream().map(CompletableFuture::join).toList()\n    );\n}",
+          "steps": [
+            {
+              "lines": [
+                6,
+                7,
+                8
+              ],
+              "badge": "CompletableFuture.allOf",
+              "explanation": "Creates barrier returning CompletableFuture<Void> that triggers when all input futures finish.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                10,
+                11,
+                12
+              ],
+              "badge": "non-blocking join()",
+              "explanation": "Calling join inside thenApply does not block because all input futures are already complete.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Pass an array of futures to allOf to build a barrier. Then attach thenApply and call join on each input future to collect typed results without blocking any thread.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Combining Operators Comparison",
+          "top": {
+            "label": "thenCombine vs. allOf",
+            "badge": "Deterministic Fan-In",
+            "tone": "good",
+            "code": "// thenCombine: Merges two independent futures\nf1.thenCombine(f2, (r1, r2) -> r1 + r2);\n\n// allOf: Waits for dynamic collection of N futures\nCompletableFuture.allOf(f1, f2, f3);",
+            "points": [
+              "thenCombine provides type-safe binary merging",
+              "allOf builds barrier for N dynamic tasks"
+            ]
+          },
+          "bottom": {
+            "label": "anyOf Gotcha",
+            "badge": "⚠️ Hedged Race Hazard",
+            "tone": "bad",
+            "code": "CompletableFuture.anyOf(f1, f2);\n// 1. First completion wins even if it is an Exception!\n// 2. Slower tasks keep running in background!",
+            "points": [
+              "Exceptions complete anyOf immediately",
+              "Does not auto-cancel losing in-flight futures"
+            ]
+          },
+          "narration": "Use thenCombine for two futures and allOf for dynamic collections. Watch out for anyOf: the first finished future wins even if it failed, and slower tasks keep running in background threads.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "Tracing anyOf Exception Behavior",
+          "caption": "Fastest response wins—even when it is a failure!",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Server launches hedged requests to Replica A and Replica B"
+            },
+            {
+              "kind": "command",
+              "text": "CompletableFuture.anyOf(replicaA, replicaB)"
+            },
+            {
+              "kind": "error",
+              "text": "[5ms] Replica A failed: java.net.ConnectException"
+            },
+            {
+              "kind": "output",
+              "text": "[5ms] anyOf completes EXCEPTIONALLY with ConnectException"
+            },
+            {
+              "kind": "comment",
+              "text": "[40ms] Replica B succeeded with valid data (ignored!)"
+            }
+          ],
+          "narration": "Look at this terminal log. Replica A failed in five milliseconds with a socket exception. Because anyOf completes on the first response, it returns that failure immediately while Replica B succeeds ignored.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "thenCombine merges two concurrent futures cleanly",
+            "allOf barrier requires thenApply + join to collect results",
+            "anyOf completes on first result, including errors"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Timeouts, error recovery & Java 21 Virtual Threads →",
+          "narration": "You now understand complex async combinations. In Part 4, we cover non-blocking timeouts, error recovery hooks, and modern Java 21 Virtual Threads.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-exceptions-timeouts-and-virtual-threads",
+      "partTitle": "Async Exception Handling, Timeouts & Virtual Threads",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Async Java • Part 4 of 4",
+          "headline": "Exceptions inside futures bypass standard try-catch blocks.",
+          "highlightWord": "bypass standard try-catch",
+          "subline": "Uncaught errors skip transformation stages until explicit recovery hooks catch them.",
+          "narration": "Exceptions thrown inside a future bypass outer try-catch blocks completely. They skip downstream transformation stages silently until an explicit recovery stage intercepts them.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Error Handling: exceptionally vs handle vs whenComplete",
+          "top": {
+            "label": "exceptionally & handle",
+            "badge": "Pipeline Recovery",
+            "tone": "good",
+            "code": "// exceptionally: Runs ONLY on error, returns fallback T\n.exceptionally(ex -> \"cached-default\")\n\n// handle: Always runs, transforms (T, Throwable) -> R\n.handle((res, ex) -> ex != null ? \"fallback\" : res.toUpperCase());",
+            "points": [
+              "exceptionally recovers normal flow on failure",
+              "handle receives both result and exception"
+            ]
+          },
+          "bottom": {
+            "label": "whenComplete",
+            "badge": "Side-Effect Hook",
+            "tone": "neutral",
+            "code": ".whenComplete((res, ex) -> {\n    if (ex != null) log.error(\"Failed\", ex);\n});",
+            "points": [
+              "Cannot modify result or swallow exceptions",
+              "Ideal for metrics, logging, and audit tracking"
+            ]
+          },
+          "narration": "Use exceptionally to return fallback values on failure, and handle to transform outcomes regardless of success or error. Use whenComplete strictly for side effects like metrics without altering pipeline output.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Non-Blocking Timeouts & Exception Recovery",
+          "filename": "ResilientService.java",
+          "code": "public CompletableFuture<String> loadProfileWithTimeout(String userId) {\n    return CompletableFuture\n        .supplyAsync(() -> callRemoteService(userId), ioPool)\n        .orTimeout(500, TimeUnit.MILLISECONDS)\n        .completeOnTimeout(\"DEFAULT_PROFILE\", 300, TimeUnit.MILLISECONDS)\n        .exceptionally(ex -> {\n            Throwable root = (ex instanceof CompletionException) ? ex.getCause() : ex;\n            return \"Fallback(\" + root.getMessage() + \")\";\n        });\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "orTimeout",
+              "explanation": "Triggers TimeoutException if stage does not complete within specified deadline duration.",
+              "accent": "rose"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "completeOnTimeout",
+              "explanation": "Completes normally with fallback value if upstream takes longer than timeout window.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8,
+                9
+              ],
+              "badge": "CompletionException Unwrapping",
+              "explanation": "Unwraps CompletionException to inspect true root cause error message.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Java 9 introduced non-blocking timeouts with orTimeout and completeOnTimeout. When catching errors in exceptionally, always check ex getCause to unwrap the underlying CompletionException wrapper.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Modern Java 21+ Async Architecture",
+          "subtitle": "Combining CompletableFuture with Virtual Threads",
+          "nodes": [
+            {
+              "label": "supplyAsync Tasks",
+              "detail": "Pass Virtual Thread Executor",
+              "tag": "Java 21+",
+              "accent": "emerald"
+            },
+            {
+              "label": "Virtual Threads Pool",
+              "detail": "Executors.newVirtualThreadPerTaskExecutor()",
+              "tag": "Concurrency",
+              "accent": "sky"
+            },
+            {
+              "label": "Semaphore Capping",
+              "detail": "Limits max concurrent external service calls",
+              "tag": "Safety",
+              "accent": "amber"
+            },
+            {
+              "label": "Structured Concurrency",
+              "detail": "StructuredTaskScope replaces complex anyOf races",
+              "tag": "Modern",
+              "accent": "purple"
+            }
+          ],
+          "narration": "In Java 21, pass a Virtual Thread Executor to supplyAsync for blocking I/O tasks. Pair it with a Semaphore to cap downstream concurrency without thread pool sizing bottlenecks.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Use exceptionally & handle for recovery; whenComplete for logging",
+            "Enforce deadlines with Java 9 orTimeout & completeOnTimeout",
+            "Java 21 Virtual Threads remove pool sizing bottlenecks"
+          ],
+          "command": "git checkout topic/level-5/asynchronous-programming",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You just mastered asynchronous Java programming. Checkout the companion branch in java hub resources to run the verified Java 21 async lab and JUnit 5 tests yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
