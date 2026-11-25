@@ -49,5 +49,7 @@ video-studio/.remotion/
 video-studio/out/
 video-studio/batch-all.log
 video-studio/.env
+video-studio/.youtube-client-secret.json
+video-studio/.youtube-token.json
 videos/**/*.mp4
 

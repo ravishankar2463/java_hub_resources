@@ -150,6 +150,11 @@ export interface VideoManifestEntry {
   file: string;
   videoUrl: string;
   releaseTag?: string;
+  youtubeId?: string;
+  youtubeUrl?: string;
+  youtubeStatus?: "unlisted" | "public" | "private";
+  scheduledPublishAt?: string;
+  publishedAt?: string;
   roadmapUrl: string;
   branchName: string;
   renderedAt: string;

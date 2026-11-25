@@ -9,6 +9,14 @@
     "generate": "tsx scripts/generate.ts",
     "batch-all": "tsx scripts/batch-all.ts",
     "list": "tsx scripts/generate.ts --list",
+    "youtube:auth": "tsx scripts/youtube-upload.ts auth",
+    "youtube:status": "tsx scripts/youtube-upload.ts status",
+    "youtube:stage": "tsx scripts/youtube-upload.ts stage",
+    "youtube:sync-channel": "tsx scripts/youtube-upload.ts sync-channel",
+    "youtube:reschedule": "tsx scripts/youtube-upload.ts reschedule",
+    "youtube:upload": "tsx scripts/youtube-upload.ts upload",
+    "youtube:publish-due": "tsx scripts/youtube-upload.ts publish-due",
+    "youtube:set-id": "tsx scripts/youtube-upload.ts set-id",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -235,7 +235,16 @@ function updateManifest(outDir: string, newEntries: VideoManifestEntry[]): strin
     byKey.set(`${e.chapterId}::${e.partNumber}::${e.format}`, e);
   }
   for (const e of newEntries) {
-    byKey.set(`${e.chapterId}::${e.partNumber}::${e.format}`, e);
+    const key = `${e.chapterId}::${e.partNumber}::${e.format}`;
+    const prev = byKey.get(key);
+    byKey.set(key, {
+      ...e,
+      ...(prev?.youtubeId ? { youtubeId: prev.youtubeId } : {}),
+      ...(prev?.youtubeUrl ? { youtubeUrl: prev.youtubeUrl } : {}),
+      ...(prev?.youtubeStatus ? { youtubeStatus: prev.youtubeStatus } : {}),
+      ...(prev?.scheduledPublishAt ? { scheduledPublishAt: prev.scheduledPublishAt } : {}),
+      ...(prev?.publishedAt ? { publishedAt: prev.publishedAt } : {}),
+    });
   }
 
   const sorted = Array.from(byKey.values()).sort((a, b) => {
