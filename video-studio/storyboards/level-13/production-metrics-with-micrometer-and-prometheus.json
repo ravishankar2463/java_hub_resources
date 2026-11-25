@@ -1,0 +1,482 @@
+{
+  "chapterId": "level-13/production-metrics-with-micrometer-and-prometheus",
+  "level": "level-13",
+  "levelLabel": "Level 13",
+  "slug": "production-metrics-with-micrometer-and-prometheus",
+  "chapterTitle": "Production Metrics with Micrometer and Prometheus",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-13/production-metrics-with-micrometer-and-prometheus",
+  "branchName": "topic/level-13/production-metrics-with-micrometer-and-prometheus",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-micrometer-primitives",
+      "partTitle": "Choosing the Right Meter",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Metrics Engineering • Part 1 of 4",
+          "headline": "Are you measuring the wrong thing?",
+          "highlightWord": "wrong thing",
+          "subline": "Picking the wrong Micrometer primitive creates misleading charts that hide production incidents.",
+          "narration": "Logs are for debugging, but metrics are for alerting. If you pick the wrong Micrometer primitive, your charts will look healthy while your users suffer. Let's decode the four core types.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Counter vs. Gauge",
+          "top": {
+            "label": "Counter (Monotonic)",
+            "badge": "Up Only",
+            "tone": "good",
+            "code": "Counter.builder(\"orders.placed\")\n       .register(registry);",
+            "points": [
+              "Use for events",
+              "Never for values that drop"
+            ]
+          },
+          "bottom": {
+            "label": "Gauge (Snapshot)",
+            "badge": "Up & Down",
+            "tone": "neutral",
+            "code": "Gauge.builder(\"active.conns\", \n       list, List::size)\n       .register(registry);",
+            "points": [
+              "Use for current state",
+              "Watch for NaN bugs"
+            ]
+          },
+          "narration": "Counters only go up. Use them for completed orders or errors. Gauges track instantaneous values like active connections. Use them for things that fluctuate, but be careful—they can report NaN if the underlying object is garbage collected.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-gauge",
+          "kind": "code-spotlight",
+          "title": "Avoiding the Gauge GC Trap",
+          "filename": "OrderMetrics.java",
+          "code": "private final AtomicInteger activeCheckouts = new AtomicInteger(0);\n\n// Good: Strong reference in a long-lived bean\nGauge.builder(\"fintech.checkouts.active\", \n              activeCheckouts, \n              AtomicInteger::get)\n     .register(registry);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Strong Reference",
+              "explanation": "Micrometer uses WeakReferences. If you pass a local object, the GC wipes it and your metric becomes NaN.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "AtomicInteger",
+              "explanation": "Always back your gauge with a field on a singleton bean to ensure it survives the GC cycle.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Micrometer uses weak references. If you pass a temporary object to a Gauge, the GC will reclaim it, and your metric will silently report NaN. Always back your gauges with a strong reference in a long-lived Spring bean.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-timers",
+          "kind": "flow-diagram",
+          "title": "Timer vs DistributionSummary",
+          "nodes": [
+            {
+              "label": "Timer",
+              "detail": "Tracks duration + count + distribution",
+              "tag": "Time-based",
+              "accent": "sky"
+            },
+            {
+              "label": "DistributionSummary",
+              "detail": "Tracks non-time numeric spread",
+              "tag": "Value-based",
+              "accent": "amber"
+            },
+            {
+              "label": "Histogram Buckets",
+              "detail": "Essential for accurate p99 calculation",
+              "tag": "Config",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Timers track latency. DistributionSummaries track non-time values like cart amounts. Both need histogram buckets to provide accurate p99 data. Without buckets, you are just guessing at your tail latency.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Counter = Monotonic events",
+            "Gauge = Snapshot state (use strong refs)",
+            "Timers/Summaries = Need buckets for p99"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why client-side percentiles are a math trap →",
+          "narration": "That covers the basics. In Part 2, we break down why client-side percentiles are mathematically invalid in a microservice fleet and how to fix it with server-side buckets.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-percentiles-and-aggregation",
+      "partTitle": "The Percentile Math Trap",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Metrics Engineering • Part 2 of 4",
+          "headline": "Your p99 is lying to you.",
+          "highlightWord": "lying",
+          "subline": "Averages hide tail latency, and aggregating client-side percentiles is mathematically impossible.",
+          "narration": "Your p99 dashboard is lying to you. If you average p99 values from different pods, you get garbage data. Here is the math behind why that happens.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow-percentiles",
+          "kind": "flow-diagram",
+          "title": "Why Aggregation Fails",
+          "nodes": [
+            {
+              "label": "Pod A (10k reqs)",
+              "detail": "p99 = 80ms",
+              "tag": "High Traffic",
+              "accent": "sky"
+            },
+            {
+              "label": "Pod B (50 reqs)",
+              "detail": "p99 = 1500ms",
+              "tag": "Low Traffic",
+              "accent": "amber"
+            },
+            {
+              "label": "Avg(p99)",
+              "detail": "790ms (Mathematically Wrong)",
+              "tag": "The Trap",
+              "accent": "red"
+            }
+          ],
+          "narration": "Averaging p99s across pods is a classic trap. Pod A handles most traffic, but Pod B's outlier spikes the average. You cannot aggregate pre-computed percentiles. You must aggregate the raw histogram buckets first.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-slo",
+          "kind": "code-spotlight",
+          "title": "Configuring Histogram Buckets",
+          "filename": "application.yml",
+          "code": "management:\n  metrics:\n    distribution:\n      percentiles-histogram:\n        http.server.requests: true\n      slo:\n        http.server.requests: 50ms, 100ms, 250ms, 500ms, 1s",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Histogram",
+              "explanation": "Enables cumulative counters per bucket. This allows Prometheus to sum them across the fleet.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "SLO Buckets",
+              "explanation": "Defines the boundaries for your latency targets. Keep the count low to save memory.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Enable histograms in your YAML. This forces Micrometer to export cumulative bucket counters. Prometheus can then sum these buckets across all pods before calculating the true fleet-wide p99 using histogram quantile.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal-promql",
+          "kind": "terminal",
+          "title": "True Fleet-Wide p99",
+          "caption": "Sum buckets, THEN calculate quantile",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Sum buckets across all pods"
+            },
+            {
+              "kind": "command",
+              "text": "sum(rate(http_server_requests_bucket[5m])) by (le)"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Calculate quantile on the result"
+            },
+            {
+              "kind": "command",
+              "text": "histogram_quantile(0.99, ...)"
+            }
+          ],
+          "narration": "Always sum the rates of your buckets first. Only after you have the aggregated bucket counts do you pass them into the histogram quantile function. This gives you the true p99 of your entire service fleet.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Never average p99 values",
+            "Use histogram buckets for aggregation",
+            "Sum rates before calculating quantiles"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): How to stop a cardinality explosion →",
+          "narration": "That's how you get accurate data. In Part 3, we prevent Prometheus from crashing by setting hard cardinality guardrails on your tags.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-cardinality-guardrails",
+      "partTitle": "Preventing Cardinality Explosions",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Metrics Engineering • Part 3 of 4",
+          "headline": "One bad tag can kill Prometheus.",
+          "highlightWord": "kill Prometheus",
+          "subline": "Unbounded labels like user IDs will cause an OOMKilled crash in seconds.",
+          "narration": "One rogue tag with high cardinality can crash your entire monitoring stack. If you expose raw URLs or user IDs as tags, you are creating millions of time series. Let's build a guardrail.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-filter",
+          "kind": "code-spotlight",
+          "title": "Enforcing Cardinality Limits",
+          "filename": "MetricsGuardrailConfig.java",
+          "code": "@Bean\npublic MeterFilter limitUriCardinality() {\n    return MeterFilter.maximumAllowableTags(\n            \"http.server.requests\",\n            \"uri\",\n            100,\n            MeterFilterReply.DENY);\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4,
+                5
+              ],
+              "badge": "maximumAllowableTags",
+              "explanation": "Limits the unique values for the 'uri' tag to 100. Prevents raw paths from flooding the TSDB.",
+              "accent": "red"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "DENY",
+              "explanation": "Drops metrics that exceed the limit, protecting your Prometheus memory head block.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use MeterFilter to cap your tags. This code limits the uri tag to 100 values. If a scanner hits random paths, the filter drops them and logs a warning instead of taking down your Prometheus server.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow-cardinality",
+          "kind": "flow-diagram",
+          "title": "The Cardinality Formula",
+          "nodes": [
+            {
+              "label": "Metric Series",
+              "detail": "Name * Labels * Values",
+              "tag": "Formula",
+              "accent": "sky"
+            },
+            {
+              "label": "Unbounded Tags",
+              "detail": "User IDs, Order IDs, Raw URLs",
+              "tag": "The Risk",
+              "accent": "red"
+            },
+            {
+              "label": "Guardrails",
+              "detail": "MeterFilter, Enum tags, URI normalization",
+              "tag": "The Fix",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Your series count is the product of all label values. If you add a user ID, you multiply your series count by the number of users. Always normalize your URIs and use enums for tags to keep cardinality bounded.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-terminal-check",
+          "kind": "terminal",
+          "title": "Monitoring Cardinality",
+          "caption": "Find your biggest series consumers",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Find top 10 metrics by series count"
+            },
+            {
+              "kind": "command",
+              "text": "topk(10, count by (__name__) ({__name__=~\".+\"}))"
+            },
+            {
+              "kind": "comment",
+              "text": "# Check series per label"
+            },
+            {
+              "kind": "command",
+              "text": "count by (uri) (http_server_requests_seconds_count)"
+            }
+          ],
+          "narration": "Run these PromQL queries to audit your current load. If you see a metric with thousands of unique label values, that is your next candidate for a MeterFilter or a tag cleanup.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Cardinality = Product of all tag values",
+            "Use MeterFilter to cap tag values",
+            "Never use raw IDs in metric tags"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): SLOs and Error Budgets →",
+          "narration": "Cardinality is now under control. In Part 4, we define SLOs and error budgets so you can stop alerting on CPU and start alerting on user experience.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-slo-and-error-budgets",
+      "partTitle": "SLOs and Error Budgets",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Metrics Engineering • Part 4 of 4",
+          "headline": "Stop alerting on CPU usage.",
+          "highlightWord": "CPU usage",
+          "subline": "Alerting on infrastructure symptoms is noise. Alert on user-facing reliability instead.",
+          "narration": "Alerting when CPU hits 80 percent is useless noise. You should alert when your error budget is burning too fast. Let's define reliability the right way.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare-alerting",
+          "kind": "compare",
+          "title": "Symptom vs. SLO Alerting",
+          "top": {
+            "label": "Symptom Alerting",
+            "badge": "Noisy",
+            "tone": "bad",
+            "code": "expr: cpu_usage > 0.8",
+            "points": [
+              "Alerts on infrastructure",
+              "High false positive rate"
+            ]
+          },
+          "bottom": {
+            "label": "SLO Burn Alerting",
+            "badge": "Actionable",
+            "tone": "good",
+            "code": "expr: error_ratio > budget",
+            "points": [
+              "Alerts on user impact",
+              "Shared engineering agreement"
+            ]
+          },
+          "narration": "Stop paging engineers for high CPU. Page them when the error budget is burning. This aligns your team on what actually matters: keeping the service reliable for the user.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-burn",
+          "kind": "code-spotlight",
+          "title": "Multi-Window Burn Alerting",
+          "filename": "alerts.yml",
+          "code": "expr: | \n  job:error_ratio:rate1h > (14.4 * 0.001)\n  and\n  job:error_ratio:rate5m > (14.4 * 0.001)",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Long Window",
+              "explanation": "Checks if the 1-hour trend is burning the budget too fast.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Short Window",
+              "explanation": "Confirms the spike is still happening. Prevents pages for already-resolved issues.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Pair a long window with a short window. This ensures you only page when there is a sustained burn, not a transient spike that already fixed itself.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow-budget",
+          "kind": "flow-diagram",
+          "title": "Error Budget Math",
+          "nodes": [
+            {
+              "label": "99.9% SLO",
+              "detail": "0.1% Error Budget",
+              "tag": "Target",
+              "accent": "emerald"
+            },
+            {
+              "label": "Burn Rate",
+              "detail": "How fast budget is consumed",
+              "tag": "Metric",
+              "accent": "amber"
+            },
+            {
+              "label": "Action",
+              "detail": "Ship features vs. Harden system",
+              "tag": "Policy",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Your error budget is your permission to ship. If you have budget, you ship features. If you burn it, you stop and harden the system. It is the ultimate engineering agreement.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Alert on SLO burn, not CPU",
+            "Use multi-window alerting",
+            "Budget healthy? Ship features."
+          ],
+          "command": "git checkout topic/level-13/production-metrics-with-micrometer-and-prometheus",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You just mastered production metrics. Checkout the branch to see the full implementation and run the lab yourself. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
