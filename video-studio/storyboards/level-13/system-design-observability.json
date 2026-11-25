@@ -1,0 +1,474 @@
+{
+  "chapterId": "level-13/system-design-observability",
+  "level": "level-13",
+  "levelLabel": "Level 13",
+  "slug": "system-design-observability",
+  "chapterTitle": "System Design: Observability",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-13/system-design-observability",
+  "branchName": "topic/level-13/system-design-observability",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-observability-vs-monitoring",
+      "partTitle": "Why Monitoring Isn't Enough",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Observability • Part 1 of 4",
+          "headline": "Why does your alert fire, but you still can't find the bug?",
+          "highlightWord": "can't find",
+          "subline": "Monitoring tells you something is broken. Observability tells you why.",
+          "narration": "Monitoring tells you that your p99 latency is spiking. But when you're staring at a dashboard, you're still blind to the root cause. You need observability to connect the dots.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Monitoring vs. Observability",
+          "top": {
+            "label": "Monitoring",
+            "badge": "The What",
+            "tone": "neutral",
+            "code": "if (errorCount > 100) alert();",
+            "points": [
+              "Tracks known thresholds",
+              "Answers: Is it healthy?"
+            ]
+          },
+          "bottom": {
+            "label": "Observability",
+            "badge": "The Why",
+            "tone": "good",
+            "code": "traceId: 4bf92f35...\nlog: \"Lock timeout\"\nmetric: p99=2s",
+            "points": [
+              "Correlates signals",
+              "Answers: Why is it failing?"
+            ]
+          },
+          "narration": "Monitoring is about known unknowns—thresholds you expect to breach. Observability is for the unknown unknowns, letting you query the system's internal state using logs, metrics, and traces.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Triage Pipeline",
+          "subtitle": "Connecting the three pillars",
+          "nodes": [
+            {
+              "label": "Prometheus",
+              "detail": "Detects p99 latency spike",
+              "tag": "Metrics",
+              "accent": "amber"
+            },
+            {
+              "label": "Jaeger",
+              "detail": "Exemplar links to span waterfall",
+              "tag": "Tracing",
+              "accent": "purple"
+            },
+            {
+              "label": "Loki",
+              "detail": "Filter by traceId for root cause",
+              "tag": "Logging",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The triage path is simple: fire an alert on metrics, jump to the specific trace via an exemplar, and filter logs by that trace ID to find the exact database lock.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-observability",
+          "kind": "code-spotlight",
+          "title": "Micrometer Observation API",
+          "filename": "CheckoutService.java",
+          "code": "Observation.createNotStarted(\"checkout.payment\", registry)\n    .lowCardinalityKeyValue(\"provider\", \"stripe\")\n    .highCardinalityKeyValue(\"orderId\", \"ORD-99\")\n    .observe(() -> paymentClient.authorize());",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Low Cardinality",
+              "explanation": "Exported to Prometheus metrics. Keep these bounded (e.g., status codes, regions).",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "High Cardinality",
+              "explanation": "Only for traces. Never put unbounded IDs in metrics or you'll crash Prometheus.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use the Micrometer Observation API. Distinguish between low-cardinality tags for metrics and high-cardinality tags for traces. Never mix them up, or you'll trigger a cardinality explosion.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Observability Basics Locked",
+          "takeaways": [
+            "Monitoring = Health, Observability = Root Cause",
+            "Metrics + Traces + Logs = The Three Pillars",
+            "Never put high-cardinality data in metrics"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Distributed tracing and W3C propagation →",
+          "narration": "That's the foundation. In Part 2, we look at how to propagate trace context across network hops using the W3C standard.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-distributed-tracing",
+      "partTitle": "Distributed Tracing & W3C Context",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Tracing • Part 2 of 4",
+          "headline": "How do you track a request across 10 microservices?",
+          "highlightWord": "10 microservices",
+          "subline": "The W3C TraceContext header is the glue holding your distributed system together.",
+          "narration": "When a request travels from an API gateway to a Kafka broker and finally a database, how do you keep the context? You need a standard wire format.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Tracing Architecture",
+          "subtitle": "OTLP and Collector decoupling",
+          "nodes": [
+            {
+              "label": "Spring Boot",
+              "detail": "Emits spans via OTLP gRPC",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "OTel Collector",
+              "detail": "Batches, scrubs, and samples",
+              "tag": "Pipeline",
+              "accent": "amber"
+            },
+            {
+              "label": "Jaeger/Tempo",
+              "detail": "Stores traces for visualization",
+              "tag": "Backend",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Don't send traces directly to your backend. Send them to an OpenTelemetry Collector. It decouples your app, scrubs sensitive data, and handles complex tail-based sampling.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term-header",
+          "kind": "terminal",
+          "title": "W3C TraceContext Header",
+          "caption": "The standard for distributed propagation",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# traceparent: version-traceId-spanId-flags"
+            },
+            {
+              "kind": "output",
+              "text": "traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+            },
+            {
+              "kind": "comment",
+              "text": "# 00: version | 4bf9...: trace ID | 00f0...: span ID | 01: flags"
+            }
+          ],
+          "narration": "The traceparent header is the W3C standard. It carries the trace ID and parent span ID across HTTP and Kafka headers, ensuring downstream services attach to the same span tree.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-deps",
+          "kind": "code-spotlight",
+          "title": "Essential Spring Boot Dependencies",
+          "filename": "pom.xml",
+          "code": "<dependency>\n    <groupId>io.micrometer</groupId>\n    <artifactId>micrometer-tracing-bridge-otel</artifactId>\n</dependency>\n<dependency>\n    <groupId>io.opentelemetry</groupId>\n    <artifactId>opentelemetry-exporter-otlp</artifactId>\n</dependency>",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Bridge",
+              "explanation": "Connects Micrometer Observation to OpenTelemetry.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Exporter",
+              "explanation": "Sends OTLP data to your collector.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "In Spring Boot 3, just add the micrometer-tracing bridge and the OTLP exporter. This enables automatic instrumentation for REST clients, JDBC, and Kafka.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Tracing Part Done",
+          "takeaways": [
+            "Use OTel Collector for decoupling",
+            "W3C traceparent is the standard",
+            "Bridge OTel via Micrometer"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Head vs Tail-based sampling →",
+          "narration": "Next, we tackle the cost of tracing—why you should never record 100% of your traffic and how tail-based sampling saves the day.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-sampling-strategies",
+      "partTitle": "Head vs Tail-Based Sampling",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Sampling • Part 3 of 4",
+          "headline": "Recording 100% of traces is a fast way to go bankrupt.",
+          "highlightWord": "go bankrupt",
+          "subline": "Storage costs for tracing are high. Here is how to sample intelligently.",
+          "narration": "At 50,000 requests per second, you're generating millions of spans. You don't need all of them. You need the ones that fail or run slow.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Sampling Strategies",
+          "top": {
+            "label": "Head-Based",
+            "badge": "Stateless",
+            "tone": "neutral",
+            "code": "if (random() < 0.05) record();",
+            "points": [
+              "Cheap and fast",
+              "Blind to errors"
+            ]
+          },
+          "bottom": {
+            "label": "Tail-Based",
+            "badge": "Context-Aware",
+            "tone": "good",
+            "code": "buffer(15s);\nif (error || slow) keep();",
+            "points": [
+              "Keeps 100% of failures",
+              "Requires buffering"
+            ]
+          },
+          "narration": "Head-based sampling is cheap but blind. Tail-based sampling buffers traces in the collector, allowing you to keep every error or slow request while dropping the boring, healthy ones.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-otel",
+          "kind": "code-spotlight",
+          "title": "Tail-Sampling Config",
+          "filename": "otel-config.yaml",
+          "code": "processors:\n  tail_sampling:\n    policies:\n      - name: errors\n        type: status_code\n        status_code: { status_codes: [ERROR] }\n      - name: slow\n        type: latency\n        latency: { threshold_ms: 1000 }",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Error Policy",
+              "explanation": "Keep every single trace that contains an error.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Latency Policy",
+              "explanation": "Keep traces slower than 1 second.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Configure your OTel collector with tail-sampling policies. This ensures you never miss a production incident, even if it happens rarely.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "The Load-Balancing Requirement",
+          "subtitle": "Trace-ID aware routing",
+          "nodes": [
+            {
+              "label": "App Spans",
+              "detail": "Sent to gateway tier",
+              "tag": "Ingress",
+              "accent": "sky"
+            },
+            {
+              "label": "Load Balancer",
+              "detail": "Hashes by traceId",
+              "tag": "Routing",
+              "accent": "purple"
+            },
+            {
+              "label": "Collector Pool",
+              "detail": "All spans for traceId land here",
+              "tag": "Collector",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Crucial rule: tail-sampling requires that all spans for a single trace ID land on the same collector instance. Use a load balancer to hash by trace ID.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Sampling Strategy Set",
+          "takeaways": [
+            "Head-based is cheap but blind",
+            "Tail-based keeps errors & slow traces",
+            "Hash spans by traceId for consistency"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Structured logging and MDC leaks →",
+          "narration": "Finally, in Part 4, we fix your logs. We'll cover structured JSON logging and how to prevent context leaks in your thread pools.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-structured-logging",
+      "partTitle": "Structured Logging & MDC Context",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Logging • Part 4 of 4",
+          "headline": "Are your logs still just plain text?",
+          "highlightWord": "plain text",
+          "subline": "If you aren't using structured JSON, you're making your on-call engineer's life miserable.",
+          "narration": "Parsing plain text logs with regex is a nightmare. Structured JSON makes your logs instantly searchable and indexable.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-mdc",
+          "kind": "code-spotlight",
+          "title": "MDC Context Propagation",
+          "filename": "CheckoutService.java",
+          "code": "try (MDC.MDCCloseable ignored = \n     MDC.putCloseable(\"orderId\", orderId)) {\n    processOrder(orderId);\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "MDC",
+              "explanation": "Mapped Diagnostic Context attaches data to all logs in this thread.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Safety",
+              "explanation": "Use try-with-resources to prevent thread-local leaks.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "MDC is your best friend. It attaches business IDs to every log line. But watch out—if you don't clear it, the next request on that thread will inherit stale data.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "ELK vs. Loki",
+          "top": {
+            "label": "ELK / EFK",
+            "badge": "Full-Text Index",
+            "tone": "neutral",
+            "code": "Elasticsearch",
+            "points": [
+              "Fast arbitrary search",
+              "High RAM/Storage cost"
+            ]
+          },
+          "bottom": {
+            "label": "Grafana Loki",
+            "badge": "Label Index",
+            "tone": "good",
+            "code": "Object Storage",
+            "points": [
+              "Cheap and scalable",
+              "Labels only indexing"
+            ]
+          },
+          "narration": "Choose ELK if you need full-text search across weeks of data. Choose Loki if you want to save money and keep your logs close to your metrics and traces in Grafana.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-code-async",
+          "kind": "code-spotlight",
+          "title": "Async Context Propagation",
+          "filename": "Config.java",
+          "code": "@Bean\npublic ThreadPoolTaskExecutor executor() {\n    var executor = new ThreadPoolTaskExecutor();\n    executor.setTaskDecorator(\n        new ContextPropagatingTaskDecorator());\n    return executor;\n}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "TaskDecorator",
+              "explanation": "Propagates MDC and trace context across thread boundaries.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When using async threads, context is lost. Use the ContextPropagatingTaskDecorator in your executor config to ensure your trace IDs follow your code across threads.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Observability Chapter Complete",
+          "takeaways": [
+            "Use JSON logs for indexability",
+            "Always clear MDC with try-with-resources",
+            "Propagate context in async pools"
+          ],
+          "command": "git checkout topic/level-13/system-design-observability",
+          "nextPartTeaser": "Full guide + Lab at ravishankar2463.github.io/java_hub",
+          "narration": "You're now ready to design observable systems. Checkout the branch below, run the lab, and check the roadmap for the full architecture deep dive.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
