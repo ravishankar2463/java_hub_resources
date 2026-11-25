@@ -1,0 +1,466 @@
+{
+  "chapterId": "level-12/google-jib-daemonless-containers",
+  "level": "level-12",
+  "levelLabel": "Level 12",
+  "slug": "google-jib-daemonless-containers",
+  "chapterTitle": "Google Jib: Daemonless Containers",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-12/google-jib-daemonless-containers",
+  "branchName": "topic/level-12/google-jib-daemonless-containers",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-dind-problem",
+      "partTitle": "Why Dockerfiles Break in CI/CD",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Jib Architecture • Part 1 of 4",
+          "headline": "Why is your CI runner a security liability?",
+          "highlightWord": "security liability",
+          "subline": "Mounting the Docker socket is a root-level backdoor.",
+          "narration": "Running docker build inside your CI pipeline is a security nightmare. Whether it is Docker-in-Docker or mounting the host socket, you are essentially handing root access to every build job.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Daemon vs Daemonless",
+          "top": {
+            "label": "Traditional Docker",
+            "badge": "Risky",
+            "tone": "bad",
+            "code": "docker build -t app:v1 .\n# Requires --privileged\n# Access to /var/run/docker.sock",
+            "points": [
+              "Exposes host kernel",
+              "Requires root privileges"
+            ]
+          },
+          "bottom": {
+            "label": "Google Jib",
+            "badge": "Secure",
+            "tone": "good",
+            "code": "./mvnw jib:build\n# Pure Java execution\n# No Docker daemon",
+            "points": [
+              "Runs in user space",
+              "Zero host access needed"
+            ]
+          },
+          "narration": "Traditional builds require a privileged daemon. Jib is different. It is a Java library that speaks directly to the registry API, keeping your CI environment isolated and secure.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Jib's Daemonless Pipeline",
+          "subtitle": "Direct Registry Communication",
+          "nodes": [
+            {
+              "label": "Build Tool",
+              "detail": "Maven or Gradle compiles code",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Jib Plugin",
+              "detail": "Assembles OCI layers in memory",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Registry API",
+              "detail": "HTTPS push (No Docker CLI)",
+              "tag": "Step 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Jib skips the daemon entirely. It compiles your code, packages OCI layers in memory, and pushes them straight to your container registry using standard HTTPS. No Docker CLI required.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-terminal",
+          "kind": "terminal",
+          "title": "The Build Command",
+          "caption": "No Dockerfile needed",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Skip fat-jar creation"
+            },
+            {
+              "kind": "command",
+              "text": "./mvnw compile jib:build"
+            },
+            {
+              "kind": "success",
+              "text": "[INFO] Built and pushed image"
+            },
+            {
+              "kind": "output",
+              "text": "Digest: sha256:a1b2c3d4..."
+            }
+          ],
+          "narration": "Notice we run compile, not package. Jib reads your classes and dependencies directly from the build output, so you never waste time building a fat JAR.",
+          "durationSec": 8,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "DinD is a security risk",
+            "Jib is daemonless & rootless",
+            "Builds directly to registry"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How Jib optimizes layer caching →",
+          "narration": "That is the security foundation. In Part 2, we look at how Jib optimizes your image layers to make builds lightning fast.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-layer-caching",
+      "partTitle": "Optimizing Image Layers",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Jib Architecture • Part 2 of 4",
+          "headline": "Why does a 1-line code change re-upload 100MB?",
+          "highlightWord": "re-upload",
+          "subline": "Fat JARs are the enemy of efficient CI caching.",
+          "narration": "If you use a fat JAR, a one-line code change invalidates the entire archive. Jib solves this by splitting your application into four intelligent layers.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Jib's 4-Layer Stack",
+          "subtitle": "Optimized for incremental updates",
+          "nodes": [
+            {
+              "label": "Classes Layer",
+              "detail": "Your code (~200KB) - Changes often",
+              "tag": "Top",
+              "accent": "amber"
+            },
+            {
+              "label": "Resources Layer",
+              "detail": "Config & Yaml (~50KB)",
+              "tag": "Mid",
+              "accent": "purple"
+            },
+            {
+              "label": "Dependencies Layer",
+              "detail": "Third-party JARs (~135MB)",
+              "tag": "Base",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Jib separates your code from your dependencies. When you change logic, only the tiny classes layer is re-uploaded. The massive dependency layer stays cached in the registry.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Gradle Configuration",
+          "filename": "build.gradle.kts",
+          "code": "jib {\n    from { image = \"gcr.io/distroless/java21\" }\n    to { image = \"my-repo/app\" }\n    container {\n        user = \"65532:65532\"\n        ports = listOf(\"8080\")\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Distroless",
+              "explanation": "Hardened base image with no shell or package manager.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Non-root",
+              "explanation": "Numeric UID 65532 satisfies K8s security policies.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use a Distroless base image. It lacks a shell, making it harder for attackers to move laterally. Setting the user to 65532 ensures you pass Kubernetes non-root security checks.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Reproducible Builds",
+          "caption": "Deterministic SHA-256 digests",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Jib normalizes timestamps"
+            },
+            {
+              "kind": "output",
+              "text": "Layer 1: 1970-01-01T00:00:01Z"
+            },
+            {
+              "kind": "output",
+              "text": "Layer 2: 1970-01-01T00:00:01Z"
+            },
+            {
+              "kind": "success",
+              "text": "Result: Bit-for-bit identical images"
+            }
+          ],
+          "narration": "Jib makes builds reproducible by normalizing timestamps to the Unix epoch. If your source code hasn't changed, the resulting image digest will be identical every single time.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Split layers = faster builds",
+            "Distroless is more secure",
+            "Reproducible digests by default"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Multi-arch support without QEMU →",
+          "narration": "Now you have fast, reproducible builds. In Part 3, we look at how to build multi-architecture images without needing slow QEMU emulation.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-multi-arch",
+      "partTitle": "Multi-Architecture Builds",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Jib Architecture • Part 3 of 4",
+          "headline": "Why is your build slow on ARM64?",
+          "highlightWord": "slow",
+          "subline": "QEMU emulation is killing your build performance.",
+          "narration": "Building for both x86 and ARM64 usually means slow QEMU emulation. Jib bypasses this entirely because it does not execute native binaries during the build process.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Multi-Platform Config",
+          "filename": "pom.xml",
+          "code": "<platforms>\n    <platform>\n        <architecture>amd64</architecture>\n        <os>linux</os>\n    </platform>\n    <platform>\n        <architecture>arm64</architecture>\n        <os>linux</os>\n    </platform>\n</platforms>",
+          "steps": [
+            {
+              "lines": [
+                1,
+                10
+              ],
+              "badge": "Manifest List",
+              "explanation": "Jib creates a multi-arch manifest automatically.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Just define your platforms in the plugin config. Jib builds the layers once and creates a manifest list. It is fast, native, and requires zero extra infrastructure.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Emulation vs Native Jib",
+          "top": {
+            "label": "Docker Buildx",
+            "badge": "Slow",
+            "tone": "neutral",
+            "code": "docker buildx build --platform linux/amd64,linux/arm64",
+            "points": [
+              "Uses QEMU emulation",
+              "High CPU overhead"
+            ]
+          },
+          "bottom": {
+            "label": "Google Jib",
+            "badge": "Fast",
+            "tone": "good",
+            "code": "jib.platforms { ... }",
+            "points": [
+              "Pure Java assembly",
+              "No emulation overhead"
+            ]
+          },
+          "narration": "Buildx relies on emulation to build for different architectures. Jib simply assembles the OCI tarballs in memory, making it significantly faster for multi-platform support.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "CI Integration",
+          "caption": "Simple GitHub Action",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "./mvnw jib:build \\"
+            },
+            {
+              "kind": "command",
+              "text": "  -Djib.to.image=my-repo/app:${GITHUB_SHA}"
+            },
+            {
+              "kind": "success",
+              "text": "Pushed multi-arch manifest"
+            }
+          ],
+          "narration": "In your CI, just pass the image tag as an environment variable. Jib handles the rest, pushing a clean, immutable image to your registry.",
+          "durationSec": 8,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "No QEMU emulation",
+            "Fast multi-arch manifests",
+            "Native performance"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Jib vs Buildpacks vs Dockerfiles →",
+          "narration": "You are now a Jib expert. In Part 4, we compare Jib against Buildpacks and traditional Dockerfiles to see when you should use each.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-jib-vs-alternatives",
+      "partTitle": "Choosing the Right Tool",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Jib Architecture • Part 4 of 4",
+          "headline": "Jib, Buildpacks, or Dockerfiles?",
+          "highlightWord": "Which one?",
+          "subline": "The right tool depends on your OS requirements.",
+          "narration": "Jib is great, but it is not a silver bullet. When do you choose Jib over Buildpacks or a standard Dockerfile?",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Tooling Trade-offs",
+          "top": {
+            "label": "Jib",
+            "badge": "Best for JVM",
+            "tone": "good",
+            "code": "Pure Java, No Daemon",
+            "points": [
+              "Fastest incremental builds",
+              "No OS package support"
+            ]
+          },
+          "bottom": {
+            "label": "Dockerfiles",
+            "badge": "Flexible",
+            "tone": "neutral",
+            "code": "Full OS Control",
+            "points": [
+              "Install any system lib",
+              "Requires daemon/BuildKit"
+            ]
+          },
+          "narration": "Jib is perfect for pure JVM microservices. But if your app needs native system libraries like ffmpeg, stick with a multi-stage Dockerfile.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Decision Matrix",
+          "subtitle": "Pick the right tool",
+          "nodes": [
+            {
+              "label": "Pure JVM App",
+              "detail": "Use Google Jib",
+              "tag": "Choice",
+              "accent": "emerald"
+            },
+            {
+              "label": "Needs OS Libs",
+              "detail": "Use Dockerfile",
+              "tag": "Choice",
+              "accent": "sky"
+            },
+            {
+              "label": "GraalVM Native",
+              "detail": "Use Buildpacks",
+              "tag": "Choice",
+              "accent": "amber"
+            }
+          ],
+          "narration": "If your app is pure Java, Jib is the winner. If you need native GraalVM images, look at Buildpacks. If you need custom system packages, use a Dockerfile.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Final Summary",
+          "caption": "Mastering containerization",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Level 12 Summary"
+            },
+            {
+              "kind": "output",
+              "text": "1. Jib = Security + Speed"
+            },
+            {
+              "kind": "output",
+              "text": "2. No Daemon = No Root"
+            },
+            {
+              "kind": "output",
+              "text": "3. Layers = Cached Efficiency"
+            }
+          ],
+          "narration": "Jib is the gold standard for secure, fast JVM containerization. It removes the daemon, optimizes layers, and keeps your CI pipeline clean.",
+          "durationSec": 8,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Jib is daemonless",
+            "Use layers for speed",
+            "Pick the right tool"
+          ],
+          "command": "git checkout topic/level-12/google-jib-daemonless-containers",
+          "nextPartTeaser": "Explore the full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered daemonless containers. Checkout the companion branch to test Jib in your own CI pipeline. See the full roadmap at the link below.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
