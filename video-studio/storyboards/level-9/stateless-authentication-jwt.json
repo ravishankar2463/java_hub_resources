@@ -1,0 +1,464 @@
+{
+  "chapterId": "level-9/stateless-authentication-jwt",
+  "level": "level-9",
+  "levelLabel": "Level 9",
+  "slug": "stateless-authentication-jwt",
+  "chapterTitle": "Stateless Authentication (JWT)",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-9/stateless-authentication-jwt",
+  "branchName": "topic/level-9/stateless-authentication-jwt",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-jwt-anatomy-and-traps",
+      "partTitle": "JWT Anatomy and Critical Security Traps",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Stateless Auth • Part 1 of 4",
+          "headline": "Is your JWT implementation actually secure?",
+          "highlightWord": "actually secure",
+          "subline": "Signed does not mean encrypted. Base64 is just encoding.",
+          "narration": "Stateless JWTs are the standard for modern APIs, but they are riddled with pitfalls. Signed does not mean encrypted, and a single misconfiguration can let an attacker bypass your entire auth layer.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The JWT Structure",
+          "nodes": [
+            {
+              "label": "Header",
+              "detail": "Algorithm and key ID",
+              "tag": "Metadata",
+              "accent": "sky"
+            },
+            {
+              "label": "Payload",
+              "detail": "Claims like sub, aud, and roles",
+              "tag": "Data",
+              "accent": "amber"
+            },
+            {
+              "label": "Signature",
+              "detail": "HMAC or RSA/ECDSA hash",
+              "tag": "Integrity",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "A JWT is just three Base64 encoded segments. The header defines the algorithm, the payload holds your user claims, and the signature ensures that no one tampered with the data.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Signed vs. Encrypted",
+          "top": {
+            "label": "JWS (Standard JWT)",
+            "badge": "Signed",
+            "tone": "neutral",
+            "code": "Base64(header).Base64(payload).Signature",
+            "points": [
+              "Publicly readable",
+              "Tamper-evident"
+            ]
+          },
+          "bottom": {
+            "label": "JWE (Encrypted)",
+            "badge": "Private",
+            "tone": "good",
+            "code": "Encrypted(header.payload.signature)",
+            "points": [
+              "Confidential payload",
+              "Use for sensitive data"
+            ]
+          },
+          "narration": "Never store PII or secrets in a standard JWT. Anyone can decode it in milliseconds. If you need confidentiality, use JWE, otherwise keep your payloads lean and public-friendly.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-alg",
+          "kind": "code-spotlight",
+          "title": "Pinning the Algorithm",
+          "filename": "JwtDecoderConfig.java",
+          "code": "NimbusJwtDecoder.withPublicKey(publicKey)\n    .signatureAlgorithm(SignatureAlgorithm.RS256)\n    .build();",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "RS256",
+              "explanation": "Forces the decoder to use RSA. Rejects HS256 or none.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The biggest vulnerability is algorithm confusion. Never let the token header choose the algorithm. Pin it server-side to RS256 so attackers cannot force your verifier to use HMAC with a public key.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "JWT is signed, not encrypted",
+            "Never trust the alg header",
+            "Pin algorithms in your decoder"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Wiring the Spring Security Filter chain →",
+          "narration": "That is the foundation. In Part 2, we build a custom OncePerRequestFilter to handle token extraction without double-execution bugs.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-spring-security-filter",
+      "partTitle": "Building the Authentication Filter",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Security • Part 2 of 4",
+          "headline": "Is your filter running twice per request?",
+          "highlightWord": "twice",
+          "subline": "Spring Boot filter beans often trigger double-execution.",
+          "narration": "If you annotate your AuthFilter as a Component, Spring Boot registers it globally. It will run on every request, even public ones, destroying your performance and causing weird bugs.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-filter",
+          "kind": "code-spotlight",
+          "title": "The OncePerRequestFilter",
+          "filename": "JwtAuthenticationFilter.java",
+          "code": "protected void doFilterInternal(...) {\n    String header = request.getHeader(\"Authorization\");\n    if (header == null || !header.startsWith(\"Bearer \")) {\n        filterChain.doFilter(request, response);\n        return;\n    }\n    // Decode and set context\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "OncePerRequest",
+              "explanation": "Guarantees execution only once per request lifecycle.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2,
+                3,
+                4
+              ],
+              "badge": "Early Return",
+              "explanation": "Bypass logic for public endpoints or missing headers.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Extend OncePerRequestFilter to ensure your logic runs exactly once. Check the Authorization header early and return if it is missing, keeping your filter chain clean and efficient.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-config",
+          "kind": "code-spotlight",
+          "title": "Manual Registration",
+          "filename": "SecurityConfig.java",
+          "code": "JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(decoder);\nhttp.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "No @Component",
+              "explanation": "Instantiate manually to prevent global registration.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "addFilterBefore",
+              "explanation": "Insert into the chain at the right priority.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Do not use @Component. Instantiate the filter inside your SecurityFilterChain configuration and add it before the standard username-password filter. This prevents double-execution and keeps your security logic isolated.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Verifying the Chain",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "curl -H \"Authorization: Bearer <token>\" localhost:8080/api/orders"
+            },
+            {
+              "kind": "success",
+              "text": "HTTP/1.1 200 OK"
+            },
+            {
+              "kind": "comment",
+              "text": "# Check logs for filter execution count"
+            }
+          ],
+          "narration": "Test your filter with a simple curl command. Monitor your application logs to ensure the filter logic triggers only once per request. If you see double logs, your filter is registered as a global bean.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use OncePerRequestFilter",
+            "Avoid @Component for filters",
+            "Register filters manually in SecurityConfig"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Refresh Token Rotation →",
+          "narration": "That is the filter chain handled. In Part 3, we implement Refresh Token Rotation to detect stolen tokens and limit the blast radius of a breach.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-refresh-token-rotation",
+      "partTitle": "Refresh Token Rotation & Reuse Detection",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Security Patterns • Part 3 of 4",
+          "headline": "What happens if a token is stolen?",
+          "highlightWord": "stolen",
+          "subline": "Refresh token rotation turns theft into a detectable event.",
+          "narration": "If a long-lived refresh token is stolen, the attacker has permanent access. Rotation forces a new token every time, and reuse detection allows you to revoke the entire session family.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Rotation Flow",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Sends old RT",
+              "tag": "Request",
+              "accent": "sky"
+            },
+            {
+              "label": "Server",
+              "detail": "Validates & Rotates",
+              "tag": "Logic",
+              "accent": "amber"
+            },
+            {
+              "label": "Database",
+              "detail": "Marks old used",
+              "tag": "State",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When the client refreshes, the server marks the old token as used and issues a new one. If the old token appears again, the server knows it was stolen and revokes the whole family.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-rotate",
+          "kind": "code-spotlight",
+          "title": "Detecting Reuse",
+          "filename": "RefreshTokenService.java",
+          "code": "if (stored.isUsed()) {\n    repository.revokeAllByFamilyId(stored.getFamilyId());\n    throw new RefreshTokenReuseException(\"Reuse detected!\");\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "isUsed()",
+              "explanation": "Check if the token has already been exchanged.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Revoke Family",
+              "explanation": "Invalidate all tokens in this session family.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "This is the core of reuse detection. If a token is already marked as used, you have a security incident. Revoke every token associated with that family ID to stop the attacker immediately.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Storage Strategies",
+          "top": {
+            "label": "localStorage",
+            "badge": "High Risk",
+            "tone": "bad",
+            "code": "window.localStorage.getItem('jwt')",
+            "points": [
+              "Vulnerable to XSS",
+              "Easy to exfiltrate"
+            ]
+          },
+          "bottom": {
+            "label": "HttpOnly Cookie",
+            "badge": "Secure",
+            "tone": "good",
+            "code": "Set-Cookie: jwt=...; HttpOnly; Secure",
+            "points": [
+              "JS cannot read",
+              "Mitigates token theft"
+            ]
+          },
+          "narration": "Never store tokens in localStorage. Use HttpOnly cookies to hide them from malicious scripts. This is the single most effective way to prevent token theft in browser-based applications.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Rotate refresh tokens",
+            "Revoke on reuse detection",
+            "Use HttpOnly cookies"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Production Pitfalls & Interview Prep →",
+          "narration": "Rotation is your best defense against token theft. In Part 4, we wrap up with production pitfalls and the interview questions that separate seniors from juniors.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-pitfalls-and-interview",
+      "partTitle": "Production Pitfalls & Interview Prep",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Interview Prep • Part 4 of 4",
+          "headline": "Why do microservices fail at JWT auth?",
+          "highlightWord": "fail",
+          "subline": "The secret is in the audience claim and key management.",
+          "narration": "Most teams fail by using symmetric keys or ignoring the audience claim. These are the exact questions interviewers use to test your understanding of distributed security.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Symmetric vs. Asymmetric",
+          "top": {
+            "label": "HS256 (Shared Secret)",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "Secret: 'super-secret-key'",
+            "points": [
+              "Secret leaked = game over",
+              "Hard to rotate keys"
+            ]
+          },
+          "bottom": {
+            "label": "RS256 (Public/Private)",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "Private: Sign | Public: Verify",
+            "points": [
+              "Only Auth Server signs",
+              "Services only verify"
+            ]
+          },
+          "narration": "Always prefer asymmetric signing. If a downstream service is compromised, the attacker cannot mint new tokens because they only have the public key. Shared secrets are a liability.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "The Audience Claim",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Payload check"
+            },
+            {
+              "kind": "output",
+              "text": "\"aud\": \"https://api.example.com/orders\""
+            },
+            {
+              "kind": "comment",
+              "text": "# Why it matters"
+            },
+            {
+              "kind": "error",
+              "text": "Prevents token replay across different APIs!"
+            }
+          ],
+          "narration": "The audience claim is non-negotiable. It ensures a token issued for a catalog service cannot be replayed against a billing service. Always validate the aud claim in your decoder.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-code-jti",
+          "kind": "code-spotlight",
+          "title": "Revocation via JTI",
+          "filename": "DenyList.java",
+          "code": "public void revoke(String jti) {\n    redis.set(jti, \"revoked\", tokenTtl);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "JTI",
+              "explanation": "Unique token ID for replay prevention.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Redis Deny-List",
+              "explanation": "Check this cache before trusting any token.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Need to revoke a token before it expires? Store the JTI in Redis with a TTL. Check the cache during validation. It keeps your stateless architecture performant while adding immediate revocation.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use RS256 for microservices",
+            "Always validate the aud claim",
+            "Use JTI for instant revocation"
+          ],
+          "command": "git checkout topic/level-9/stateless-authentication-jwt",
+          "nextPartTeaser": "Full lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered stateless auth. Checkout the branch to run the full lab and verify your security configuration. See you in the next chapter.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
