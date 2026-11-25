@@ -1,0 +1,477 @@
+{
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-why-jpms",
+      "partTitle": "Breaking the Flat Classpath",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JPMS • Part 1 of 4",
+          "headline": "Why did Java break the classpath?",
+          "highlightWord": "break",
+          "subline": "The flat classpath was a disaster waiting to happen. Here is how Project Jigsaw fixed it.",
+          "narration": "For twenty years, Java relied on a flat classpath. You dumped JARs in a folder, and the JVM searched them linearly. If two JARs had the same class, the first one won, causing silent, nightmare-inducing runtime bugs.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Classpath vs. Module Path",
+          "top": {
+            "label": "Old Classpath",
+            "badge": "Flat & Fragile",
+            "tone": "bad",
+            "code": "java -cp lib/*:app.jar Main",
+            "points": [
+              "Linear search: first match wins",
+              "No dependency verification at startup"
+            ]
+          },
+          "bottom": {
+            "label": "JPMS Module Path",
+            "badge": "Explicit & Safe",
+            "tone": "good",
+            "code": "java --module-path mods -m app/Main",
+            "points": [
+              "Graph-based dependency resolution",
+              "Fails fast if modules are missing"
+            ]
+          },
+          "narration": "The old classpath was a black box. JPMS introduces a module graph. Now, the JVM verifies your entire dependency tree before executing a single line of code, ensuring no missing or duplicate modules.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-module",
+          "kind": "code-spotlight",
+          "title": "The module-info.java Descriptor",
+          "filename": "module-info.java",
+          "code": "module com.example.billing {\n    requires java.sql;\n    requires transitive common.dto;\n    exports com.example.billing.api;\n    opens com.example.billing.entities \n        to hibernate.core;\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "requires",
+              "explanation": "Defines explicit dependencies. 'transitive' forces downstream consumers to also read the dependency.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "exports",
+              "explanation": "Only classes in this package are visible to other modules. Everything else is hidden.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "opens",
+              "explanation": "Grants deep reflection access to specific frameworks, keeping your internals private otherwise.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Your module-info file is the source of truth. It explicitly defines what you require, what you export to the public, and which internal packages you open for reflection-heavy frameworks like Hibernate.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Module Encapsulation",
+          "subtitle": "Who can see what?",
+          "nodes": [
+            {
+              "label": "Public API",
+              "detail": "Exported: Visible to everyone",
+              "tag": "Exported",
+              "accent": "emerald"
+            },
+            {
+              "label": "Private Internal",
+              "detail": "Hidden: No access allowed",
+              "tag": "Encapsulated",
+              "accent": "red"
+            },
+            {
+              "label": "Reflection API",
+              "detail": "Opened: Only to specific friends",
+              "tag": "Opened",
+              "accent": "amber"
+            }
+          ],
+          "narration": "JPMS enforces strict boundaries. If a package isn't exported, it's invisible. If it isn't opened, reflection attempts will throw an InaccessibleObjectException. It's security by design.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Classpath is a flat, fragile list",
+            "module-info.java provides a verified graph",
+            "Encapsulation blocks unauthorized reflection"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Handling the 'Unnamed Module' and migration →",
+          "narration": "That's the foundation. In Part 2, we tackle the migration nightmare: how to handle legacy JARs that don't have a module descriptor.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-migration-and-unnamed",
+      "partTitle": "Migrating Legacy Apps to JPMS",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JPMS Migration • Part 2 of 4",
+          "headline": "Your legacy JARs are breaking the module system.",
+          "highlightWord": "breaking",
+          "subline": "You can't just flip a switch. Here is the bridge for modularizing existing codebases.",
+          "narration": "You have a massive app with fifty dependencies. None of them have a module-info file. If you try to modularize, your build will crash. You need the migration bridge.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Module Types",
+          "top": {
+            "label": "Explicit Module",
+            "badge": "Has module-info",
+            "tone": "good",
+            "code": "module my.app { ... }",
+            "points": [
+              "Full encapsulation",
+              "Strict dependency graph"
+            ]
+          },
+          "bottom": {
+            "label": "Automatic Module",
+            "badge": "No module-info",
+            "tone": "neutral",
+            "code": "Automatic-Module-Name: my.lib",
+            "points": [
+              "Synthesized from JAR name",
+              "Reads everything on classpath"
+            ]
+          },
+          "narration": "Automatic modules are your best friend. By adding an Automatic-Module-Name to your manifest, the JVM treats legacy JARs as modules, allowing your new code to require them safely.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "The Split Package Error",
+          "caption": "The #1 migration killer",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Trying to use two JARs with the same package"
+            },
+            {
+              "kind": "error",
+              "text": "java.lang.LayerInstantiationException:"
+            },
+            {
+              "kind": "output",
+              "text": "Package com.example.util in both"
+            },
+            {
+              "kind": "output",
+              "text": "module core and module common"
+            }
+          ],
+          "narration": "JPMS forbids split packages. If two modules contain the same package, the JVM fails at startup. You must either merge the JARs or rename the packages to keep the graph valid.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b4-code-patch",
+          "kind": "code-spotlight",
+          "title": "The --patch-module Escape Hatch",
+          "filename": "Terminal",
+          "code": "java --patch-module com.example.core=extra.jar ...",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "--patch-module",
+              "explanation": "Injects classes into an existing module. Use this for testing or patching legacy code without re-compiling.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Need a quick fix? Use patch-module to inject classes into a module at runtime. It's a temporary escape hatch for testing, not a long-term architectural solution.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use Automatic-Module-Name for legacy JARs",
+            "Split packages cause startup failures",
+            "Patch-module is for testing, not production"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Slimming down the JDK with jlink →",
+          "narration": "You're ready to modularize. In Part 3, we use jlink to strip the JDK down to a 40MB runtime image. No more 300MB Docker containers.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-jlink-runtimes",
+      "partTitle": "Building Slim Runtimes with jlink",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JPMS Optimization • Part 3 of 4",
+          "headline": "Your Docker images are 300MB too heavy.",
+          "highlightWord": "300MB",
+          "subline": "The standard JDK includes everything but the kitchen sink. Let's trim the fat.",
+          "narration": "A full JDK is massive because it bundles Swing, CORBA, and tools you never use. jlink lets you build a custom JRE containing only the modules your application actually needs.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-terminal",
+          "kind": "terminal",
+          "title": "Discovering Dependencies",
+          "caption": "Use jdeps to find your required modules",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "jdeps --print-module-deps app.jar"
+            },
+            {
+              "kind": "success",
+              "text": "java.base,java.sql,java.net.http"
+            }
+          ],
+          "narration": "Run jdeps on your JAR. It analyzes your bytecode and tells you exactly which JDK modules are required. This list is your input for the linker.",
+          "durationSec": 8,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-jlink",
+          "kind": "code-spotlight",
+          "title": "The jlink Command",
+          "filename": "build.sh",
+          "code": "jlink --add-modules java.base,java.sql \\\n      --strip-debug \\\n      --no-man-pages \\\n      --no-header-files \\\n      --compress=zip-6 \\\n      --output /custom-runtime",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "--add-modules",
+              "explanation": "Only include the modules jdeps identified.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2,
+                3,
+                4
+              ],
+              "badge": "Optimization",
+              "explanation": "Removes debug info, man pages, and headers to save space.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "--compress",
+              "explanation": "Uses zip compression to shrink the image further.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This command creates a tiny runtime image. By stripping debug info and compressing, you can drop your runtime size from hundreds of megabytes to under 50.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "The jlink Pipeline",
+          "subtitle": "From fat JDK to slim JRE",
+          "nodes": [
+            {
+              "label": "Application",
+              "detail": "Analyzed by jdeps",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "JDK Modules",
+              "detail": "Filtered by jlink",
+              "tag": "Source",
+              "accent": "amber"
+            },
+            {
+              "label": "Custom Runtime",
+              "detail": "Minimal JRE image",
+              "tag": "Output",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The pipeline is simple: analyze, filter, and link. The result is a self-contained runtime ready for production, perfectly tailored to your app's specific footprint.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "jdeps finds your module dependencies",
+            "jlink builds a minimal JRE image",
+            "Strip debug info and compress for size"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Deep reflection and the Unnamed Module →",
+          "narration": "You now have a lean, mean production image. In Part 4, we wrap up with the final boss: handling deep reflection and the unnamed module.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-reflection-and-final",
+      "partTitle": "Deep Reflection & The Unnamed Module",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JPMS Advanced • Part 4 of 4",
+          "headline": "Why is your reflection code failing?",
+          "highlightWord": "failing",
+          "subline": "JPMS kills deep reflection by default. Here is how to fix it without losing security.",
+          "narration": "Frameworks like Jackson and Hibernate love reflection. But JPMS blocks setAccessible(true) on closed packages. If you don't configure your modules, your app will crash with an InaccessibleObjectException.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-terminal",
+          "kind": "terminal",
+          "title": "The Reflection Error",
+          "caption": "The dreaded InaccessibleObjectException",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "java.lang.reflect.InaccessibleObjectException:"
+            },
+            {
+              "kind": "output",
+              "text": "Unable to make field private"
+            },
+            {
+              "kind": "output",
+              "text": "BigDecimal secretBalance accessible"
+            }
+          ],
+          "narration": "The JVM is protecting your internals. It says the module does not open the package to the caller. You have two choices: open the package or grant access via command line flags.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b3-code-flags",
+          "kind": "code-spotlight",
+          "title": "The --add-opens Escape Hatch",
+          "filename": "Startup",
+          "code": "java --add-opens java.base/java.time=ALL-UNNAMED \\\n     --add-opens my.module/entities=jackson.databind \\\n     -jar app.jar",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "--add-opens",
+              "explanation": "Allows deep reflection from the unnamed module into a specific JDK package.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Qualified Opens",
+              "explanation": "Grants reflection access only to the specific framework that needs it.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use add-opens to grant reflective access. Prefer qualified opens to specific frameworks over ALL-UNNAMED. It keeps your security posture tight while allowing your libraries to function.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Module Access Summary",
+          "top": {
+            "label": "Exports",
+            "badge": "Compile-time",
+            "tone": "neutral",
+            "code": "exports com.pkg;",
+            "points": [
+              "Makes public types available",
+              "No reflection access"
+            ]
+          },
+          "bottom": {
+            "label": "Opens",
+            "badge": "Runtime Reflection",
+            "tone": "good",
+            "code": "opens com.pkg;",
+            "points": [
+              "Allows setAccessible(true)",
+              "No compile-time visibility"
+            ]
+          },
+          "narration": "Remember: exports is for your API, opens is for your frameworks. Don't mix them up. Keeping them separate is how you maintain a clean, secure, and modular architecture.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use --add-opens for reflection issues",
+            "Prefer qualified opens over ALL-UNNAMED",
+            "Exports = API; Opens = Reflection"
+          ],
+          "command": "git checkout topic/level-3/java-platform-module-system-jpms",
+          "nextPartTeaser": "Master the full roadmap at https://ravishankar2463.github.io/java_hub/roadmap/level-3/java-platform-module-system-jpms",
+          "narration": "You've mastered JPMS. Check out the roadmap link for the full lab and verified code samples. Time to modularize your production services.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ],
+  "chapterId": "level-3/java-platform-module-system-jpms",
+  "level": "level-3",
+  "levelLabel": "Level 3",
+  "slug": "java-platform-module-system-jpms",
+  "chapterTitle": "Java Platform Module System (JPMS)",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-3/java-platform-module-system-jpms",
+  "branchName": "topic/level-3/java-platform-module-system-jpms",
+  "voice": "af_heart",
+  "speed": 1.24
+}
