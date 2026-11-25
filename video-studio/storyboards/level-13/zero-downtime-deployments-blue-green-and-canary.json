@@ -1,0 +1,461 @@
+{
+  "chapterId": "level-13/zero-downtime-deployments-blue-green-and-canary",
+  "level": "level-13",
+  "levelLabel": "Level 13",
+  "slug": "zero-downtime-deployments-blue-green-and-canary",
+  "chapterTitle": "Zero-Downtime Deployments: Blue-Green and Canary",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-13/zero-downtime-deployments-blue-green-and-canary",
+  "branchName": "topic/level-13/zero-downtime-deployments-blue-green-and-canary",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-blue-green-strategy",
+      "partTitle": "Blue-Green Deployments: The Instant Cutover",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Deployment Strategies • Part 1 of 4",
+          "headline": "Why does your deployment cause 502 errors?",
+          "highlightWord": "502 errors",
+          "subline": "It is a race condition between Kubernetes and your Spring Boot lifecycle.",
+          "narration": "Kubernetes rolling updates are rarely enough for zero-downtime. If your app shuts down while traffic is still hitting it, your users get 502s. Let's fix that.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Blue-Green Traffic Flow",
+          "subtitle": "Switching traffic via Service selectors",
+          "nodes": [
+            {
+              "label": "Live Service",
+              "detail": "Points to active color (Blue)",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Blue (v1)",
+              "detail": "Current production pods",
+              "tag": "Active",
+              "accent": "amber"
+            },
+            {
+              "label": "Green (v2)",
+              "detail": "New version, idle",
+              "tag": "Standby",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Blue-Green runs two identical environments. You verify Green while Blue handles traffic. Once ready, you flip the Service selector to Green. It is fast, but risky if your database isn't backward compatible.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-term-patch",
+          "kind": "terminal",
+          "title": "Instant Traffic Cutover",
+          "caption": "Atomic selector patch",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Flip traffic from Blue to Green"
+            },
+            {
+              "kind": "command",
+              "text": "kubectl patch service order-svc -p '{\"spec\":{\"selector\":{\"color\":\"green\"}}}'"
+            },
+            {
+              "kind": "comment",
+              "text": "# Instant rollback if things go south"
+            },
+            {
+              "kind": "command",
+              "text": "kubectl patch service order-svc -p '{\"spec\":{\"selector\":{\"color\":\"blue\"}}}'"
+            }
+          ],
+          "narration": "The secret is patching the Service selector. It's an atomic operation. If Green fails, flip back to Blue instantly. Just keep Blue warm for 30 minutes before scaling to zero.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Blue-Green vs. Rolling Update",
+          "top": {
+            "label": "Rolling Update",
+            "badge": "Native",
+            "tone": "neutral",
+            "code": "kubectl rollout restart",
+            "points": [
+              "Slow rollback",
+              "High blast radius"
+            ]
+          },
+          "bottom": {
+            "label": "Blue-Green",
+            "badge": "Atomic",
+            "tone": "good",
+            "code": "kubectl patch service",
+            "points": [
+              "Instant rollback",
+              "Requires 2x compute"
+            ]
+          },
+          "narration": "Rolling updates are low-cost but slow to revert. Blue-Green costs double the compute but offers the safest rollback path. Choose based on your tolerance for downtime.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Blue-Green Locked In",
+          "takeaways": [
+            "Use Service selectors for atomic cutovers",
+            "Keep old environment warm for rollbacks",
+            "Beware of shared state deserialization bugs"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Canary rollouts with Istio and Argo →",
+          "narration": "That is Blue-Green. In Part 2, we use Istio and Argo Rollouts to shift traffic by percentage, not just by color.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-canary-rollouts",
+      "partTitle": "Canary Deployments with Argo Rollouts",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Canary Delivery • Part 2 of 4",
+          "headline": "What if you only want to expose 5% of users?",
+          "highlightWord": "5% of users",
+          "subline": "Stop flipping 100% of traffic at once. Use progressive delivery.",
+          "narration": "Blue-Green is binary. Canary is surgical. We shift 5% of traffic to the new version, verify metrics, and only then proceed. This is how you stop bugs before they hit everyone.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Canary Traffic Split",
+          "subtitle": "Managed by Istio + Argo",
+          "nodes": [
+            {
+              "label": "Ingress",
+              "detail": "Istio VirtualService",
+              "tag": "Router",
+              "accent": "sky"
+            },
+            {
+              "label": "Stable (95%)",
+              "detail": "Version 1.0",
+              "tag": "Safe",
+              "accent": "emerald"
+            },
+            {
+              "label": "Canary (5%)",
+              "detail": "Version 2.0",
+              "tag": "Risky",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Istio handles the L7 traffic weight. Argo Rollouts monitors Prometheus metrics. If the canary error rate spikes, Argo automatically resets the weight to zero. No human intervention required.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-argocanary",
+          "kind": "code-spotlight",
+          "title": "Argo Rollout Strategy",
+          "filename": "rollout.yaml",
+          "code": "strategy:\n  canary:\n    steps:\n    - setWeight: 5\n    - pause: { duration: 5m }\n    - analysis:\n        templates: [{name: canary-check}]",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "setWeight: 5",
+              "explanation": "Start with 5% traffic to minimize blast radius.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "analysis",
+              "explanation": "Automated Prometheus check for 5xx errors.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "This configuration tells Argo to shift 5 percent, wait 5 minutes, and run an analysis. If the analysis fails, the rollout aborts. It's the ultimate safety net for production.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-prom",
+          "kind": "terminal",
+          "title": "Isolating Canary Metrics",
+          "caption": "Crucial: filter by pod template hash",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Query only the canary pods"
+            },
+            {
+              "kind": "command",
+              "text": "sum(rate(http_requests{rollouts_pod_template_hash=\"{{args.hash}}\"}))"
+            }
+          ],
+          "narration": "Never use service-wide metrics for canary analysis. If you do, the 95 percent of healthy stable traffic will hide the canary's errors. Always filter by the pod template hash.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Canary Delivery Locked In",
+          "takeaways": [
+            "Use Istio for L7 traffic splitting",
+            "Automate rollbacks with Argo Analysis",
+            "Filter metrics by pod template hash"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Expand and Contract DB migrations →",
+          "narration": "Canary is powerful. But what about your database? In Part 3, we see how to rename columns without breaking old versions.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-db-migrations",
+      "partTitle": "Expand and Contract DB Migrations",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Database Safety • Part 3 of 4",
+          "headline": "One column rename can kill your production app.",
+          "highlightWord": "column rename",
+          "subline": "Don't break your schema while v1 pods are still running.",
+          "narration": "Database changes are the hardest part of zero-downtime. If you rename a column, your old pods will crash. You need the Expand and Contract pattern.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Expand and Contract Phases",
+          "subtitle": "Safe schema evolution",
+          "nodes": [
+            {
+              "label": "Expand",
+              "detail": "Add column, dual-write",
+              "tag": "Phase 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Backfill",
+              "detail": "Async data migration",
+              "tag": "Phase 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Contract",
+              "detail": "Drop old column",
+              "tag": "Phase 4",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "First, expand the schema by adding a nullable column. Second, dual-write from your code. Third, backfill the data. Finally, contract by dropping the old column once v1 is dead.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-dualwrite",
+          "kind": "code-spotlight",
+          "title": "Dual-Write Strategy",
+          "filename": "Customer.java",
+          "code": "public void updateName(String value) {\n    this.legacyName = value;\n    this.fullName = value;\n}\n\npublic String getDisplayName() {\n    return fullName != null ? fullName : legacyName;\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Dual-Write",
+              "explanation": "Write to both columns so v1 and v2 stay in sync.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Fallback",
+              "explanation": "Read from new column, fallback to old if null.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Your code acts as the bridge. Write to both columns during the transition. Use a getter to fallback to the legacy column if the new one is empty. This keeps both versions happy.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-sql",
+          "kind": "terminal",
+          "title": "Throttled Backfill",
+          "caption": "Avoid locking the table!",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Update in small chunks"
+            },
+            {
+              "kind": "command",
+              "text": "UPDATE customers SET full_name = name WHERE id IN (SELECT id FROM customers WHERE full_name IS NULL LIMIT 5000);"
+            }
+          ],
+          "narration": "Never run one giant update. It will lock your table and cause downtime. Use small, throttled batches with pauses in between to keep the database responsive.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "DB Migrations Locked In",
+          "takeaways": [
+            "Use Expand and Contract for schema changes",
+            "Dual-write to maintain backward compatibility",
+            "Backfill in small, throttled chunks"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Graceful shutdown and preStop hooks →",
+          "narration": "DB migrations are now safe. In Part 4, we finish by fixing those annoying 502 errors during pod termination.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-graceful-shutdown",
+      "partTitle": "Graceful Shutdown & Termination",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Shutdown Lifecycle • Part 4 of 4",
+          "headline": "Why does Kubernetes kill your pods too early?",
+          "highlightWord": "too early",
+          "subline": "The race between SIGTERM and your proxy routing table.",
+          "narration": "Kubernetes sends SIGTERM at the same time it updates routing tables. Your app dies before the proxy stops sending traffic. Here is how to force a clean handoff.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Graceful Shutdown Sequence",
+          "subtitle": "Aligning K8s and Spring Boot",
+          "nodes": [
+            {
+              "label": "Terminating",
+              "detail": "Pod marked for death",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "preStop Hook",
+              "detail": "Sleep 10s to drain",
+              "tag": "Wait",
+              "accent": "amber"
+            },
+            {
+              "label": "SIGTERM",
+              "detail": "Spring graceful shutdown",
+              "tag": "Exit",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Add a preStop hook to sleep for 10 seconds. This gives the load balancer time to remove the pod from the routing table. Then, Spring Boot handles the graceful shutdown of active requests.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-spring",
+          "kind": "code-spotlight",
+          "title": "Spring Boot Config",
+          "filename": "application.yml",
+          "code": "server:\n  shutdown: graceful\n\nspring:\n  lifecycle:\n    timeout-per-shutdown-phase: 30s",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "shutdown: graceful",
+              "explanation": "Stops accepting new requests immediately.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "timeout",
+              "explanation": "Wait 30s for active requests to finish.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Enable graceful shutdown in your YAML. Spring will stop accepting new requests but will wait up to 30 seconds for existing ones to finish. This is non-negotiable for production.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-k8s",
+          "kind": "terminal",
+          "title": "Pod Spec Alignment",
+          "caption": "The math: preStop + Spring Timeout < GracePeriod",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 10s sleep + 30s spring < 60s total"
+            },
+            {
+              "kind": "command",
+              "text": "terminationGracePeriodSeconds: 60"
+            },
+            {
+              "kind": "command",
+              "text": "lifecycle: { preStop: { exec: { command: [\"sleep\", \"10\"] } } }"
+            }
+          ],
+          "narration": "The math is simple. Your grace period must be longer than your sleep hook plus your Spring timeout. If you don't set this, Kubernetes will SIGKILL your app, cutting off active requests.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Zero-Downtime Mastery Complete",
+          "takeaways": [
+            "Use preStop hooks to drain traffic",
+            "Enable Spring Boot graceful shutdown",
+            "Set terminationGracePeriodSeconds carefully"
+          ],
+          "command": "git checkout topic/level-13/zero-downtime-deployments-blue-green-and-canary",
+          "nextPartTeaser": "Full lab and guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered zero-downtime deployments. Checkout the branch in the description to run the full lab and see these patterns in action.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
