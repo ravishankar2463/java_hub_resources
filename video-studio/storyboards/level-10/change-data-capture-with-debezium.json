@@ -1,0 +1,589 @@
+{
+  "chapterId": "level-10/change-data-capture-with-debezium",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "change-data-capture-with-debezium",
+  "chapterTitle": "Change Data Capture with Debezium",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/change-data-capture-with-debezium",
+  "branchName": "topic/level-10/change-data-capture-with-debezium",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-cdc-vs-polling",
+      "partTitle": "Why Polling Breaks Production",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "CDC Internals • Part 1 of 5",
+          "headline": "Stop polling your database for changes.",
+          "highlightWord": "Stop polling",
+          "subline": "Timestamp columns are a trap that will eventually drop your data.",
+          "narration": "Polling a timestamp column works until it doesn't. Hard deletes vanish before your next scan, and rapid updates collapse into the final state. You need Change Data Capture.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Polling vs. Log Mining",
+          "top": {
+            "label": "SQL Polling",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "SELECT * FROM orders\nWHERE updated_at > :last;",
+            "points": [
+              "Misses hard deletes",
+              "High I/O overhead"
+            ]
+          },
+          "bottom": {
+            "label": "Debezium CDC",
+            "badge": "Good",
+            "tone": "good",
+            "code": "WAL / Binlog Stream\n-> Kafka Event",
+            "points": [
+              "Captures every transition",
+              "Zero query overhead"
+            ]
+          },
+          "narration": "Polling creates ghost records and competes with customer queries. CDC reads the database's own transaction log, capturing every single state transition in commit order.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The CDC Pipeline",
+          "subtitle": "Mining the Transaction Log",
+          "nodes": [
+            {
+              "label": "DB Engine",
+              "detail": "Postgres WAL or MySQL Binlog",
+              "tag": "Source",
+              "accent": "amber"
+            },
+            {
+              "label": "Debezium",
+              "detail": "Replication client reads log",
+              "tag": "Reader",
+              "accent": "sky"
+            },
+            {
+              "label": "Kafka",
+              "detail": "Structured change events",
+              "tag": "Sink",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Debezium attaches as a replication client. It reads the WAL or Binlog directly, turning binary mutations into structured Kafka events without touching your tables.",
+          "durationSec": 12,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b4-code-envelope",
+          "kind": "code-spotlight",
+          "title": "The Change Envelope",
+          "filename": "event.json",
+          "code": "{\n  \"op\": \"u\",\n  \"before\": { \"status\": \"PENDING\" },\n  \"after\": { \"status\": \"PAID\" },\n  \"source\": { \"txId\": 98452 }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "op code",
+              "explanation": "c=create, u=update, d=delete. Essential for downstream logic.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "State",
+              "explanation": "Before and after images of the row. Note: Postgres needs REPLICA IDENTITY FULL for full before-images.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The envelope gives you the full context. The op field defines the action, while before and after snapshots show the state change. It's the gold standard for audit trails.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "CDC Fundamentals Locked",
+          "takeaways": [
+            "Log mining > SQL polling",
+            "Captures hard deletes",
+            "Atomic state transitions"
+          ],
+          "nextPartTeaser": "Up Next: Kafka Connect architecture and the SMT magic →",
+          "narration": "That's the foundation. In Part 2, we look at Kafka Connect internals and how to flatten these envelopes for your microservices.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-kafka-connect-architecture",
+      "partTitle": "Kafka Connect & SMTs",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Connect • Part 2 of 5",
+          "headline": "Don't write custom producers.",
+          "highlightWord": "Don't write",
+          "subline": "Kafka Connect handles the heavy lifting of streaming data at scale.",
+          "narration": "Why write boilerplate code to move data? Kafka Connect is a distributed runtime that handles offsets, failures, and schema evolution out of the box.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Connect Architecture",
+          "subtitle": "Worker JVMs and Internal Topics",
+          "nodes": [
+            {
+              "label": "Source Task",
+              "detail": "Debezium reads DB logs",
+              "tag": "Ingest",
+              "accent": "sky"
+            },
+            {
+              "label": "SMTs",
+              "detail": "Flatten/Route messages",
+              "tag": "Transform",
+              "accent": "amber"
+            },
+            {
+              "label": "Kafka Topic",
+              "detail": "Persistent event stream",
+              "tag": "Storage",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Connect uses worker JVMs. Source tasks pull from the DB, SMTs reshape the data in-flight, and converters serialize it into Kafka. It's a plug-and-play pipeline.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-smt",
+          "kind": "code-spotlight",
+          "title": "Flattening with SMTs",
+          "filename": "connector.json",
+          "code": "\"transforms\": \"unwrap\",\n\"transforms.unwrap.type\": \"io.debezium.transforms.ExtractNewRecordState\",\n\"transforms.unwrap.add.fields\": \"op,source.ts_ms\"",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "ExtractNewRecordState",
+              "explanation": "Promotes the 'after' struct to the top level, removing the envelope complexity.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Metadata",
+              "explanation": "Injects op and timestamp into the flat payload for downstream audit.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Raw envelopes are noisy. The ExtractNewRecordState transform flattens the message, making it look like a standard domain event for your consumers.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Connector Status",
+          "caption": "Monitoring your pipeline",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "curl localhost:8083/connectors/postgres-orders/status"
+            },
+            {
+              "kind": "output",
+              "text": "{\"connector\":{\"state\":\"RUNNING\"},\"tasks\":[{\"id\":0,\"state\":\"RUNNING\"}]}"
+            },
+            {
+              "kind": "comment",
+              "text": "# Check connect-offsets topic for lag"
+            }
+          ],
+          "narration": "Always monitor your connector status. Kafka Connect tracks its position in internal topics like connect-offsets. If it fails, that's where you find the resume point.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Connectors Mastered",
+          "takeaways": [
+            "Use SMTs to flatten records",
+            "Monitor status via REST API",
+            "Internal topics track offsets"
+          ],
+          "nextPartTeaser": "Up Next: The Outbox Pattern for domain events →",
+          "narration": "Connect is powerful. In Part 3, we solve the dual-write problem using the Transactional Outbox pattern.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-outbox-pattern",
+      "partTitle": "Transactional Outbox Pattern",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture • Part 3 of 5",
+          "headline": "Stop dual-writing to DB and Kafka.",
+          "highlightWord": "dual-writing",
+          "subline": "It's a recipe for distributed data inconsistency.",
+          "narration": "Writing to a DB and then sending to Kafka in two steps is a race condition waiting to happen. Use the Outbox pattern to make it atomic.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Atomic Outbox",
+          "subtitle": "Single Transaction Writes",
+          "nodes": [
+            {
+              "label": "Service",
+              "detail": "Update Order + Insert Outbox",
+              "tag": "Atomic",
+              "accent": "amber"
+            },
+            {
+              "label": "DB",
+              "detail": "One ACID transaction",
+              "tag": "Storage",
+              "accent": "sky"
+            },
+            {
+              "label": "Debezium",
+              "detail": "Reads outbox log",
+              "tag": "CDC",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Update your business table and insert an event into an outbox table in one ACID transaction. Debezium reads that outbox row and streams it to Kafka.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-outbox",
+          "kind": "code-spotlight",
+          "title": "EventRouter SMT",
+          "filename": "outbox.json",
+          "code": "\"transforms.outbox.type\": \"io.debezium.transforms.outbox.EventRouter\",\n\"transforms.outbox.route.by.field\": \"aggregatetype\",\n\"transforms.outbox.route.topic.replacement\": \"domain.events.${routedByValue}\"",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "EventRouter",
+              "explanation": "Turns raw outbox rows into clean domain events.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Dynamic Routing",
+              "explanation": "Routes events to topics based on the aggregate type field.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The EventRouter SMT is the secret sauce. It takes your outbox table rows and routes them to specific Kafka topics based on the aggregate type.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Dual-Write vs. Outbox",
+          "top": {
+            "label": "Dual-Write",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "db.save();\nkafka.send(); // Fails here?",
+            "points": [
+              "Inconsistent state",
+              "No atomicity"
+            ]
+          },
+          "bottom": {
+            "label": "Outbox",
+            "badge": "Good",
+            "tone": "good",
+            "code": "db.transaction(() -> {\n  db.save();\n  outbox.save();\n});",
+            "points": [
+              "ACID guaranteed",
+              "Reliable delivery"
+            ]
+          },
+          "narration": "Dual-writing is fragile. The Outbox pattern ensures your database and Kafka are always in sync because the event is part of the database transaction.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Outbox Pattern Locked",
+          "takeaways": [
+            "Atomic DB transactions",
+            "EventRouter for routing",
+            "Decoupled domain events"
+          ],
+          "nextPartTeaser": "Up Next: Schema evolution and DDL traps →",
+          "narration": "Outbox is the professional way to handle events. In Part 4, we look at how to handle schema changes without breaking your pipeline.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-schema-evolution",
+      "partTitle": "Schema Evolution & DDL",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Operations • Part 4 of 5",
+          "headline": "One ALTER TABLE can kill your pipeline.",
+          "highlightWord": "ALTER TABLE",
+          "subline": "MySQL and Postgres handle schema changes in fundamentally different ways.",
+          "narration": "Schema changes are inevitable. But if your connector doesn't understand the new column layout, your Kafka consumers will crash. Here is how to survive.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "MySQL vs Postgres DDL",
+          "subtitle": "History Topics vs. Metadata",
+          "nodes": [
+            {
+              "label": "MySQL",
+              "detail": "DDL in binlog",
+              "tag": "History Topic",
+              "accent": "amber"
+            },
+            {
+              "label": "Postgres",
+              "detail": "Relation metadata",
+              "tag": "On-the-fly",
+              "accent": "sky"
+            },
+            {
+              "label": "Registry",
+              "detail": "Schema validation",
+              "tag": "Safety",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "MySQL writes DDL to a history topic. Postgres sends metadata messages before row events. Both require careful planning to avoid breaking downstream consumers.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "Schema History Topic",
+          "caption": "The MySQL safety net",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# NEVER compact the schema history topic!"
+            },
+            {
+              "kind": "command",
+              "text": "kafka-topics --create --topic schemahistory.inventory \\"
+            },
+            {
+              "kind": "output",
+              "text": "  --config cleanup.policy=delete \\"
+            },
+            {
+              "kind": "output",
+              "text": "  --config retention.ms=-1"
+            }
+          ],
+          "narration": "For MySQL, your schema history topic is critical. It must have infinite retention and no compaction. If you lose this data, you cannot reconstruct your schema history.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Schema Evolution Strategy",
+          "top": {
+            "label": "Breaking Changes",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "ALTER TABLE orders DROP COLUMN total;",
+            "points": [
+              "Downstream crash",
+              "Registry mismatch"
+            ]
+          },
+          "bottom": {
+            "label": "Safe Evolution",
+            "badge": "Good",
+            "tone": "good",
+            "code": "ALTER TABLE orders ADD COLUMN status_code INT DEFAULT 0;",
+            "points": [
+              "Backward compatible",
+              "Registry compliant"
+            ]
+          },
+          "narration": "Treat DDL like a public API. Add nullable columns, backfill, then migrate. Dropping columns without coordination is a guaranteed production outage.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Schema Strategy Locked",
+          "takeaways": [
+            "MySQL needs history topic",
+            "Postgres updates on-the-fly",
+            "Always use backward compatibility"
+          ],
+          "nextPartTeaser": "Up Next: The Postgres WAL trap →",
+          "narration": "Schema evolution is a discipline. In Part 5, we cover the Postgres WAL trap that fills up disks and stops your database.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-operational-risks",
+      "partTitle": "Postgres WAL & Heartbeats",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Operations • Part 5 of 5",
+          "headline": "Your CDC connector can crash your database.",
+          "highlightWord": "crash your database",
+          "subline": "The Postgres WAL trap is the #1 cause of production outages.",
+          "narration": "If your connector falls behind, Postgres keeps the WAL logs forever. Eventually, the disk fills up, and your database halts. Here is the fix.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The WAL Trap",
+          "subtitle": "Stalled Replication Slots",
+          "nodes": [
+            {
+              "label": "WAL Logs",
+              "detail": "Accumulating on disk",
+              "tag": "Storage",
+              "accent": "amber"
+            },
+            {
+              "label": "Replication Slot",
+              "detail": "Waiting for ACK",
+              "tag": "Stalled",
+              "accent": "sky"
+            },
+            {
+              "label": "Disk Full",
+              "detail": "Database Halted",
+              "tag": "Outage",
+              "accent": "bad"
+            }
+          ],
+          "narration": "If Debezium stops, the replication slot stops advancing. Postgres refuses to recycle WAL logs. The disk fills, and your production database goes down.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-code-heartbeat",
+          "kind": "code-spotlight",
+          "title": "Heartbeat Configuration",
+          "filename": "connector.json",
+          "code": "\"heartbeat.interval.ms\": \"30000\",\n\"heartbeat.action.query\": \"UPDATE public.debezium_heartbeat SET updated_at = NOW() WHERE id = 1\"",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Interval",
+              "explanation": "Forces a heartbeat every 30 seconds to keep the slot alive.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Action",
+              "explanation": "Updates a dummy table to ensure log progression.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The heartbeat query forces the replication slot to advance even if your main tables are idle. It's the only way to ensure WAL logs get recycled safely.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-terminal",
+          "kind": "terminal",
+          "title": "Monitoring Lag",
+          "caption": "Check your slot status",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "SELECT slot_name, wal_status, pg_size_pretty(pg_wal_lsn_diff(...)) FROM pg_replication_slots;"
+            },
+            {
+              "kind": "output",
+              "text": "slot_name | wal_status | retained_wal"
+            },
+            {
+              "kind": "output",
+              "text": "dbz_slot  | reserved   | 500MB"
+            }
+          ],
+          "narration": "Monitor your replication slots daily. If retained_wal starts growing, you have a problem. Set max_slot_wal_keep_size as a hard safety cap.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "CDC Chapter Complete",
+          "takeaways": [
+            "Set max_slot_wal_keep_size",
+            "Enable heartbeat queries",
+            "Monitor slot lag"
+          ],
+          "command": "git checkout topic/level-10/change-data-capture-with-debezium",
+          "nextPartTeaser": "Full guide + Lab: ravishankar2463.github.io/java_hub",
+          "narration": "You're now a CDC pro. Checkout the companion branch to run the lab and see these patterns in action. Keep building.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
