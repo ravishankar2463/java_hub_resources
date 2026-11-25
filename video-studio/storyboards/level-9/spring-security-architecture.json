@@ -1,0 +1,470 @@
+{
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-filter-chain-architecture",
+      "partTitle": "How Requests Survive the Filter Chain",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Security • Part 1 of 4",
+          "headline": "Why is your 403 error a black box?",
+          "highlightWord": "black box",
+          "subline": "Stop guessing and start tracing the DelegatingFilterProxy pipeline.",
+          "narration": "Many developers treat Spring Security like a black box, blindly disabling CSRF until tests pass. But underneath the DSL, it is just a standard Servlet filter pipeline.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Security Pipeline",
+          "subtitle": "From Servlet Container to Spring Beans",
+          "nodes": [
+            {
+              "label": "Servlet Container",
+              "detail": "Tomcat or Jetty receives the raw HTTP request",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "DelegatingFilterProxy",
+              "detail": "Standard Servlet filter that bridges to Spring context",
+              "tag": "Bridge",
+              "accent": "amber"
+            },
+            {
+              "label": "FilterChainProxy",
+              "detail": "The central engine managing multiple security chains",
+              "tag": "Router",
+              "accent": "purple"
+            },
+            {
+              "label": "SecurityFilterChain",
+              "detail": "Ordered list of filters (CSRF, Auth, Exception)",
+              "tag": "Execution",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Tomcat knows nothing about Spring beans. DelegatingFilterProxy bridges that gap, handing off to FilterChainProxy, which routes your request through the correct ordered security chain.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-chains",
+          "kind": "code-spotlight",
+          "title": "Defining Multiple Chains",
+          "filename": "WebSecurityConfig.java",
+          "code": "@Bean @Order(1)\npublic SecurityFilterChain apiChain(HttpSecurity http) throws Exception {\n    return http.securityMatcher(\"/api/**\")\n        .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())\n        .build();\n}\n\n@Bean @Order(2)\npublic SecurityFilterChain webChain(HttpSecurity http) throws Exception {\n    return http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())\n        .build();\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "securityMatcher",
+              "explanation": "Crucial! Without this, the first chain swallows all requests, breaking your fallback chains.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                1,
+                8
+              ],
+              "badge": "@Order",
+              "explanation": "Determines evaluation priority. Lower numbers are checked first by the FilterChainProxy.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use securityMatcher to isolate your API from your web portal. Without it, the first chain matches everything, and your fallback rules will never be reached.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "AuthN vs AuthZ",
+          "top": {
+            "label": "Authentication (AuthN)",
+            "badge": "Who are you?",
+            "tone": "neutral",
+            "code": "401 Unauthorized",
+            "points": [
+              "Verifies identity",
+              "Uses PasswordEncoder",
+              "Sets SecurityContext"
+            ]
+          },
+          "bottom": {
+            "label": "Authorization (AuthZ)",
+            "badge": "Can you do this?",
+            "tone": "neutral",
+            "code": "403 Forbidden",
+            "points": [
+              "Checks roles/permissions",
+              "Uses @PreAuthorize",
+              "Validates resource access"
+            ]
+          },
+          "narration": "Conflating these two is the root of most security bugs. AuthN asks who you are, producing 401s. AuthZ asks if you have permission, producing 403s.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "DelegatingFilterProxy is the bridge",
+            "securityMatcher prevents chain shadowing",
+            "AuthN = 401, AuthZ = 403"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Password hashing and the DelegatingPasswordEncoder →",
+          "narration": "That is the high-level architecture. In Part 2, we look at how to store passwords securely and why you should never use MD5 or SHA-256.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-password-security",
+      "partTitle": "Hardening Password Storage",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Security • Part 2 of 4",
+          "headline": "Is your password hash actually safe?",
+          "highlightWord": "actually safe",
+          "subline": "MD5 and SHA-256 are fast, and that makes them dangerous.",
+          "narration": "If you are using MD5 or SHA-256 to hash passwords, you are inviting disaster. These algorithms are too fast, making them trivial to crack with modern GPUs.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Adaptive Hashing",
+          "top": {
+            "label": "BCrypt",
+            "badge": "CPU-Hard",
+            "tone": "good",
+            "code": "{bcrypt}$2a$12$...",
+            "points": [
+              "Built-in to Spring",
+              "Embeds salt automatically",
+              "Good for most apps"
+            ]
+          },
+          "bottom": {
+            "label": "Argon2id",
+            "badge": "Memory-Hard",
+            "tone": "good",
+            "code": "{argon2}$argon2id$...",
+            "points": [
+              "OWASP recommendation",
+              "Resists GPU cracking",
+              "Requires Bouncy Castle"
+            ]
+          },
+          "narration": "Use BCrypt for standard workloads. If you need maximum resistance against ASIC-based cracking, use Argon2id—it is memory-hard, making it significantly more expensive to brute-force.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-delegating",
+          "kind": "code-spotlight",
+          "title": "Future-Proofing Hashes",
+          "filename": "PasswordEncoderConfig.java",
+          "code": "@Bean\npublic PasswordEncoder passwordEncoder() {\n    return PasswordEncoderFactories\n        .createDelegatingPasswordEncoder();\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "DelegatingPasswordEncoder",
+              "explanation": "Prepends {id} to hashes, allowing you to migrate algorithms without forcing users to reset passwords.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never hardcode one encoder. Use DelegatingPasswordEncoder. It prefixes your hashes with the algorithm ID, letting you seamlessly upgrade from BCrypt to Argon2id as your security needs evolve.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "UserDetailsService Flow",
+          "subtitle": "How DaoAuthenticationProvider works",
+          "nodes": [
+            {
+              "label": "UserDetailsService",
+              "detail": "Loads user record from DB",
+              "tag": "Load",
+              "accent": "sky"
+            },
+            {
+              "label": "PasswordEncoder",
+              "detail": "Checks raw password vs stored hash",
+              "tag": "Verify",
+              "accent": "amber"
+            },
+            {
+              "label": "SecurityContext",
+              "detail": "Stores authenticated principal",
+              "tag": "Store",
+              "accent": "purple"
+            }
+          ],
+          "narration": "UserDetailsService only fetches the data. The DaoAuthenticationProvider handles the heavy lifting, verifying the password and clearing credentials from memory to keep your heap clean.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Avoid fast hashes like SHA-256",
+            "Use Argon2id for high security",
+            "DelegatingPasswordEncoder for migrations"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Preventing IDOR with @PreAuthorize →",
+          "narration": "Your passwords are now safe. In Part 3, we tackle the most common API vulnerability: IDOR, and how to stop it with method-level security.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-method-security",
+      "partTitle": "Stopping IDOR with @PreAuthorize",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Security • Part 3 of 4",
+          "headline": "URL security cannot stop IDOR.",
+          "highlightWord": "cannot stop",
+          "subline": "A valid user can still access another user's private data.",
+          "narration": "URL rules only check the route, not the resource owner. If you rely only on URL security, an attacker can simply change an ID in the path to steal data.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-preauth",
+          "kind": "code-spotlight",
+          "title": "Method-Level Authorization",
+          "filename": "InvoiceService.java",
+          "code": "@PreAuthorize(\"@invoiceSecurity.canView(authentication, #id)\")\npublic InvoiceResponse getInvoice(UUID id) {\n    return invoiceRepository.findById(id);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@PreAuthorize",
+              "explanation": "Executes logic before the method runs. If it returns false, Spring throws AccessDeniedException.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "SpEL",
+              "explanation": "Spring Expression Language calls your custom bean to verify ownership dynamically.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use @PreAuthorize to delegate ownership checks to a dedicated bean. This ensures that even if you change your controller, the security logic remains tightly coupled to the data access.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-evaluator",
+          "kind": "code-spotlight",
+          "title": "Custom Security Evaluator",
+          "filename": "InvoiceSecurityEvaluator.java",
+          "code": "public boolean canView(Authentication auth, UUID id) {\n    String owner = repo.findOwner(id);\n    boolean isAdmin = auth.getAuthorities()\n        .contains(new SimpleGrantedAuthority(\"ROLE_ADMIN\"));\n    return isAdmin || owner.equals(auth.getName());\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Logic",
+              "explanation": "Centralize your business rules here. This is the only place you need to audit for IDOR bugs.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "This evaluator handles both role checks and ownership logic. By centralizing this, you eliminate the risk of inconsistent security checks across your entire service layer.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "The Proxy Trap",
+          "top": {
+            "label": "Internal Call",
+            "badge": "❌ Bypasses Security",
+            "tone": "bad",
+            "code": "public void update() {\n    this.delete(); // Proxy is ignored!\n}",
+            "points": [
+              "Spring AOP proxies are bypassed",
+              "@PreAuthorize never triggers"
+            ]
+          },
+          "bottom": {
+            "label": "Bean Boundary",
+            "badge": "✅ Secure",
+            "tone": "good",
+            "code": "public void update() {\n    adminService.delete(); // Proxy works!\n}",
+            "points": [
+              "Call crosses bean boundary",
+              "Security proxy intercepts"
+            ]
+          },
+          "narration": "Watch out for internal calls. If you call an @PreAuthorize method from within the same class, you bypass the proxy. Always move privileged logic to a separate bean.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "URL security is not enough for IDOR",
+            "Use @PreAuthorize for resource ownership",
+            "Avoid internal calls to bypass proxies"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Async threads and CSRF protection →",
+          "narration": "You are now building secure APIs. In Part 4, we finish by solving the ThreadLocal context propagation issue and when to actually disable CSRF.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-async-and-csrf",
+      "partTitle": "Async Context & CSRF Strategy",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Security • Part 4 of 4",
+          "headline": "Why does your security context disappear in async threads?",
+          "highlightWord": "disappear",
+          "subline": "ThreadLocal is the culprit, but there is a clean fix.",
+          "narration": "When you hand work off to an @Async thread, your security context vanishes. That is because ThreadLocal is local to the thread, not the request.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-async",
+          "kind": "code-spotlight",
+          "title": "Propagating Security Context",
+          "filename": "AsyncConfig.java",
+          "code": "@Bean\npublic AsyncTaskExecutor taskExecutor() {\n    var executor = new ThreadPoolTaskExecutor();\n    return new DelegatingSecurityContextAsyncTaskExecutor(executor);\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "DelegatingExecutor",
+              "explanation": "Automatically copies the SecurityContext from the parent thread to the background worker thread.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Wrap your executor in DelegatingSecurityContextAsyncTaskExecutor. It copies the security context onto the worker thread, ensuring your @PreAuthorize checks work even in background tasks.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "CSRF: To Disable or Not?",
+          "top": {
+            "label": "Stateful Web App",
+            "badge": "Keep CSRF Enabled",
+            "tone": "good",
+            "code": "Cookie-based session",
+            "points": [
+              "Browser sends cookies automatically",
+              "CSRF protection is mandatory"
+            ]
+          },
+          "bottom": {
+            "label": "Stateless API",
+            "badge": "Safe to Disable",
+            "tone": "neutral",
+            "code": "Bearer Authorization Header",
+            "points": [
+              "No cookies used",
+              "Header must be manually set"
+            ]
+          },
+          "narration": "Only disable CSRF if your API is stateless and uses Bearer tokens. If you use cookies, you are vulnerable to cross-site forgery and must keep CSRF enabled.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "CSRF Attack Vector",
+          "subtitle": "Why browsers are the danger",
+          "nodes": [
+            {
+              "label": "User Browser",
+              "detail": "Holds session cookie",
+              "tag": "Client",
+              "accent": "sky"
+            },
+            {
+              "label": "Malicious Site",
+              "detail": "Triggers hidden POST",
+              "tag": "Attacker",
+              "accent": "amber"
+            },
+            {
+              "label": "Bank App",
+              "detail": "Executes request with cookie",
+              "tag": "Target",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Browsers attach cookies automatically. A malicious site can trigger a request to your app, and if you don't check for a CSRF token, the bank app thinks the user intended it.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use DelegatingSecurityContext for @Async",
+            "Disable CSRF only for stateless APIs",
+            "Always audit internal bean calls"
+          ],
+          "command": "git checkout topic/level-9/spring-security-architecture",
+          "nextPartTeaser": "Full guide + lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered the Spring Security architecture. Check out the roadmap link below to run the lab and verify your security knowledge in real-time.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ],
+  "chapterId": "level-9/spring-security-architecture",
+  "level": "level-9",
+  "levelLabel": "Level 9",
+  "slug": "spring-security-architecture",
+  "chapterTitle": "Spring Security Architecture",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-9/spring-security-architecture",
+  "branchName": "topic/level-9/spring-security-architecture",
+  "voice": "af_heart",
+  "speed": 1.24
+}
