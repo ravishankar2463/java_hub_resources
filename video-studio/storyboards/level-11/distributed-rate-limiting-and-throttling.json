@@ -1,0 +1,471 @@
+{
+  "chapterId": "level-11/distributed-rate-limiting-and-throttling",
+  "level": "level-11",
+  "levelLabel": "Level 11",
+  "slug": "distributed-rate-limiting-and-throttling",
+  "chapterTitle": "Distributed Rate Limiting and Throttling",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/distributed-rate-limiting-and-throttling",
+  "branchName": "topic/level-11/distributed-rate-limiting-and-throttling",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-distributed-trap",
+      "partTitle": "Why Local Rate Limiters Fail",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Rate Limiting • Part 1 of 4",
+          "headline": "Why your local rate limiter is lying to you.",
+          "highlightWord": "lying",
+          "subline": "If you're using Guava or Resilience4j in a cluster, you're not actually limiting traffic.",
+          "narration": "If you're using local rate limiters like Guava in a Kubernetes cluster, you're not actually limiting traffic. You're just creating a noisy neighbor problem that scales with your replica count.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Distributed Scaling Bug",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "300 req/min",
+              "tag": "Traffic",
+              "accent": "sky"
+            },
+            {
+              "label": "Load Balancer",
+              "detail": "Distributes traffic",
+              "tag": "Entry",
+              "accent": "amber"
+            },
+            {
+              "label": "Pod 1-3",
+              "detail": "Local 100 req/min limit",
+              "tag": "Cluster",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Each pod enforces its own limit. If you have three pods, your total capacity is three hundred requests per minute. Scale to twelve pods? Your limit silently jumps to twelve hundred. That's a massive security hole.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Local vs. Distributed State",
+          "top": {
+            "label": "Local (Guava/R4J)",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "RateLimiter.create(100);",
+            "points": [
+              "Memory-bound",
+              "Wiped on restart",
+              "Scales with pods"
+            ]
+          },
+          "bottom": {
+            "label": "Distributed (Redis)",
+            "badge": "Good",
+            "tone": "good",
+            "code": "redis.eval(luaScript);",
+            "points": [
+              "Shared state",
+              "Persistent",
+              "Atomic enforcement"
+            ]
+          },
+          "narration": "Local limiters reside in JVM memory. They vanish on restart and ignore other pods. To enforce a global quota, you need a shared, low-latency store like Redis to track state across your entire fleet.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-logic",
+          "kind": "code-spotlight",
+          "title": "The Race Condition",
+          "filename": "RaceCondition.java",
+          "code": "1. GET ratelimit:user-42 // returns 99\n2. Pod A & B see 99 < 100\n3. Pod A calls INCR\n4. Pod B calls INCR\n// Result: 101 requests allowed!",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Read",
+              "explanation": "Concurrent pods read the same value.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Write",
+              "explanation": "Both pods increment, bypassing the limit.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Standard Redis commands fail under concurrency. Two pods read the same value, both pass the check, and both increment. You need atomic operations to prevent this race condition.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Local limits scale with pods",
+            "Redis is the source of truth",
+            "Race conditions require atomic logic"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why Lua scripts are the only way to do this atomically →",
+          "narration": "Local limits are dangerous. In Part 2, we build an atomic Token Bucket using Redis Lua scripts to kill the race condition for good.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-lua-and-token-bucket",
+      "partTitle": "Atomic Redis Lua Scripts",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Rate Limiting • Part 2 of 4",
+          "headline": "Why you shouldn't use Java for rate limit math.",
+          "highlightWord": "don't use Java",
+          "subline": "Clock skew and network latency will destroy your accuracy.",
+          "narration": "Why shouldn't you do the math in Java? Because network round trips and clock skew between pods will destroy your accuracy. You need to run the logic inside Redis.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-lua",
+          "kind": "code-spotlight",
+          "title": "Atomic Lua Script",
+          "filename": "token_bucket.lua",
+          "code": "local server_time = redis.call(\"TIME\")\nlocal state = redis.call(\"HMGET\", key, \"tokens\", \"last_refill_ms\")\n-- ... math logic ...\nredis.call(\"HSET\", key, \"tokens\", tokens, ...)\nreturn { allowed, tokens, retry_after }",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "redis.call('TIME')",
+              "explanation": "Uses Redis server clock to avoid pod clock skew.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Atomic",
+              "explanation": "Runs on the single command thread; no interleaving.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "This Lua script runs atomically on Redis's single thread. It uses redis dot call TIME to avoid clock skew and updates the bucket in one single network round trip.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-java",
+          "kind": "code-spotlight",
+          "title": "Spring Data Redis Integration",
+          "filename": "RedisTokenBucketLimiter.java",
+          "code": "public RateLimitDecision tryAcquire(...) {\n    List<Long> result = redisTemplate.execute(\n        tokenBucketScript, \n        List.of(\"rl:\" + key), \n        capacity, refill, requested\n    );\n    return new RateLimitDecision(result.get(0) == 1L);\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "EVALSHA",
+              "explanation": "Spring hashes the script to save bandwidth.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Result",
+              "explanation": "Returns allowed status and remaining tokens.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Spring Data Redis handles the heavy lifting. It uses EVALSHA to hash your script, sending only the hash after the first run. It's efficient, clean, and production-ready.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare-algos",
+          "kind": "compare",
+          "title": "Algorithm Trade-offs",
+          "top": {
+            "label": "Token Bucket",
+            "badge": "Burst",
+            "tone": "good",
+            "code": "Allows bursts",
+            "points": [
+              "O(1) memory",
+              "Smooth average"
+            ]
+          },
+          "bottom": {
+            "label": "Sliding Window Log",
+            "badge": "Exact",
+            "tone": "neutral",
+            "code": "ZSET timestamps",
+            "points": [
+              "O(N) memory",
+              "No boundary spikes"
+            ]
+          },
+          "narration": "Token Bucket is your default for general APIs. It allows bursts while keeping a steady average. If you need strict, exact limits for security, use Sliding Window Log with Redis ZSETs.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Lua scripts run atomically",
+            "Use Redis TIME for clock sync",
+            "Token Bucket is the default"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Spring Cloud Gateway's built-in rate limiter →",
+          "narration": "Lua is the secret sauce. In Part 3, we skip the custom code and use Spring Cloud Gateway's built-in Redis rate limiter.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-spring-cloud-gateway",
+      "partTitle": "Spring Cloud Gateway Implementation",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Rate Limiting • Part 3 of 4",
+          "headline": "Stop writing your own rate limiter.",
+          "highlightWord": "stop writing",
+          "subline": "Spring Cloud Gateway already has a production-grade Redis implementation.",
+          "narration": "Stop writing your own rate limiter. Spring Cloud Gateway already has a production-grade Redis implementation that handles the Lua scripts and bucket logic for you.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-yaml",
+          "kind": "code-spotlight",
+          "title": "Gateway Configuration",
+          "filename": "application.yml",
+          "code": "filters:\n  - name: RequestRateLimiter\n    args:\n      redis-rate-limiter.replenishRate: 20\n      redis-rate-limiter.burstCapacity: 40\n      key-resolver: \"#{@clientKeyResolver}\"",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "replenishRate",
+              "explanation": "Sustained throughput per second.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "burstCapacity",
+              "explanation": "Max burst allowance.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Just configure the replenish rate and burst capacity in your YAML. The gateway automatically injects the filters and handles the Redis communication.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-resolver",
+          "kind": "code-spotlight",
+          "title": "Custom KeyResolver",
+          "filename": "GatewayRateLimitConfig.java",
+          "code": "@Bean\npublic KeyResolver clientKeyResolver() {\n    return exchange -> resolveAuth(exchange)\n        .switchIfEmpty(resolveIp(exchange));\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Auth First",
+              "explanation": "Always prefer JWT sub or API key.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Fallback",
+              "explanation": "Use IP only for unauthenticated traffic.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The KeyResolver is critical. Never rely on raw IP headers. Always prefer an authenticated principal, falling back to IP only for public endpoints.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "Response Headers",
+          "caption": "Standardized throttling feedback",
+          "lines": [
+            {
+              "kind": "output",
+              "text": "HTTP/1.1 429 Too Many Requests"
+            },
+            {
+              "kind": "output",
+              "text": "Retry-After: 30"
+            },
+            {
+              "kind": "output",
+              "text": "RateLimit-Remaining: 0"
+            }
+          ],
+          "narration": "When throttled, return a 429 status. Include the Retry-After header so clients know exactly when they can try again. This is the standard for well-behaved APIs.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Use RequestRateLimiter",
+            "Never trust raw IP headers",
+            "Always return Retry-After"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The Thundering Herd & Fail-Open Strategies →",
+          "narration": "Gateway makes it easy. In Part 4, we tackle the thundering herd problem and decide when to fail open versus fail closed.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-resilience-and-retries",
+      "partTitle": "Thundering Herds & Fail-Open",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Rate Limiting • Part 4 of 4",
+          "headline": "Your retries are DDOSing your own service.",
+          "highlightWord": "DDOSing",
+          "subline": "Synchronized retries create a thundering herd that kills your backend.",
+          "narration": "Your retries are DDOSing your own service. When hundreds of clients get a 429 and retry at the same time, they create a synchronized wave that kills your backend.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-jitter",
+          "kind": "code-spotlight",
+          "title": "Full Jitter Backoff",
+          "filename": "RetryBackoff.java",
+          "code": "long exponential = Math.min(max, base * (1L << attempt));\nlong jittered = ThreadLocalRandom.current().nextLong(0, exponential + 1);\nreturn Math.max(retryAfterMs, jittered);",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Jitter",
+              "explanation": "Spreads retries randomly to break synchronization.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Retry-After",
+              "explanation": "Respect the server's requested wait time.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Add full jitter. By adding random noise to your exponential backoff, you spread out the load and prevent the thundering herd. Always honor the Retry-After header as your floor.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare-fail",
+          "kind": "compare",
+          "title": "Fail-Open vs. Fail-Closed",
+          "top": {
+            "label": "Fail-Open",
+            "badge": "General API",
+            "tone": "good",
+            "code": "Allow if Redis fails",
+            "points": [
+              "Better UX",
+              "Requires local fallback"
+            ]
+          },
+          "bottom": {
+            "label": "Fail-Closed",
+            "badge": "Security/Billing",
+            "tone": "bad",
+            "code": "Reject if Redis fails",
+            "points": [
+              "Prevents abuse",
+              "Risk of 503s"
+            ]
+          },
+          "narration": "Fail-open for general APIs—a Redis hiccup shouldn't break checkout. Fail-closed for security or billing endpoints where an unthrottled loop could cost you thousands or allow brute force.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Redis Timeout Strategy",
+          "caption": "Fail fast, don't block threads",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Set aggressive timeouts"
+            },
+            {
+              "kind": "command",
+              "text": "spring.data.redis.timeout: 20ms"
+            },
+            {
+              "kind": "success",
+              "text": "Fail fast instead of queuing threads"
+            }
+          ],
+          "narration": "Set your Redis timeout to 20 or 50 milliseconds. If Redis stalls, fail fast. Don't let your application threads queue up and crash the entire service.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use full jitter for retries",
+            "Fail-open for UX, fail-closed for security",
+            "Set 20ms Redis timeouts"
+          ],
+          "command": "git checkout topic/level-11/distributed-rate-limiting-and-throttling",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered distributed rate limiting. Check out the companion branch to see the full implementation and run the tests yourself. Level 11 conquered.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
