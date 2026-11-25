@@ -1,0 +1,485 @@
+{
+  "chapterId": "level-9/high-performance-grpc-in-java",
+  "level": "level-9",
+  "levelLabel": "Level 9",
+  "slug": "high-performance-grpc-in-java",
+  "chapterTitle": "High-Performance gRPC in Java",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-9/high-performance-grpc-in-java",
+  "branchName": "topic/level-9/high-performance-grpc-in-java",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-protobuf-efficiency",
+      "partTitle": "Protobuf vs JSON: The Wire Format",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "gRPC Internals • Part 1 of 4",
+          "headline": "Why is JSON killing your microservice latency?",
+          "highlightWord": "JSON",
+          "subline": "Text-based protocols are expensive. Let's look at the binary alternative.",
+          "narration": "JSON is great for debugging, but at thousands of calls per second, parsing strings and repeating property names adds massive CPU overhead. gRPC solves this with Protobuf.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "JSON vs Protobuf Wire Format",
+          "top": {
+            "label": "JSON",
+            "badge": "Text-Heavy",
+            "tone": "bad",
+            "code": "{\"order_id\":\"123\",\"price\":150.5}",
+            "points": [
+              "Repeats keys as UTF-8 strings",
+              "Slow, CPU-intensive parsing"
+            ]
+          },
+          "bottom": {
+            "label": "Protobuf",
+            "badge": "Binary Tag-Length-Value",
+            "tone": "good",
+            "code": "0A 03 31 32 33 19 00 00 00 00 00 00 62 40",
+            "points": [
+              "Field tags replace string keys",
+              "Varint encoding for small numbers"
+            ]
+          },
+          "narration": "JSON sends keys like order underscore id every single time. Protobuf uses compact field tags. Tags 1 through 15 fit in a single byte, drastically shrinking your payload size.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-proto",
+          "kind": "code-spotlight",
+          "title": "Safe Schema Evolution",
+          "filename": "trading.proto",
+          "code": "message OrderRequest {\n  string order_id = 1;\n  double price = 2;\n  // Never reuse deleted tags!\n  reserved 3, 5 to 7;\n  reserved \"legacy_field\";\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Tags are immutable",
+              "explanation": "Changing a tag number breaks binary compatibility. Always lock them in.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Reserved keywords",
+              "explanation": "Prevents accidental reuse of retired fields that could corrupt data.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never change a field's wire type or reuse a deleted tag. If you remove a field, mark it as reserved. This ensures old clients don't accidentally interpret new data as garbage.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-varint",
+          "kind": "flow-diagram",
+          "title": "Optimizing Wire Size",
+          "subtitle": "How Protobuf saves bytes",
+          "nodes": [
+            {
+              "label": "Varint Encoding",
+              "detail": "Small integers use 1 byte instead of 4 or 8",
+              "tag": "Speed",
+              "accent": "sky"
+            },
+            {
+              "label": "ZigZag Mapping",
+              "detail": "Encodes negative numbers as small unsigned integers",
+              "tag": "Compact",
+              "accent": "amber"
+            },
+            {
+              "label": "Field Tagging",
+              "detail": "No field names on the wire, just index IDs",
+              "tag": "Binary",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Use sint32 for negative values. Standard int32 uses 10 bytes for negatives, but ZigZag mapping compresses them into just 1 or 2 bytes, keeping your wire traffic lean.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Tags 1-15 are 1-byte efficient",
+            "Use reserved for deleted fields",
+            "sint32 for negative numbers"
+          ],
+          "nextPartTeaser": "Up Next: HTTP/2 Multiplexing and the L4 Load Balancing trap →",
+          "narration": "Protobuf is the foundation. Next, we look at why HTTP/2 multiplexing is a game changer, and why your Kubernetes load balancer might be pinning all your traffic to one pod.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-http2-multiplexing",
+      "partTitle": "HTTP/2 Multiplexing & The L4 Trap",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Transport Layer • Part 2 of 4",
+          "headline": "Why does your gRPC traffic ignore half your cluster?",
+          "highlightWord": "ignore",
+          "subline": "The L4 load balancing trap is the #1 cause of uneven service distribution.",
+          "narration": "You scaled your backend to 10 pods, but only one is handling traffic. Why? Because gRPC uses long-lived HTTP/2 connections, and standard L4 balancers don't see the streams inside.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow-mux",
+          "kind": "flow-diagram",
+          "title": "HTTP/2 Multiplexing",
+          "subtitle": "Multiple streams, one TCP socket",
+          "nodes": [
+            {
+              "label": "Stream 1",
+              "detail": "ExecuteOrder request",
+              "tag": "ID: 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Stream 3",
+              "detail": "MarketPrice stream",
+              "tag": "ID: 3",
+              "accent": "amber"
+            },
+            {
+              "label": "TCP Socket",
+              "detail": "Interleaved binary frames",
+              "tag": "Single Conn",
+              "accent": "purple"
+            }
+          ],
+          "narration": "HTTP/2 splits every RPC into binary frames tagged with a Stream ID. This allows multiple concurrent requests over a single TCP connection, eliminating the need for massive connection pools.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-compare-lb",
+          "kind": "compare",
+          "title": "L4 vs L7 Load Balancing",
+          "top": {
+            "label": "L4 (ClusterIP)",
+            "badge": "Connection-Level",
+            "tone": "bad",
+            "code": "Client -> [TCP Handshake] -> Pod A",
+            "points": [
+              "Pins all streams to one pod",
+              "Scaling doesn't redistribute load"
+            ]
+          },
+          "bottom": {
+            "label": "L7 (Envoy/Mesh)",
+            "badge": "Stream-Aware",
+            "tone": "good",
+            "code": "Client -> [Stream 1, 3] -> Pod A, B",
+            "points": [
+              "Balances individual RPC streams",
+              "Optimal cluster utilization"
+            ]
+          },
+          "narration": "L4 balancers route at the TCP level. Since gRPC keeps the connection open, the load balancer never sees the individual requests. Use an L7 proxy or headless services to fix this.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code-headless",
+          "kind": "code-spotlight",
+          "title": "Client-Side Load Balancing",
+          "filename": "GrpcConfig.java",
+          "code": "ManagedChannel channel = ManagedChannelBuilder\n    .forTarget(\"dns:///trading-service:9090\")\n    .defaultLoadBalancingPolicy(\"round_robin\")\n    .build();",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "dns:///",
+              "explanation": "Uses DNS to discover all pod IPs for a headless service.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "round_robin",
+              "explanation": "Distributes RPCs across available endpoints client-side.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use a headless service and the round robin policy. This forces the client to resolve all pod IPs and rotate requests, bypassing the L4 pinning problem entirely.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "L4 balancers pin connections",
+            "Use L7 proxies for stream awareness",
+            "Headless services + round_robin"
+          ],
+          "nextPartTeaser": "Up Next: Implementing the 4 gRPC streaming modes →",
+          "narration": "Stop pinning your traffic. In Part 3, we implement the four gRPC streaming modes in Java and handle backpressure with virtual threads.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-streaming-modes",
+      "partTitle": "Implementing 4 Streaming Modes",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Java Implementation • Part 3 of 4",
+          "headline": "Unary is easy. What about bidirectional streaming?",
+          "highlightWord": "bidirectional",
+          "subline": "Managing state and backpressure in Java requires careful observer handling.",
+          "narration": "gRPC supports four communication patterns. From simple unary calls to full-duplex bidirectional streams, here is how you handle them in Java without leaking memory.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow-modes",
+          "kind": "flow-diagram",
+          "title": "The Four gRPC Modes",
+          "subtitle": "From Unary to Full Duplex",
+          "nodes": [
+            {
+              "label": "Unary",
+              "detail": "1 Request, 1 Response",
+              "tag": "Standard",
+              "accent": "sky"
+            },
+            {
+              "label": "Server Stream",
+              "detail": "1 Request, N Responses",
+              "tag": "Streaming",
+              "accent": "amber"
+            },
+            {
+              "label": "Client Stream",
+              "detail": "N Requests, 1 Response",
+              "tag": "Batching",
+              "accent": "purple"
+            },
+            {
+              "label": "Bidirectional",
+              "detail": "N Requests, N Responses",
+              "tag": "Real-time",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Unary is standard. Server streaming is perfect for market ticks. Client streaming is for batch uploads. Bidirectional is for real-time sessions where both sides talk concurrently.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-bidi",
+          "kind": "code-spotlight",
+          "title": "Bidirectional Stream Implementation",
+          "filename": "TradingService.java",
+          "code": "@Override\npublic StreamObserver<TradeCommand> tradeSession(\n    StreamObserver<TradeEvent> responseObserver) {\n  return new StreamObserver<>() {\n    @Override\n    public void onNext(TradeCommand cmd) {\n      // Process command, emit event\n      responseObserver.onNext(event);\n    }\n  };\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "StreamObserver",
+              "explanation": "The core interface for asynchronous push-based communication.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "onNext",
+              "explanation": "Not thread-safe! Serialize writes if calling from multiple threads.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The StreamObserver is not thread-safe. If you are pushing events from multiple background threads, you must synchronize your calls to onNext to prevent corrupted frames.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-code-vt",
+          "kind": "code-spotlight",
+          "title": "Java 21 Virtual Threads",
+          "filename": "GrpcConfig.java",
+          "code": "@Bean\npublic GrpcServerConfigurer grpcServerConfigurer() {\n  return serverBuilder -> \n    serverBuilder.executor(\n      Executors.newVirtualThreadPerTaskExecutor()\n    );\n}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Virtual Threads",
+              "explanation": "Offload blocking I/O to lightweight threads, not platform threads.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "On Java 21, use virtual threads for your gRPC executor. It allows you to handle thousands of concurrent streams without exhausting your platform thread pool.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "StreamObserver is not thread-safe",
+            "Use Virtual Threads for blocking I/O",
+            "Four modes cover all sync/async needs"
+          ],
+          "nextPartTeaser": "Up Next: Interceptors, Deadlines, and Error Handling →",
+          "narration": "You can now build complex streaming services. In Part 4, we wrap it up with interceptors for auth and deadline propagation to stop cascading failures.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-interceptors-deadlines",
+      "partTitle": "Deadlines, Auth & Error Handling",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Production Readiness • Part 4 of 4",
+          "headline": "How do you stop a slow service from crashing your whole cluster?",
+          "highlightWord": "slow service",
+          "subline": "Deadline propagation is the secret to building resilient distributed systems.",
+          "narration": "One slow service can hold connections open until your entire cluster dies. You need automatic deadline propagation and robust error handling to fail fast.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow-deadline",
+          "kind": "flow-diagram",
+          "title": "Deadline Propagation",
+          "subtitle": "Fail fast across the call chain",
+          "nodes": [
+            {
+              "label": "Gateway",
+              "detail": "Sets 2s budget",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Service A",
+              "detail": "Consumes 300ms",
+              "tag": "1.7s left",
+              "accent": "amber"
+            },
+            {
+              "label": "Service B",
+              "detail": "Slow query",
+              "tag": "Timeout!",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When you set a deadline, gRPC propagates the remaining time in the headers. If a downstream service exceeds this, it is cancelled immediately, saving resources.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-auth",
+          "kind": "code-spotlight",
+          "title": "ServerInterceptor for Auth",
+          "filename": "AuthInterceptor.java",
+          "code": "public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(...) {\n  String token = headers.get(AUTH_HEADER);\n  if (token == null) {\n    call.close(Status.UNAUTHENTICATED, new Metadata());\n    return new ServerCall.Listener<>() {};\n  }\n  Context ctx = Context.current().withValue(USER_KEY, uid);\n  return Contexts.interceptCall(ctx, call, headers, next);\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Fail early",
+              "explanation": "Reject unauthenticated requests before they hit your service logic.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7,
+                8
+              ],
+              "badge": "Context binding",
+              "explanation": "Bind identity to the request context, not ThreadLocal.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never use ThreadLocal for auth; gRPC execution hops across threads. Use Context instead. It safely carries your user identity through the entire call lifecycle.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal-errors",
+          "kind": "terminal",
+          "title": "Handling Status Codes",
+          "caption": "Map failures to standard gRPC codes",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "Common status codes"
+            },
+            {
+              "kind": "output",
+              "text": "UNAVAILABLE: Transient network error (Retry)"
+            },
+            {
+              "kind": "output",
+              "text": "DEADLINE_EXCEEDED: Timeout (Fail fast)"
+            },
+            {
+              "kind": "output",
+              "text": "INVALID_ARGUMENT: Bad input (Do not retry)"
+            }
+          ],
+          "narration": "gRPC status codes are your contract. Use UNAVAILABLE for retriable network blips, but never retry on INVALID_ARGUMENT. Keep error descriptions clean—no stack traces.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Propagate deadlines to fail fast",
+            "Use Context for auth, not ThreadLocal",
+            "Map errors to canonical status codes"
+          ],
+          "command": "git checkout topic/level-9/high-performance-grpc-in-java",
+          "nextPartTeaser": "Full lab and source code at the roadmap link below.",
+          "narration": "You are now ready for production gRPC. Run the lab in the repo to see these patterns in action. Check the link below for the full roadmap.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
