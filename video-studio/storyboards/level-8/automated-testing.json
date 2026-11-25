@@ -1,0 +1,452 @@
+{
+  "chapterId": "level-8/automated-testing",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "automated-testing",
+  "chapterTitle": "Automated Testing",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/automated-testing",
+  "branchName": "topic/level-8/automated-testing",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-testing-trophy",
+      "partTitle": "Stop Chasing 100% Coverage",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Testing Strategy • Part 1 of 4",
+          "headline": "Why do your tests take 20 minutes to run?",
+          "highlightWord": "20 minutes",
+          "subline": "If you are chasing 100% line coverage, you are likely testing the wrong things.",
+          "narration": "If your test suite takes twenty minutes to run, you have a problem. Chasing 100% line coverage is a trap. You need a balanced trophy, not a pyramid.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Testing Trophy",
+          "subtitle": "Focus on boundaries, not just logic",
+          "nodes": [
+            {
+              "label": "Unit Tests",
+              "detail": "Fast domain logic, no Spring context",
+              "tag": "Foundation",
+              "accent": "sky"
+            },
+            {
+              "label": "Slice Tests",
+              "detail": "Web/Data layers, partial context",
+              "tag": "Focused",
+              "accent": "amber"
+            },
+            {
+              "label": "Integration",
+              "detail": "Testcontainers + Real DB",
+              "tag": "High Value",
+              "accent": "emerald"
+            },
+            {
+              "label": "E2E",
+              "detail": "Multi-service smoke checks",
+              "tag": "Fewest",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The trophy model prioritizes fast unit tests for domain rules, while shifting integration effort to infrastructure boundaries like SQL queries and HTTP contracts.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Unit vs. Integration",
+          "top": {
+            "label": "Unit Test",
+            "badge": "1ms",
+            "tone": "good",
+            "code": "assertThat(total).isEqualByComparingTo(\"1020.00\");",
+            "points": [
+              "Zero Spring overhead",
+              "Tests pure math/logic"
+            ]
+          },
+          "bottom": {
+            "label": "Integration Test",
+            "badge": "5s",
+            "tone": "neutral",
+            "code": "@SpringBootTest\nclass OrderRepoTest { ... }",
+            "points": [
+              "Tests DB/Transaction wiring",
+              "Uses real Docker containers"
+            ]
+          },
+          "narration": "Unit tests should be lightning fast, testing domain math without booting Spring. Integration tests use Testcontainers to verify real DB behavior, catching bugs H2 misses.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code-assertj",
+          "kind": "code-spotlight",
+          "title": "AssertJ for Precision",
+          "filename": "OrderTest.java",
+          "code": "BigDecimal total = new BigDecimal(\"10.0\");\n\n// Avoid isEqualTo for BigDecimal!\nassertThat(total)\n    .isEqualByComparingTo(\"10.00\");",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "BigDecimal Trap",
+              "explanation": "isEqualTo checks scale, failing on 10.0 vs 10.00. Use isEqualByComparingTo for numeric value equality.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always use AssertJ. For BigDecimals, never use isEqualTo, as it checks scale. Use isEqualByComparingTo to compare the actual numeric value.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Trophy > Pyramid",
+            "Unit tests = 0 Spring",
+            "BigDecimal = isEqualByComparingTo"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Mocking strategies and avoiding the over-mocking trap →",
+          "narration": "That is the foundation. In Part 2, we look at Mockito and why mocking everything is actually a technical debt nightmare.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-mocking-and-slices",
+      "partTitle": "Mockito and Web Slices",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Mockito & Slices • Part 2 of 4",
+          "headline": "Are you mocking your own domain objects?",
+          "highlightWord": "mocking",
+          "subline": "If your tests break every time you refactor, you are over-mocking.",
+          "narration": "If you mock every single helper service, your tests become brittle mirrors of your code. If you change the implementation, you break the test, even if the public behavior is identical.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-mockito",
+          "kind": "code-spotlight",
+          "title": "Mockito Best Practices",
+          "filename": "ServiceTest.java",
+          "code": "@ExtendWith(MockitoExtension.class)\nclass OrderServiceTest {\n    @Mock OrderRepository repo;\n    @InjectMocks OrderService service;\n\n    @Test\n    void process() {\n        when(repo.findById(id)).thenReturn(Optional.of(order));\n        // ...\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Strict Stubbing",
+              "explanation": "MockitoExtension enables strict stubbing—unused stubs cause failures, preventing test rot.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use MockitoExtension for strict stubbing. It forces you to clean up unused stubs, keeping your tests lean and preventing silent failures.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "@WebMvcTest Slice",
+          "subtitle": "Test controllers without the full app",
+          "nodes": [
+            {
+              "label": "MockMvc",
+              "detail": "Simulates HTTP requests",
+              "tag": "Client",
+              "accent": "sky"
+            },
+            {
+              "label": "Controller",
+              "detail": "The target class",
+              "tag": "Target",
+              "accent": "amber"
+            },
+            {
+              "label": "@MockitoBean",
+              "detail": "Overrides dependencies",
+              "tag": "Mock",
+              "accent": "purple"
+            }
+          ],
+          "narration": "WebMvcTest boots only the web layer. Use MockMvc to fire requests and MockitoBean to swap out your services. It is fast and isolates your API contracts.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Spring Boot 3.4+ Note",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// Old way (pre-3.4)"
+            },
+            {
+              "kind": "error",
+              "text": "@MockBean"
+            },
+            {
+              "kind": "comment",
+              "text": "// New way (Spring Framework 6.2+)"
+            },
+            {
+              "kind": "success",
+              "text": "@MockitoBean"
+            }
+          ],
+          "narration": "If you are on Spring Boot 3.4 or higher, stop using MockBean. Switch to the new MockitoBean annotation from the Spring Framework 6.2 package.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Don't mock domain objects",
+            "Use MockitoExtension for strictness",
+            "Prefer @MockitoBean in Spring 3.4+"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Testcontainers and the @ServiceConnection magic →",
+          "narration": "Mocking is for I/O, not logic. In Part 3, we use Testcontainers to run real databases without the manual configuration headache.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-testcontainers",
+      "partTitle": "Real Databases with Testcontainers",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Integration • Part 3 of 4",
+          "headline": "H2 is lying to your tests.",
+          "highlightWord": "lying",
+          "subline": "Production uses Postgres, but your tests use H2? You are missing critical SQL bugs.",
+          "narration": "H2 is not Postgres. It ignores JSONB operators, native arrays, and transaction isolation levels. If your production DB is Postgres, your tests must run on Postgres.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-serviceconnection",
+          "kind": "code-spotlight",
+          "title": "Zero-Boilerplate Containers",
+          "filename": "BaseTest.java",
+          "code": "@ServiceConnection\nstatic PostgreSQLContainer<?> postgres = \n    new PostgreSQLContainer<>(\"postgres:16-alpine\");",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@ServiceConnection",
+              "explanation": "Automatically injects JDBC connection details into Spring, removing the need for DynamicPropertySource.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "ServiceConnection is a game changer. It automatically wires your container's dynamic port into your Spring context. No more manual property overrides.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Container Reuse Pattern",
+          "top": {
+            "label": "Per-Class Container",
+            "badge": "SLOW",
+            "tone": "bad",
+            "code": "@Container\nstatic ...",
+            "points": [
+              "Starts container for every class",
+              "Wastes CPU cycles"
+            ]
+          },
+          "bottom": {
+            "label": "Singleton Base Class",
+            "badge": "FAST",
+            "tone": "good",
+            "code": "public abstract class AbstractIntegrationTest { ... }",
+            "points": [
+              "One container per suite",
+              "Massive speed boost"
+            ]
+          },
+          "narration": "Do not start a container per class. Use an abstract base class to share one singleton container. It saves seconds per test class and keeps your build fast.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "Cleanup Strategy",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Use deleteAllInBatch in @AfterEach"
+            },
+            {
+              "kind": "command",
+              "text": "repository.deleteAllInBatch();"
+            },
+            {
+              "kind": "comment",
+              "text": "# Never use @DirtiesContext unless necessary"
+            },
+            {
+              "kind": "error",
+              "text": "@DirtiesContext // Kills your cache!"
+            }
+          ],
+          "narration": "Avoid DirtiesContext at all costs. It destroys your Spring context cache, forcing a full reboot. Clean your DB state with batch deletes instead.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use real DB containers",
+            "@ServiceConnection is standard",
+            "Avoid @DirtiesContext"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The @Transactional trap and final performance tips →",
+          "narration": "Containers are non-negotiable. In Part 4, we reveal the hidden transaction bugs that make your tests pass locally but fail in production.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-transactional-traps",
+      "partTitle": "The @Transactional Trap",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Advanced Pitfalls • Part 4 of 4",
+          "headline": "Why @Transactional is killing your integration tests.",
+          "highlightWord": "killing",
+          "subline": "It hides lazy-loading bugs and makes your tests see ghosts.",
+          "narration": "Transactional on a test method feels convenient, but it hides lazy-loading exceptions and creates phantom data issues when using random ports.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Threading Problem",
+          "subtitle": "Why RANDOM_PORT breaks @Transactional",
+          "nodes": [
+            {
+              "label": "Test Thread",
+              "detail": "Starts Transaction",
+              "tag": "Tx 1",
+              "accent": "sky"
+            },
+            {
+              "label": "HTTP Server",
+              "detail": "Runs on different thread",
+              "tag": "Tx 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Database",
+              "detail": "Shared state",
+              "tag": "Isolation",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When using random port, the test and the server run on different threads. The server cannot see your uncommitted test data, leading to false negatives.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-transaction",
+          "kind": "code-spotlight",
+          "title": "The Better Way",
+          "filename": "IntegrationTest.java",
+          "code": "@AfterEach\nvoid cleanup() {\n    repo.deleteAllInBatch();\n}\n\n// No @Transactional on class!",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Explicit Cleanup",
+              "explanation": "Manually clearing the DB ensures you test real commit/flush cycles, not just rolled-back memory state.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Skip the transactional annotation on integration tests. Manually clean your database in AfterEach. This forces your code to handle real commits and flushes.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Performance Checklist",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "1. Shared Singleton Containers"
+            },
+            {
+              "kind": "success",
+              "text": "2. Consistent @MockitoBean usage"
+            },
+            {
+              "kind": "success",
+              "text": "3. Avoid @DirtiesContext"
+            },
+            {
+              "kind": "success",
+              "text": "4. Explicit DB cleanup"
+            }
+          ],
+          "narration": "Follow this checklist to keep your build times under two minutes. Consistent configuration ensures Spring reuses your context cache effectively.",
+          "durationSec": 8,
+          "sfx": "success"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "No @Transactional on RANDOM_PORT",
+            "Test real commits",
+            "Reuse context cache"
+          ],
+          "command": "git checkout topic/level-8/automated-testing",
+          "nextPartTeaser": "Full guide + Lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered automated testing. Check out the roadmap link for the full lab and verify your test suites today.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
