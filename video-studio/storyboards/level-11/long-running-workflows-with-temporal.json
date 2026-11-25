@@ -1,0 +1,479 @@
+{
+  "chapterId": "level-11/long-running-workflows-with-temporal",
+  "level": "level-11",
+  "levelLabel": "Level 11",
+  "slug": "long-running-workflows-with-temporal",
+  "chapterTitle": "Long-Running Workflows with Temporal",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/long-running-workflows-with-temporal",
+  "branchName": "topic/level-11/long-running-workflows-with-temporal",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-durable-execution",
+      "partTitle": "Why Durable Execution Matters",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Temporal • Part 1 of 4",
+          "headline": "Stop building custom state machines.",
+          "highlightWord": "state machines",
+          "subline": "Status tables and cron jobs are fragile. Durable execution is the fix.",
+          "narration": "Stop building custom status tables and Kafka-based state machines for long-running processes. You're just reinventing a distributed system that will eventually leak state or double-fire during a deployment.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Patchwork vs. Durable Code",
+          "top": {
+            "label": "Manual Orchestration",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "if (status == PENDING) {\n  // Poll DB, check Kafka, retry manually\n}",
+            "points": [
+              "Scattered across services",
+              "Hard to debug state",
+              "Cron jobs are unreliable"
+            ]
+          },
+          "bottom": {
+            "label": "Temporal Workflow",
+            "badge": "Durable",
+            "tone": "good",
+            "code": "@WorkflowMethod\npublic void process(Loan loan) {\n  activities.verify(loan);\n  Workflow.sleep(Duration.ofDays(5));\n  activities.disburse(loan);\n}",
+            "points": [
+              "Plain Java orchestration",
+              "Resumes after pod crashes",
+              "No thread-blocking wait"
+            ]
+          },
+          "narration": "Temporal replaces scattered status tables with durable Java code. Your workflow logic resides in standard methods, and the engine handles persistence, retries, and timers for you.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-workflow",
+          "kind": "code-spotlight",
+          "title": "Orchestration in Plain Java",
+          "filename": "LoanWorkflow.java",
+          "code": "@WorkflowMethod\npublic LoanOutcome process(LoanApp app) {\n    kyc.verify(app.id());\n    // Suspends without blocking threads\n    boolean ok = Workflow.await(Duration.ofDays(5), \n                                () -> approved);\n    if (ok) disbursal.run(app.id());\n    return LoanOutcome.SUCCESS;\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@WorkflowMethod",
+              "explanation": "Marks the entry point for a durable workflow execution.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Workflow.await",
+              "explanation": "Suspends the workflow for days without holding a JVM thread or heap memory.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "This workflow method is pure orchestration. It doesn't block threads while waiting for the five-day deadline. If the pod dies, the state is reconstructed from history.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-arch",
+          "kind": "flow-diagram",
+          "title": "Temporal Architecture",
+          "nodes": [
+            {
+              "label": "Temporal Cluster",
+              "detail": "Stores event logs and manages task queues",
+              "tag": "Engine",
+              "accent": "purple"
+            },
+            {
+              "label": "Java Worker",
+              "detail": "Hosts workflow and activity code",
+              "tag": "Compute",
+              "accent": "emerald"
+            },
+            {
+              "label": "Task Queue",
+              "detail": "gRPC long-polling bridge between cluster and worker",
+              "tag": "Transport",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The Temporal Cluster never runs your code. It stores the event history. Your Java Workers poll the Task Queues via gRPC to execute the actual business logic.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Temporal is a state engine, not a compute engine",
+            "Workflows use durable timers, not Thread.sleep",
+            "Workers poll via gRPC long-polling"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How Event Sourcing makes your code deterministic →",
+          "narration": "That's the architecture. In Part 2, we break down why your workflow code must be strictly deterministic and how replay works.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-determinism",
+      "partTitle": "Event History Replay & Determinism",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Temporal • Part 2 of 4",
+          "headline": "Why your workflow code must be deterministic.",
+          "highlightWord": "deterministic",
+          "subline": "One call to Instant.now() can crash your entire production workflow.",
+          "narration": "Temporal doesn't save your thread stack. It saves an event history. If your code isn't deterministic, the replay will fail, and your workflow will crash.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow-replay",
+          "kind": "flow-diagram",
+          "title": "The Replay Mechanism",
+          "nodes": [
+            {
+              "label": "Event History",
+              "detail": "Immutable log of past activity results",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Worker Replay",
+              "detail": "Executes method from line 1",
+              "tag": "Compute",
+              "accent": "amber"
+            },
+            {
+              "label": "Result Match",
+              "detail": "Returns cached result from history",
+              "tag": "Safety",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When a worker restarts, it replays the workflow from the start. For every activity completed in history, the SDK returns the cached result instead of re-running the I/O.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-compare-deterministic",
+          "kind": "compare",
+          "title": "Deterministic vs. Non-Deterministic",
+          "top": {
+            "label": "Broken Code",
+            "badge": "❌ BUG",
+            "tone": "bad",
+            "code": "if (Instant.now().isAfter(due)) {\n  // ...\n}",
+            "points": [
+              "Time changes on replay",
+              "Causes NonDeterministicException"
+            ]
+          },
+          "bottom": {
+            "label": "Fixed Code",
+            "badge": "✅ SAFE",
+            "tone": "good",
+            "code": "if (Workflow.currentTimeMillis() > due) {\n  // ...\n}",
+            "points": [
+              "Uses history-based clock",
+              "Consistent across replays"
+            ]
+          },
+          "narration": "Never use Instant dot now or random UUIDs in your workflow. Use the Temporal SDK wrappers, which pull values from the event history to ensure consistency.",
+          "durationSec": 11,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b4-code-rules",
+          "kind": "code-spotlight",
+          "title": "Golden Rules for Workflows",
+          "filename": "Rules.java",
+          "code": "// NEVER do these in @WorkflowMethod:\n// 1. Thread.sleep() -> Use Workflow.sleep()\n// 2. new Random()  -> Use Workflow.newRandom()\n// 3. JDBC/JPA      -> Use @ActivityInterface\n// 4. Logger.info   -> Use Workflow.getLogger()",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "JDBC/JPA",
+              "explanation": "Database state changes over time. Always wrap I/O in an activity.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Logger",
+              "explanation": "Standard logs duplicate on replay. Use the workflow-aware logger.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Follow these rules. If you perform I/O or non-deterministic logic in your workflow, you break the replay contract. Keep the workflow pure and push side effects into activities.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Workflows are replayed from history",
+            "Use Workflow-specific wrappers for time/random",
+            "Activities handle all non-deterministic I/O"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Handling retries and Saga compensations →",
+          "narration": "That's the replay model. In Part 3, we look at how to handle transient failures and roll back multi-step transactions with Sagas.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-activities-and-sagas",
+      "partTitle": "Activities, Retries & Saga Compensations",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Temporal • Part 3 of 4",
+          "headline": "What happens when your API fails?",
+          "highlightWord": "API fails",
+          "subline": "Stop writing manual retry loops. Use declarative activity options and Sagas.",
+          "narration": "Downstream APIs will fail. Instead of writing manual retry loops with exponential backoff, define your retry policy declaratively in your workflow code.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-retry",
+          "kind": "code-spotlight",
+          "title": "Declarative Retries",
+          "filename": "Workflow.java",
+          "code": "RetryOptions opts = RetryOptions.newBuilder()\n    .setInitialInterval(Duration.ofSeconds(1))\n    .setBackoffCoefficient(2.0)\n    .setDoNotRetry(\"CardDeclinedException\")\n    .build();",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Backoff",
+              "explanation": "Exponential backoff is built-in. No more custom sleep loops.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "DoNotRetry",
+              "explanation": "Fail fast on business errors like declined cards.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Define your retry policy once. Temporal handles the scheduling, backoff, and state persistence automatically. If an error is non-retryable, the workflow catches it immediately.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-saga",
+          "kind": "code-spotlight",
+          "title": "Saga Pattern for Rollbacks",
+          "filename": "SagaWorkflow.java",
+          "code": "Saga saga = new Saga();\ntry {\n    activities.reserve(id);\n    saga.addCompensation(activities::release, id);\n    activities.charge(id);\n} catch (Exception e) {\n    saga.compensate();\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "reserve",
+              "explanation": "Perform the action.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "addCompensation",
+              "explanation": "Register the rollback logic immediately.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use the Saga helper to manage compensations. If a step fails, the saga runs the registered rollbacks in reverse order. Even the rollback itself is a retriable activity.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow-saga",
+          "kind": "flow-diagram",
+          "title": "Saga Lifecycle",
+          "nodes": [
+            {
+              "label": "Step 1: Reserve",
+              "detail": "Action succeeds",
+              "tag": "Success",
+              "accent": "emerald"
+            },
+            {
+              "label": "Step 2: Charge",
+              "detail": "Action fails",
+              "tag": "Failure",
+              "accent": "amber"
+            },
+            {
+              "label": "Compensation",
+              "detail": "Release inventory automatically",
+              "tag": "Rollback",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The Saga pattern ensures your distributed transaction eventually reaches a consistent state, even if the rollback itself experiences transient network issues.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use RetryOptions for declarative retries",
+            "Mark business errors as non-retryable",
+            "Saga helper automates rollback logic"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Signals, Queries & Versioning →",
+          "narration": "That's how you handle failures. In Part 4, we cover how to interact with running workflows via Signals and Queries, plus how to version your code safely.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-signals-and-versioning",
+      "partTitle": "Signals, Queries & Workflow Evolution",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Temporal • Part 4 of 4",
+          "headline": "How to update code without breaking history.",
+          "highlightWord": "breaking history",
+          "subline": "Long-running workflows don't stop for your deployments. Here is how to evolve them safely.",
+          "narration": "What happens when you deploy new code while a workflow is waiting for a five-day timer? You risk a NonDeterministicException. Here is how to handle evolution.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-signals",
+          "kind": "code-spotlight",
+          "title": "Signals & Queries",
+          "filename": "Workflow.java",
+          "code": "@SignalMethod\nvoid update(Decision d);\n\n@QueryMethod\nStatus getStatus();",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "@SignalMethod",
+              "explanation": "Asynchronously update a running workflow's state.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "@QueryMethod",
+              "explanation": "Synchronously inspect workflow state without mutating it.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Signals allow external systems to influence a running workflow. Queries provide a read-only view into the workflow's internal state. Both are essential for long-running processes.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-versioning",
+          "kind": "code-spotlight",
+          "title": "Safe Evolution",
+          "filename": "Version.java",
+          "code": "int v = Workflow.getVersion(\"id\", \n                            DEFAULT, 1);\nif (v == 1) {\n    activities.newFeature();\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "getVersion",
+              "explanation": "Records a version marker in history for new executions.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Branching",
+              "explanation": "Old workflows skip the new code, new ones execute it.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Use getVersion to safely introduce code changes. It records a marker in the event history, ensuring old workflows don't try to execute logic they weren't designed for.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-continue",
+          "kind": "terminal",
+          "title": "Continue-As-New",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Prevent history bloat for infinite loops"
+            },
+            {
+              "kind": "command",
+              "text": "Workflow.continueAsNew(nextState);"
+            },
+            {
+              "kind": "success",
+              "text": "History reset, state carried forward."
+            }
+          ],
+          "narration": "For infinite processes like billing cycles, use continue-as-new. It closes the current history and starts a fresh one, keeping your event logs small and performant.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Signals mutate, Queries inspect",
+            "Use getVersion to evolve code safely",
+            "Continue-As-New prevents history bloat"
+          ],
+          "command": "git checkout topic/level-11/long-running-workflows-with-temporal",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You now have the tools to orchestrate complex, long-running processes. Checkout the companion branch to run the Temporal lab and master these patterns.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
