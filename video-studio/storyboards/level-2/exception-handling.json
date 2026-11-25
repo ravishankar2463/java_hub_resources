@@ -1,0 +1,487 @@
+{
+  "chapterId": "level-2/exception-handling",
+  "level": "level-2",
+  "levelLabel": "Level 2",
+  "slug": "exception-handling",
+  "chapterTitle": "Exception Handling",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-2/exception-handling",
+  "branchName": "topic/level-2/exception-handling",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-throwable-hierarchy",
+      "partTitle": "The Throwable Hierarchy",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Exception Internals • Part 1 of 4",
+          "headline": "Why does Java distinguish between Errors and Exceptions?",
+          "highlightWord": "Errors vs Exceptions",
+          "subline": "It isn't just naming—it defines what your application can actually recover from.",
+          "narration": "Why does Java distinguish between Errors and Exceptions? It isn't just naming—it defines what your application can actually recover from. Let's decode the hierarchy.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow-diagram",
+          "kind": "flow-diagram",
+          "title": "The Throwable Tree",
+          "subtitle": "Root -> Branch -> Leaf",
+          "nodes": [
+            {
+              "label": "Throwable",
+              "detail": "Base class for all failures",
+              "tag": "Root",
+              "accent": "sky"
+            },
+            {
+              "label": "Error",
+              "detail": "Fatal JVM/System failure",
+              "tag": "Unchecked",
+              "accent": "rose"
+            },
+            {
+              "label": "Exception",
+              "detail": "Recoverable conditions",
+              "tag": "Checked",
+              "accent": "emerald"
+            },
+            {
+              "label": "RuntimeException",
+              "detail": "Logic/Contract bugs",
+              "tag": "Unchecked",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The hierarchy starts at Throwable. Errors are fatal system failures like OutOfMemory. Checked Exceptions are external, recoverable events. RuntimeExceptions represent your own logic bugs.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Checked vs. Unchecked",
+          "filename": "Service.java",
+          "code": "public void save() throws IOException { ... }\n\npublic void setAge(int age) {\n    if (age < 0) \n        throw new IllegalArgumentException();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Checked",
+              "explanation": "Compiler forces you to handle or declare this.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Unchecked",
+              "explanation": "Signals a contract violation; don't force callers to catch.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Checked exceptions force the caller to handle the failure. Unchecked exceptions are for contract violations—like negative ages—where catching is usually just noise.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Catching Strategy",
+          "top": {
+            "label": "Catching Errors",
+            "badge": "DANGEROUS",
+            "tone": "bad",
+            "code": "catch (Throwable t) { ... }",
+            "points": [
+              "JVM state may be corrupt",
+              "Cannot recover from OOM"
+            ]
+          },
+          "bottom": {
+            "label": "Catching Exceptions",
+            "badge": "EXPECTED",
+            "tone": "good",
+            "code": "catch (IOException e) { ... }",
+            "points": [
+              "Recoverable external state",
+              "Standard flow control"
+            ]
+          },
+          "narration": "Avoid catching Errors. If the JVM hits an OutOfMemoryError, the state is already corrupted. Only catch what you can actually fix.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Errors are fatal",
+            "Checked = Recoverable",
+            "Unchecked = Bugs"
+          ],
+          "nextPartTeaser": "Up Next: The hidden risks of finally blocks →",
+          "narration": "That's the hierarchy. In Part 2, we look at the try-catch-finally execution rules and why returning from finally is a dangerous bug.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-try-catch-finally",
+      "partTitle": "Execution Rules & Pitfalls",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Exception Internals • Part 2 of 4",
+          "headline": "Can a finally block hide an exception?",
+          "highlightWord": "hide an exception",
+          "subline": "Yes, and it happens silently during return statements.",
+          "narration": "Can a finally block hide an exception? Yes, and it happens silently during return statements. It is one of the most common ways to lose root causes in production.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The Finally Trap",
+          "filename": "Payment.java",
+          "code": "public boolean process() {\n    try {\n        throw new IllegalStateException();\n    } finally {\n        return true;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Exception",
+              "explanation": "The state exception is thrown here.",
+              "accent": "rose"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Shadowing",
+              "explanation": "The return here discards the exception entirely.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "When you return from a finally block, the original exception is discarded. The caller receives 'true' and the error vanishes without a trace in your logs.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Multi-Catch Syntax",
+          "top": {
+            "label": "Old Way",
+            "badge": "Verbose",
+            "tone": "bad",
+            "code": "catch (IO e) { log(e); }\ncatch (SQL e) { log(e); }",
+            "points": [
+              "Code duplication",
+              "Harder to maintain"
+            ]
+          },
+          "bottom": {
+            "label": "Java 7+",
+            "badge": "Clean",
+            "tone": "good",
+            "code": "catch (IO | SQL e) {\n    throw new Custom(e);\n}",
+            "points": [
+              "Atomic handling",
+              "Implicitly final variable"
+            ]
+          },
+          "narration": "Use multi-catch for unrelated exceptions that share the same recovery logic. It keeps your handlers concise and prevents logic drift.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Catch Ordering",
+          "caption": "Specific first, General last",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "catch (Exception e) { ... }"
+            },
+            {
+              "kind": "error",
+              "text": "catch (IOException e) { ... }"
+            },
+            {
+              "kind": "comment",
+              "text": "// Compile Error: Unreachable block"
+            }
+          ],
+          "narration": "Always order catches from most specific to most general. If you catch Exception first, the compiler will block you because the specific catch is unreachable.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Never return in finally",
+            "Specific catches first",
+            "Multi-catch is atomic"
+          ],
+          "nextPartTeaser": "Up Next: try-with-resources internals →",
+          "narration": "Finally blocks are for cleanup only. In Part 3, we see how try-with-resources handles suppressed exceptions to keep your stack traces clean.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-try-with-resources",
+      "partTitle": "Resource Management",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Exception Internals • Part 3 of 4",
+          "headline": "What happens when both your code AND your close() fail?",
+          "highlightWord": "both fail",
+          "subline": "Java's try-with-resources manages this with 'suppressed' exceptions.",
+          "narration": "What happens when both your code and your close method fail? Java's try-with-resources manages this with suppressed exceptions so you never lose the root cause.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "AutoCloseable Magic",
+          "filename": "Resource.java",
+          "code": "try (var res = new File()) {\n    res.read();\n} catch (Exception e) {\n    for (var s : e.getSuppressed())\n        System.out.println(s);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Header",
+              "explanation": "Auto-closes after the block exits.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Suppressed",
+              "explanation": "Access secondary failures here.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "When you use try-with-resources, the primary exception is preserved. Any failure during closing is attached as a suppressed exception, visible via getSuppressed.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow-diagram",
+          "kind": "flow-diagram",
+          "title": "Reverse Order Cleanup",
+          "subtitle": "Closing sequence matters",
+          "nodes": [
+            {
+              "label": "Resource A",
+              "detail": "Opened first",
+              "tag": "1",
+              "accent": "sky"
+            },
+            {
+              "label": "Resource B",
+              "detail": "Opened second",
+              "tag": "2",
+              "accent": "emerald"
+            },
+            {
+              "label": "Close B",
+              "detail": "Closed first",
+              "tag": "3",
+              "accent": "emerald"
+            },
+            {
+              "label": "Close A",
+              "detail": "Closed second",
+              "tag": "4",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Resources are closed in reverse order of declaration. This ensures wrappers flush their data before the underlying stream is destroyed.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "AutoCloseable vs Closeable",
+          "top": {
+            "label": "Closeable",
+            "badge": "IO Only",
+            "tone": "neutral",
+            "code": "throws IOException",
+            "points": [
+              "Strictly for I/O",
+              "Must be idempotent"
+            ]
+          },
+          "bottom": {
+            "label": "AutoCloseable",
+            "badge": "Generic",
+            "tone": "good",
+            "code": "throws Exception",
+            "points": [
+              "Works for DB/Locks",
+              "More flexible"
+            ]
+          },
+          "narration": "Closeable is for I/O streams. AutoCloseable is for everything else, like DB connections or custom locks. Use the most specific one available.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Reverse order close",
+            "Suppressed exceptions",
+            "AutoCloseable is flexible"
+          ],
+          "nextPartTeaser": "Up Next: Performance and custom domains →",
+          "narration": "That's resource management. In Part 4, we discuss why throwing exceptions is expensive and how to design clean domain-specific error types.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-performance-and-design",
+      "partTitle": "Performance & Domain Design",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Exception Internals • Part 4 of 4",
+          "headline": "Why is throwing an exception so slow?",
+          "highlightWord": "so slow",
+          "subline": "It's not the try block—it's the stack trace generation.",
+          "narration": "Why is throwing an exception so slow? It's not the try block—it's the stack trace generation. Every throw walks the entire call stack.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-terminal",
+          "kind": "terminal",
+          "title": "Bytecode Exception Table",
+          "caption": "The 'try' block is free!",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "No branch instructions on happy path"
+            },
+            {
+              "kind": "output",
+              "text": "Exception Table:"
+            },
+            {
+              "kind": "output",
+              "text": "from 0 to 4 -> target 7"
+            },
+            {
+              "kind": "comment",
+              "text": "Only used if an exception is thrown"
+            }
+          ],
+          "narration": "The try block itself is free. The JVM uses an Exception Table to map code ranges to handlers. It only performs work if an exception actually occurs.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Custom Domain Exceptions",
+          "filename": "Domain.java",
+          "code": "public class OrderException extends RuntimeException {\n    public OrderException(String msg, Throwable cause) {\n        super(msg, cause);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Cause",
+              "explanation": "Always chain the root cause.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Domain",
+              "explanation": "Hide infrastructure details.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Always chain the root cause in domain exceptions. This preserves the stack trace while hiding low-level implementation details from your business logic.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Fast-Throw Optimization",
+          "top": {
+            "label": "HotSpot Default",
+            "badge": "Fast",
+            "tone": "neutral",
+            "code": "NullPointerException",
+            "points": [
+              "No stack trace",
+              "Hard to debug"
+            ]
+          },
+          "bottom": {
+            "label": "Manual Trace",
+            "badge": "Debuggable",
+            "tone": "good",
+            "code": "new Exception()",
+            "points": [
+              "Full stack trace",
+              "Slower but clear"
+            ]
+          },
+          "narration": "HotSpot can omit stack traces for repeated exceptions to save time. If you see a bare NPE, check your JVM flags or log history.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Try is free",
+            "Throwing is expensive",
+            "Chain causes in domain exceptions"
+          ],
+          "command": "git checkout topic/level-2/exception-handling",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered Java exceptions. Checkout the branch for full labs and test your knowledge on the road map. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
