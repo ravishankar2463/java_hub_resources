@@ -1,0 +1,603 @@
+{
+  "chapterId": "level-5/thread-safety-and-synchronization",
+  "level": "level-5",
+  "levelLabel": "Level 5",
+  "slug": "thread-safety-and-synchronization",
+  "chapterTitle": "Thread Safety and Synchronization",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-5/thread-safety-and-synchronization",
+  "branchName": "topic/level-5/thread-safety-and-synchronization",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-race-conditions",
+      "partTitle": "Why Thread Safety Matters",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Concurrency • Part 1 of 5",
+          "headline": "Your code passes unit tests but fails in production?",
+          "highlightWord": "fails in production",
+          "subline": "Race conditions are silent killers. Here is why your bank balance is lying to you.",
+          "narration": "Your code passes every single-threaded unit test, yet in production, your bank balance drops below zero. This is a classic race condition, where thread interleaving destroys your business invariants.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-code-unsafe",
+          "kind": "code-spotlight",
+          "title": "The Check-Then-Act Trap",
+          "filename": "UnsafeAccount.java",
+          "code": "public boolean withdraw(long amount) {\n    if (balance >= amount) { // Check\n        // Context switch happens here!\n        balance -= amount;   // Act\n        return true;\n    }\n    return false;\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Check",
+              "explanation": "Two threads see the same balance and both pass the check.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Act",
+              "explanation": "Both threads subtract, leading to a negative balance.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The check-then-act pattern is dangerous. Two threads pass the balance check simultaneously, then both subtract the amount. The result is a corrupted state that violates your logic.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b3-flow-race",
+          "kind": "flow-diagram",
+          "title": "The Race Condition Timeline",
+          "subtitle": "How interleaving kills data integrity",
+          "nodes": [
+            {
+              "label": "Thread 1",
+              "detail": "Reads balance 100, passes check",
+              "tag": "T1",
+              "accent": "sky"
+            },
+            {
+              "label": "Thread 2",
+              "detail": "Reads balance 100, passes check",
+              "tag": "T2",
+              "accent": "amber"
+            },
+            {
+              "label": "Memory",
+              "detail": "Balance becomes -100",
+              "tag": "State",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When threads interleave, they don't see each other's updates. Thread 1 and 2 both read the same initial state, bypass the safety check, and write back corrupted final values.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-compare-fix",
+          "kind": "compare",
+          "title": "Atomic vs. Non-Atomic",
+          "top": {
+            "label": "Unsafe",
+            "badge": "Race Condition",
+            "tone": "bad",
+            "code": "if (balance >= amount) {\n    balance -= amount;\n}",
+            "points": [
+              "Interleaved execution",
+              "Invariant violation"
+            ]
+          },
+          "bottom": {
+            "label": "Synchronized",
+            "badge": "Atomic",
+            "tone": "good",
+            "code": "synchronized(lock) {\n    if (balance >= amount) {\n        balance -= amount;\n    }\n}",
+            "points": [
+              "Mutual exclusion",
+              "Guaranteed visibility"
+            ]
+          },
+          "narration": "To fix this, we need atomicity. The synchronized block ensures only one thread executes the critical section at a time, forcing threads to queue up and wait their turn.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Race conditions occur in critical sections",
+            "Check-then-act is never thread-safe",
+            "Synchronized blocks enforce atomicity"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How synchronized works under the hood →",
+          "narration": "That is the race condition. In Part 2, we look at how synchronized uses intrinsic monitors to lock objects and how the JVM optimizes these locks.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-intrinsic-locks",
+      "partTitle": "Intrinsic Locks & Monitors",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Monitors • Part 2 of 5",
+          "headline": "Why synchronize on a private final object?",
+          "highlightWord": "private final",
+          "subline": "Synchronizing on 'this' is a trap. Here is the right way to lock.",
+          "narration": "Synchronizing on 'this' is a common rookie mistake. External code can lock your instance, causing deadlocks. Let's see the safe way to manage intrinsic monitors.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-lock",
+          "kind": "code-spotlight",
+          "title": "Safe Locking Pattern",
+          "filename": "SafeAccount.java",
+          "code": "public class SafeAccount {\n    private final Object lock = new Object();\n    private long balance;\n\n    public void withdraw(long amount) {\n        synchronized (lock) {\n            balance -= amount;\n        }\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Encapsulation",
+              "explanation": "A private final object prevents external code from locking your instance.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Monitor",
+              "explanation": "Only one thread can hold this specific lock at a time.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Always use a private final object as your lock. This encapsulates the monitor, ensuring no outside class can interfere with your synchronization, preventing accidental contention or deadlocks.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-term-bytecode",
+          "kind": "terminal",
+          "title": "Bytecode: monitorenter/exit",
+          "caption": "How the JVM handles blocks",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "monitorenter"
+            },
+            {
+              "kind": "output",
+              "text": "  // Acquire lock"
+            },
+            {
+              "kind": "output",
+              "text": "  invokevirtual #critical_section"
+            },
+            {
+              "kind": "command",
+              "text": "monitorexit"
+            },
+            {
+              "kind": "output",
+              "text": "  // Release lock"
+            }
+          ],
+          "narration": "When you use a synchronized block, the compiler generates monitorenter and monitorexit instructions. The JVM ensures that even if an exception occurs, the lock is released.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow-reentrancy",
+          "kind": "flow-diagram",
+          "title": "Reentrancy Explained",
+          "subtitle": "Threads don't deadlock themselves",
+          "nodes": [
+            {
+              "label": "Thread 1",
+              "detail": "Holds lock, count = 1",
+              "tag": "Owner",
+              "accent": "sky"
+            },
+            {
+              "label": "Method B",
+              "detail": "Re-enters lock, count = 2",
+              "tag": "Reentrant",
+              "accent": "amber"
+            },
+            {
+              "label": "Exit",
+              "detail": "Count = 0, lock released",
+              "tag": "Release",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Java locks are reentrant. If a thread already holds the lock, it can enter another synchronized block on the same object without blocking itself. The JVM simply increments a counter.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use private final objects for locks",
+            "Synchronized blocks use monitorenter/exit",
+            "Reentrancy prevents self-deadlocks"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Deadlocks, Livelocks, and Starvation →",
+          "narration": "That's how monitors work. In Part 3, we explore the dark side: how to identify and fix deadlocks, livelocks, and thread starvation.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-liveness-failures",
+      "partTitle": "Deadlocks & Livelocks",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Liveness • Part 3 of 5",
+          "headline": "Why do your threads stop making progress?",
+          "highlightWord": "stop making progress",
+          "subline": "Deadlocks and livelocks are common. Here is how to break the cycle.",
+          "narration": "Your threads are running, but they aren't doing work. They are trapped in a deadlock or a livelock. Let's break the cycle.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow-deadlock",
+          "kind": "flow-diagram",
+          "title": "The Deadlock Cycle",
+          "subtitle": "Circular wait condition",
+          "nodes": [
+            {
+              "label": "Thread 1",
+              "detail": "Holds Account A, waits for B",
+              "tag": "T1",
+              "accent": "sky"
+            },
+            {
+              "label": "Thread 2",
+              "detail": "Holds Account B, waits for A",
+              "tag": "T2",
+              "accent": "amber"
+            },
+            {
+              "label": "Result",
+              "detail": "System hangs indefinitely",
+              "tag": "Deadlock",
+              "accent": "red"
+            }
+          ],
+          "narration": "Deadlocks occur when threads hold resources while waiting for others in a cycle. Thread 1 holds A and waits for B, while Thread 2 holds B and waits for A.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-fix",
+          "kind": "code-spotlight",
+          "title": "Fixing Deadlocks with Ordering",
+          "filename": "Transfer.java",
+          "code": "long firstId = Math.min(a.id, b.id);\nlong secondId = Math.max(a.id, b.id);\n\nsynchronized(first) {\n    synchronized(second) {\n        // Perform transfer\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Global Order",
+              "explanation": "Always lock in the same order to break the circular wait.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Safe Lock",
+              "explanation": "This prevents the cycle that causes deadlocks.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The fix is simple: enforce a global lock order. By always locking the account with the lower ID first, you break the circular wait condition that makes deadlocks possible.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-livelock",
+          "kind": "compare",
+          "title": "Deadlock vs. Livelock",
+          "top": {
+            "label": "Deadlock",
+            "badge": "Blocked",
+            "tone": "bad",
+            "code": "Thread.state = BLOCKED;",
+            "points": [
+              "Threads stop completely",
+              "Visible in thread dumps"
+            ]
+          },
+          "bottom": {
+            "label": "Livelock",
+            "badge": "Runnable",
+            "tone": "bad",
+            "code": "while(true) { retry(); }",
+            "points": [
+              "Threads burn CPU cycles",
+              "No progress made"
+            ]
+          },
+          "narration": "Livelocks are trickier. Threads are runnable and burning CPU, but they keep retrying in lockstep. Use randomized backoff to break the symmetry and let one thread proceed.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Deadlocks require circular wait",
+            "Use global ordering to prevent deadlocks",
+            "Randomized backoff fixes livelocks"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Signaling with wait/notify →",
+          "narration": "Deadlocks and livelocks are solved by ordering and randomness. In Part 4, we master thread signaling with wait and notify.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-wait-notify",
+      "partTitle": "Thread Signaling",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Signaling • Part 4 of 5",
+          "headline": "Why is your wait() call failing?",
+          "highlightWord": "wait() call",
+          "subline": "Spurious wakeups and missed signals are common. Here is the correct pattern.",
+          "narration": "Calling wait() without a loop is a bug. Spurious wakeups happen, and you must re-check your condition. Let's look at the correct signaling pattern.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-wait",
+          "kind": "code-spotlight",
+          "title": "The Correct Signaling Pattern",
+          "filename": "Buffer.java",
+          "code": "synchronized(this) {\n    while (queue.isEmpty()) {\n        wait(); // Releases lock\n    }\n    // Process item\n    notifyAll();\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "While Loop",
+              "explanation": "Always re-check the condition after waking up.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "wait()",
+              "explanation": "Atomically releases the lock and suspends the thread.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use a while loop. Wait can return due to spurious wakeups, and another thread might have grabbed the resource before you. The loop ensures your condition is still valid.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow-signaling",
+          "kind": "flow-diagram",
+          "title": "Wait Set Lifecycle",
+          "subtitle": "How threads communicate",
+          "nodes": [
+            {
+              "label": "Owner",
+              "detail": "Holds monitor",
+              "tag": "Running",
+              "accent": "sky"
+            },
+            {
+              "label": "Wait Set",
+              "detail": "Suspended, waiting for signal",
+              "tag": "Waiting",
+              "accent": "amber"
+            },
+            {
+              "label": "Entry",
+              "detail": "Re-acquires monitor",
+              "tag": "Ready",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When a thread calls wait, it enters the wait set and releases the monitor. When notified, it moves to the entry queue to re-acquire the lock.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-compare-notify",
+          "kind": "compare",
+          "title": "notify() vs. notifyAll()",
+          "top": {
+            "label": "notify()",
+            "badge": "Risky",
+            "tone": "bad",
+            "code": "notify();",
+            "points": [
+              "Wakes one thread",
+              "Can cause missed signals"
+            ]
+          },
+          "bottom": {
+            "label": "notifyAll()",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "notifyAll();",
+            "points": [
+              "Wakes all waiters",
+              "Prevents deadlocks"
+            ]
+          },
+          "narration": "Prefer notifyAll. notify wakes one thread, but if it's the wrong type of thread, it goes back to sleep and the signal is lost. notifyAll ensures everyone checks the condition.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Use while loops for wait()",
+            "wait() releases the monitor",
+            "notifyAll() is safer than notify()"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Advanced Concurrency →",
+          "narration": "Signaling is about robust condition checking. In Part 5, we wrap up with modern concurrency alternatives.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-modern-concurrency",
+      "partTitle": "Modern Java Concurrency",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Java • Part 5 of 5",
+          "headline": "Why avoid synchronized in new code?",
+          "highlightWord": "avoid synchronized",
+          "subline": "Java.util.concurrent offers better performance and more control.",
+          "narration": "Synchronized is fine, but Java's concurrent package is better. Let's see why you should prefer high-level abstractions over hand-rolled monitors.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code-locks",
+          "kind": "code-spotlight",
+          "title": "ReentrantLock vs. Synchronized",
+          "filename": "Modern.java",
+          "code": "Lock lock = new ReentrantLock(true);\n\nlock.lock();\ntry {\n    // Critical section\n} finally {\n    lock.unlock();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Fairness",
+              "explanation": "Fair locks prevent starvation by using FIFO order.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3,
+                7
+              ],
+              "badge": "Try-Finally",
+              "explanation": "Always unlock in a finally block to prevent leaks.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "ReentrantLock gives you fairness options and tryLock capabilities. Always use a try-finally block to ensure the lock is released, even if your code throws an exception.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-flow-juc",
+          "kind": "flow-diagram",
+          "title": "Java Concurrency Toolkit",
+          "subtitle": "Beyond basic monitors",
+          "nodes": [
+            {
+              "label": "Atomic",
+              "detail": "Lock-free variables",
+              "tag": "CAS",
+              "accent": "sky"
+            },
+            {
+              "label": "BlockingQueue",
+              "detail": "Thread-safe buffers",
+              "tag": "Queue",
+              "accent": "amber"
+            },
+            {
+              "label": "Executors",
+              "detail": "Managed thread pools",
+              "tag": "Pools",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The java.util.concurrent package provides everything you need: atomic variables for lock-free updates, blocking queues for producer-consumer, and executors for managing thread lifecycles.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b4-term-summary",
+          "kind": "terminal",
+          "title": "Chapter Summary",
+          "caption": "Key Takeaways",
+          "lines": [
+            {
+              "kind": "output",
+              "text": "1. Race Conditions: Use Synchronization"
+            },
+            {
+              "kind": "output",
+              "text": "2. Deadlocks: Use Global Ordering"
+            },
+            {
+              "kind": "output",
+              "text": "3. Signaling: Use While + notifyAll"
+            },
+            {
+              "kind": "output",
+              "text": "4. Modern: Use java.util.concurrent"
+            }
+          ],
+          "narration": "We covered race conditions, deadlock prevention, signaling patterns, and modern concurrency. Use these tools to build robust, thread-safe applications.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Prefer java.util.concurrent over synchronized",
+            "Always use finally for unlocking",
+            "git checkout topic/level-5/thread-safety-and-synchronization"
+          ],
+          "nextPartTeaser": "Explore the full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You are now a concurrency expert. Check out the roadmap for more deep dives and run the lab code on the branch below.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
