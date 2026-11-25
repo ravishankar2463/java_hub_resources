@@ -1,0 +1,489 @@
+{
+  "chapterId": "level-11/microservice-principles",
+  "level": "level-11",
+  "levelLabel": "Level 11",
+  "slug": "microservice-principles",
+  "chapterTitle": "Microservice Principles",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/microservice-principles",
+  "branchName": "topic/level-11/microservice-principles",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-distributed-monolith-trap",
+      "partTitle": "Why Distributed Monoliths Fail",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Microservices • Part 1 of 4",
+          "headline": "Is your microservice architecture a distributed monolith?",
+          "highlightWord": "distributed monolith",
+          "subline": "If you deploy services together, you're paying the complexity tax without the scaling reward.",
+          "narration": "If a routine feature change in Service A forces a deployment of Service B and C, you aren't doing microservices. You've built a distributed monolith—all the network latency of a distributed system with the tight coupling of a legacy codebase.",
+          "durationSec": 12,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Architecture Trade-offs",
+          "top": {
+            "label": "Modular Monolith",
+            "badge": "Single Artifact",
+            "tone": "good",
+            "code": "// Compile-time safety\n// In-process calls\n// Shared ACID transactions",
+            "points": [
+              "Refactoring is just a move/rename",
+              "Zero network overhead"
+            ]
+          },
+          "bottom": {
+            "label": "Microservices",
+            "badge": "Independent Units",
+            "tone": "neutral",
+            "code": "// Network calls\n// Eventual consistency\n// Independent deployments",
+            "points": [
+              "True team autonomy",
+              "High operational complexity"
+            ]
+          },
+          "narration": "A modular monolith keeps boundaries enforced by the compiler. Microservices move those boundaries across network hops. The distributed monolith is the worst of both worlds: separate deployments that still share a database and call each other in lockstep.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Microservice Reality",
+          "subtitle": "Decoupling at the storage and logic layer",
+          "nodes": [
+            {
+              "label": "Orders Service",
+              "detail": "Owns orders_db exclusively",
+              "tag": "Service A",
+              "accent": "sky"
+            },
+            {
+              "label": "Billing Service",
+              "detail": "Owns billing_db exclusively",
+              "tag": "Service B",
+              "accent": "amber"
+            },
+            {
+              "label": "Event Broker",
+              "detail": "Kafka/RabbitMQ for async events",
+              "tag": "Transport",
+              "accent": "purple"
+            }
+          ],
+          "narration": "True microservices own their data. If Service A writes to Service B's database, you have hidden schema coupling. Use async events to communicate, keeping each service's persistence isolated and protected.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-isolation",
+          "kind": "code-spotlight",
+          "title": "Database-per-Service Config",
+          "filename": "application.yml",
+          "code": "spring:\n  datasource:\n    url: jdbc:postgresql://orders-db:5432/orders_db\n    username: ${ORDERS_DB_USER}\n\n# billing-service/application.yml\nspring:\n  datasource:\n    url: jdbc:postgresql://billing-db:5432/billing_db\n    username: ${BILLING_DB_USER}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Isolation",
+              "explanation": "Dedicated credentials and physical schemas prevent cross-service table access.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Decoupling",
+              "explanation": "Billing cannot see Orders tables, forcing API-based communication.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Never share a database. Even if they sit on the same physical server, use separate schemas and credentials. This prevents noisy-neighbor contention and hidden coupling where one team breaks another's SQL queries.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Avoid distributed monoliths",
+            "Database-per-service is mandatory",
+            "Use async events for communication"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Domain-Driven Design & Bounded Contexts →",
+          "narration": "That's the foundation. In Part 2, we dive into Domain-Driven Design to stop slicing services by database tables and start slicing by business capability.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-bounded-contexts",
+      "partTitle": "Drawing Boundaries with DDD",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Domain Modeling • Part 2 of 4",
+          "headline": "Why your 'Customer' class is a ticking time bomb.",
+          "highlightWord": "Customer class",
+          "subline": "Modeling one universal entity for every context is the fastest way to kill productivity.",
+          "narration": "If your Customer class has 60 columns used by shipping, billing, and marketing, you've created a monolith in disguise. Every change risks breaking unrelated workflows.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-domain",
+          "kind": "code-spotlight",
+          "title": "Bounded Context Models",
+          "filename": "Domain.java",
+          "code": "// Ordering Context\npublic record OrderCustomer(UUID id, LoyaltyTier tier) {}\n\n// Billing Context\npublic record BillingCustomer(UUID id, String taxId, BigDecimal limit) {}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Context A",
+              "explanation": "Only cares about loyalty tier for order validation.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Context B",
+              "explanation": "Only cares about tax and credit limits for invoicing.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Split the domain. The Ordering service doesn't need a tax ID, and Billing doesn't care about loyalty tiers. By defining context-specific records, you stop the ripple effect of changes across your entire system.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-acl",
+          "kind": "code-spotlight",
+          "title": "Anti-Corruption Layer (ACL)",
+          "filename": "ACL.java",
+          "code": "public BillingCustomer toDomain(LegacyCrmDto legacy) {\n    return new BillingCustomer(\n        UUID.fromString(legacy.id()),\n        legacy.vatNumber(),\n        new BigDecimal(legacy.limit())\n    );\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Translation",
+              "explanation": "Isolates legacy schema quirks from your clean domain logic.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Mapping",
+              "explanation": "If the legacy system changes, you only update this mapper.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When dealing with legacy systems, use an Anti-Corruption Layer. It maps ugly external data into your clean domain types. Your core business logic remains pristine, even if the legacy CRM changes its schema tomorrow.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Strategic DDD",
+          "subtitle": "Defining boundaries by language",
+          "nodes": [
+            {
+              "label": "Ordering Context",
+              "detail": "Ubiquitous language: Order, Tier, Customer",
+              "tag": "Context 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Billing Context",
+              "detail": "Ubiquitous language: Invoice, Tax, Limit",
+              "tag": "Context 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Shared ID",
+              "detail": "Opaque UUID links the contexts",
+              "tag": "Glue",
+              "accent": "purple"
+            }
+          ],
+          "narration": "A Bounded Context is where your terminology has one consistent meaning. Use a shared UUID to link them, but keep the internal models completely separate. This is how you scale teams without constant coordination.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Avoid universal 'God' models",
+            "Use context-specific records",
+            "Implement ACLs for legacy integration"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Solving Data Joins & Read Models →",
+          "narration": "Boundaries are set. In Part 3, we solve the biggest microservice headache: how to query data across services without breaking the database-per-service rule.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-data-joins",
+      "partTitle": "Replacing Cross-Database Joins",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Data Strategy • Part 3 of 4",
+          "headline": "How do you join data when the tables are in different databases?",
+          "highlightWord": "different databases",
+          "subline": "You can't use SQL joins anymore. Here are the two industry-standard patterns.",
+          "narration": "Once you split your databases, SQL joins are gone. You have two choices: API composition for simple lookups, or event-driven read models for complex search and pagination.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-comp",
+          "kind": "code-spotlight",
+          "title": "API Composition (BFF)",
+          "filename": "Composer.java",
+          "code": "public OrderSummary getOrderSummary(UUID id) {\n    var order = orderClient.findById(id);\n    var cust = custClient.findById(order.customerId());\n\n    return new OrderSummary(order, cust);\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Aggregator",
+              "explanation": "Fetches data from multiple services over HTTP/gRPC.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Result",
+              "explanation": "Combines them in memory for the frontend.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "API composition is simple and returns fresh data. But it's chatty. If you need to filter or paginate across thousands of rows, this approach will fall over. That's when you need a replicated read model.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-proj",
+          "kind": "code-spotlight",
+          "title": "Event-Driven Read Model",
+          "filename": "Projection.java",
+          "code": "@KafkaListener(topics = \"customer.updated\")\npublic void onUpdate(CustomerEvent event) {\n    jdbcClient.sql(\"INSERT ... ON CONFLICT DO UPDATE\")\n              .param(\"version\", event.version())\n              .update();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Async",
+              "explanation": "Listens to events to build a local read-optimized table.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Idempotent",
+              "explanation": "Uses version checks to handle out-of-order events.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "For high-performance reads, project data into a local table. Use version numbers to ensure that older events don't overwrite newer state. It's eventually consistent, but lightning fast for complex queries.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Query Patterns",
+          "subtitle": "Choosing the right strategy",
+          "nodes": [
+            {
+              "label": "API Composition",
+              "detail": "Low complexity, high latency",
+              "tag": "Simple",
+              "accent": "sky"
+            },
+            {
+              "label": "Read Model",
+              "detail": "High complexity, high performance",
+              "tag": "Complex",
+              "accent": "emerald"
+            },
+            {
+              "label": "Event Bus",
+              "detail": "Async propagation",
+              "tag": "Transport",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Use API composition for simple ID lookups. Use event-driven read models for search, sorting, and pagination. Don't over-engineer simple screens with complex event projections.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "API composition for simple lookups",
+            "Read models for complex search",
+            "Version events for consistency"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The 8 Fallacies of Distributed Systems →",
+          "narration": "Data is handled. In Part 4, we cover the eight fallacies of distributed computing—the assumptions that will crash your production system if you aren't careful.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-fallacies-and-conclusion",
+      "partTitle": "The 8 Fallacies & Final Takeaways",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Production Readiness • Part 4 of 4",
+          "headline": "Why your code works on your laptop but fails in the cloud.",
+          "highlightWord": "fails in the cloud",
+          "subline": "The 8 fallacies of distributed computing are the silent killers of microservice reliability.",
+          "narration": "You can't assume the network is reliable, latency is zero, or bandwidth is infinite. These fallacies are why your local tests pass, but your production system flakes out under load.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "Local vs. Distributed",
+          "top": {
+            "label": "Local Method Call",
+            "badge": "Reliable",
+            "tone": "good",
+            "code": "service.doWork();",
+            "points": [
+              "Zero latency",
+              "Immediate success/fail"
+            ]
+          },
+          "bottom": {
+            "label": "Remote Network Call",
+            "badge": "Unreliable",
+            "tone": "bad",
+            "code": "client.post(\"/work\");",
+            "points": [
+              "Timeouts needed",
+              "Partial failures common"
+            ]
+          },
+          "narration": "Local calls are reliable. Network calls are not. You need timeouts, retries, and circuit breakers. Never assume a request will succeed just because it worked in your dev environment.",
+          "durationSec": 11,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Distributed Survival",
+          "subtitle": "Defensive architecture",
+          "nodes": [
+            {
+              "label": "Timeouts",
+              "detail": "Fail fast, don't hang threads",
+              "tag": "Safety",
+              "accent": "amber"
+            },
+            {
+              "label": "Retries",
+              "detail": "Use exponential backoff",
+              "tag": "Resilience",
+              "accent": "sky"
+            },
+            {
+              "label": "Tracing",
+              "detail": "Correlation IDs are mandatory",
+              "tag": "Observability",
+              "accent": "purple"
+            }
+          ],
+          "narration": "To survive, you need observability. Correlation IDs are non-negotiable for debugging requests across services. Without them, you're flying blind in a distributed environment.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "The Final Checklist",
+          "caption": "Before you split your monolith",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Are teams autonomous?"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Are contracts versioned?"
+            },
+            {
+              "kind": "comment",
+              "text": "# 3. Is tracing enabled?"
+            },
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-11/microservice-principles"
+            },
+            {
+              "kind": "success",
+              "text": "Ready to scale."
+            }
+          ],
+          "narration": "Microservices are an organizational trade-off. If you aren't ready to handle the operational complexity, stay in a modular monolith. It's cheaper, faster, and safer.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Respect the 8 fallacies",
+            "Use timeouts and tracing",
+            "Modular monoliths are valid"
+          ],
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered the principles of microservices. Check out the roadmap link below to dive deeper into the code samples and architecture patterns.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
