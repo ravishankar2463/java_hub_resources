@@ -1,0 +1,524 @@
+{
+  "chapterId": "level-1/abstraction",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "abstraction",
+  "chapterTitle": "Abstraction",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/abstraction",
+  "branchName": "topic/level-1/abstraction",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-abstract-classes-and-contracts",
+      "partTitle": "Separating Contracts from Implementation",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Java Abstraction • Part 1 of 4",
+          "headline": "Coupling your checkout to Stripe's SDK will hurt.",
+          "highlightWord": "will hurt",
+          "subline": "Swapping payment vendors shouldn't require rewriting core business logic.",
+          "narration": "If your backend code calls Stripe directly inside your order service, swapping payment providers means rewriting core checkout logic. Abstraction separates what an operation promises to do from how it works behind the scenes.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Decoupling with Contract Boundaries",
+          "subtitle": "Caller depends on contract, implementations stay interchangeable",
+          "nodes": [
+            {
+              "label": "OrderProcessingService",
+              "detail": "Caller depending only on abstract contract",
+              "tag": "Caller",
+              "accent": "sky"
+            },
+            {
+              "label": "PaymentGateway",
+              "detail": "Contract defining charge(BigDecimal) method",
+              "tag": "Interface/Abstract",
+              "accent": "emerald"
+            },
+            {
+              "label": "Stripe / PayPal Adapters",
+              "detail": "Concrete production HTTP payment drivers",
+              "tag": "Production",
+              "accent": "amber"
+            },
+            {
+              "label": "FakeTestGateway",
+              "detail": "In-memory stub for zero-HTTP unit testing",
+              "tag": "Testing",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Instead of binding to Stripe, your order service depends on a clean PaymentGateway contract. Production code runs real gateway adapters while unit tests pass an in-memory stub without touching external APIs.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-abstract",
+          "kind": "code-spotlight",
+          "title": "Abstract Classes: Partial Blueprints",
+          "filename": "ReportGenerator.java",
+          "code": "public abstract class ReportGenerator {\n    protected final String reportTitle;\n    protected final Instant generatedAt = Instant.now();\n\n    public ReportGenerator(String reportTitle) {\n        this.reportTitle = reportTitle;\n    }\n\n    public String formatHeader() {\n        return \"=== \" + reportTitle + \" ===\";\n    }\n\n    public abstract byte[] export(List<String> rows);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "abstract class",
+              "explanation": "Cannot be instantiated directly with new; represents an incomplete shared base concept.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                9,
+                10,
+                11
+              ],
+              "badge": "formatHeader()",
+              "explanation": "Concrete method inherited and shared by all concrete subclasses.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                13
+              ],
+              "badge": "abstract export()",
+              "explanation": "No method body; forces every concrete subclass to supply its own implementation.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "An abstract class cannot be instantiated directly with new. It holds shared state and concrete helper methods, while leaving abstract methods bodyless so every concrete subclass supplies its own specific export logic.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare-instantiation",
+          "kind": "compare",
+          "title": "Concrete Subclasses vs. Direct Instantiation",
+          "top": {
+            "label": "Direct Instantiation",
+            "badge": "❌ Compile Error",
+            "tone": "bad",
+            "code": "// Fails at compile time!\nReportGenerator gen = new ReportGenerator(\"Q4\");",
+            "points": [
+              "Compiler rejects direct instantiation",
+              "Abstract types are incomplete blueprints"
+            ]
+          },
+          "bottom": {
+            "label": "CsvReportGenerator",
+            "badge": "✅ Valid Subclass",
+            "tone": "good",
+            "code": "public class CsvReportGenerator extends ReportGenerator {\n    public CsvReportGenerator(String title) { super(title); }\n    @Override public byte[] export(List<String> rows) {\n        return String.join(\"\\n\", rows).getBytes();\n    }\n}",
+            "points": [
+              "Invokes super(...) to initialize base fields",
+              "Supplies body for all abstract methods"
+            ]
+          },
+          "narration": "Attempting to instantiate an abstract class directly triggers a compile error. Subclasses like CsvReportGenerator call super to initialize base fields and implement all missing abstract methods.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Abstraction decouples contracts from implementation details",
+            "Abstract classes combine shared state with abstract hooks",
+            "Concrete subclasses must implement all abstract methods"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Template Method pattern + constructor NPE trap →",
+          "narration": "That is the core abstraction boundary. Next in Part 2, see how template methods enforce strict workflows, plus a hidden constructor bug that causes silent NullPointerExceptions.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-template-method-and-constructor-trap",
+      "partTitle": "Template Workflows & The Constructor Overridable Trap",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Polymorphic Traps • Part 2 of 4",
+          "headline": "Why super constructors trigger NullPointerExceptions.",
+          "highlightWord": "NullPointerExceptions",
+          "subline": "Calling an abstract method inside a base constructor crashes before subclass fields exist.",
+          "narration": "Calling an overridable method inside an abstract class constructor looks harmless. But runtime polymorphic dispatch will invoke subclass logic before subclass fields are initialized, throwing a silent NullPointerException.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-template",
+          "kind": "code-spotlight",
+          "title": "Template Method: Enforcing Guardrails",
+          "filename": "TransferWorkflow.java",
+          "code": "public abstract class TransferWorkflow {\n    public final void execute(String accountId, BigDecimal amount) {\n        authenticate(accountId);\n        validateLimits(accountId, amount);\n        postLedgerEntry(accountId, amount);\n        writeAuditLog(accountId, amount);\n    }\n\n    private void authenticate(String id) { }\n    private void validateLimits(String id, BigDecimal amt) { }\n    protected abstract void postLedgerEntry(String id, BigDecimal amt);\n    private void writeAuditLog(String id, BigDecimal amt) { } \n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "badge": "final execute()",
+              "explanation": "Marked final so subclasses cannot override, reorder, or skip auth and audit checks.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                11
+              ],
+              "badge": "protected abstract hook",
+              "explanation": "Subclasses customize only the specific ledger posting logic.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Template Method pattern marks the workflow method final so subclasses cannot skip auth or audit steps. Subclasses provide code only for the protected abstract hook method.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare-npe",
+          "kind": "compare",
+          "title": "The Constructor Overridable Method Trap",
+          "top": {
+            "label": "Overridable Constructor Call",
+            "badge": "❌ NullPointerException",
+            "tone": "bad",
+            "code": "public abstract class BaseService {\n    protected BaseService() { initialize(); }\n    protected abstract void initialize();\n}\npublic class AuditService extends BaseService {\n    private final String dest = \"audit-log\";\n    protected void initialize() { System.out.println(dest.length()); }\n}",
+            "points": [
+              "super() runs BEFORE AuditService initializers!",
+              "dest is still null when initialize() runs"
+            ]
+          },
+          "bottom": {
+            "label": "Safe Helper Initialization",
+            "badge": "✅ Safe Constructor",
+            "tone": "good",
+            "code": "public abstract class SafeBaseService {\n    protected SafeBaseService() { initInternal(); }\n    private void initInternal() { /* non-overridable */ }\n}",
+            "points": [
+              "Only call private or final methods in constructors",
+              "Prevents observing half-initialized state"
+            ]
+          },
+          "narration": "When AuditService calls super, BaseService constructor triggers initialize. But AuditService fields are still null. Never call non-final overridable methods inside constructors.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b4-term-trace",
+          "kind": "terminal",
+          "title": "Subclass Initialization Dispatch Trace",
+          "caption": "Exact order of JVM constructor execution",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Allocate AuditService memory (all fields set to null)"
+            },
+            {
+              "kind": "output",
+              "text": "AuditService instance allocated -> dest = null"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Subclass constructor implicitly invokes super()"
+            },
+            {
+              "kind": "command",
+              "text": "BaseService() -> calls dynamic method initialize()"
+            },
+            {
+              "kind": "error",
+              "text": "Exception: java.lang.NullPointerException: Cannot read field dest"
+            },
+            {
+              "kind": "success",
+              "text": "Rule: Subclass field initializers run AFTER super() returns!"
+            }
+          ],
+          "narration": "Here is the exact trace. Memory is allocated with default null fields, super runs first, dynamically dispatches to the subclass method, and crashes because the field initializer hasn't executed yet.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Mastered",
+          "takeaways": [
+            "Use final template methods to freeze execution order",
+            "Never call overridable methods inside constructors",
+            "Subclass fields remain null while super() executes"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Multiple type inheritance & Java 9 private interface methods →",
+          "narration": "Now you know how to structure template workflows safely. In Part 3, we dive into multiple interface inheritance and modern Java 9 private interface helpers.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-interfaces-and-modern-evolution",
+      "partTitle": "Multiple Inheritance of Types & Modern Interface Features",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Type System Architecture • Part 3 of 4",
+          "headline": "Java forbids multi-class inheritance—here is why.",
+          "highlightWord": "forbids multi-class",
+          "subline": "State diamond conflicts destroy memory layouts, but interface type composition is completely safe.",
+          "narration": "If a class could extend multiple classes with state, inherited field conflicts would wreck memory layouts. Interfaces solve this by offering multiple inheritance of types without carrying instance state.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow-evolution",
+          "kind": "flow-diagram",
+          "title": "Evolution of Java Interfaces",
+          "subtitle": "From pure contracts to modern sealed abstractions",
+          "nodes": [
+            {
+              "label": "Java 7 & Earlier",
+              "detail": "Abstract methods & static constants only",
+              "tag": "Legacy",
+              "accent": "sky"
+            },
+            {
+              "label": "Java 8",
+              "detail": "Default & static interface methods for API evolution",
+              "tag": "Evolution",
+              "accent": "amber"
+            },
+            {
+              "label": "Java 9",
+              "detail": "Private & private static methods for internal helpers",
+              "tag": "Encapsulation",
+              "accent": "emerald"
+            },
+            {
+              "label": "Java 17+",
+              "detail": "Sealed interfaces restricting explicit implementation permits",
+              "tag": "Modern",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Interfaces evolved dramatically. Java 8 added default and static methods for API evolution. Java 9 introduced private helpers to deduplicate code, and Java 17 brought sealed types for closed domain modeling.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-multi",
+          "kind": "code-spotlight",
+          "title": "Multiple Inheritance of Types",
+          "filename": "InvoiceJob.java",
+          "code": "public interface Auditable { String auditId(); }\npublic interface Retryable { int maxAttempts(); }\n\npublic interface Exportable extends Auditable, Retryable {\n    byte[] toCsv();\n}\n\npublic class InvoiceJob implements Auditable, Retryable {\n    private final String invoiceId;\n    public InvoiceJob(String id) { this.invoiceId = id; }\n    public String auditId() { return \"INV-\" + invoiceId; }\n    public int maxAttempts() { return 3; }\n}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "Extends Multiple",
+              "explanation": "Exportable extends both Auditable and Retryable interfaces seamlessly.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                8,
+                13
+              ],
+              "badge": "Implements Multiple",
+              "explanation": "InvoiceJob satisfies multiple interface contracts without state collision.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "A class can implement multiple interfaces, and interfaces can extend multiple parent interfaces. Because interfaces do not hold per-instance fields, Java guarantees clean type polymorphism without state collisions.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-code-private-methods",
+          "kind": "code-spotlight",
+          "title": "Private Interface Methods (Java 9+)",
+          "filename": "AuditLogger.java",
+          "code": "public interface AuditLogger {\n    void write(String formattedLine);\n\n    default void logInfo(String msg) {\n        write(formatEntry(\"INFO\", msg));\n    }\n    default void logError(String msg) {\n        write(formatEntry(\"ERROR\", msg));\n    }\n\n    private String formatEntry(String level, String msg) {\n        return \"[\" + level + \"] \" + sanitize(msg);\n    }\n    // ...",
+          "steps": [
+            {
+              "lines": [
+                4,
+                7
+              ],
+              "badge": "default methods",
+              "explanation": "Public default methods share common underlying formatting logic.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                11,
+                14
+              ],
+              "badge": "private helpers",
+              "explanation": "Java 9+ internal helpers hidden from callers and implementing classes.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Java 9 allowed private and private static methods inside interfaces. Now default methods can share formatting and sanitization logic internally without polluting the public contract.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Interfaces enable multiple type inheritance without state collisions",
+            "Default methods let you extend existing APIs safely",
+            "Private interface methods encapsulate internal helper logic"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Diamond default collisions, sealed interfaces & cheat sheet →",
+          "narration": "That is how modern interfaces handle capabilities. In Part 4, we solve default method diamond collisions and review sealed interfaces alongside the final decision matrix.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-diamond-conflicts-and-sealed-interfaces",
+      "partTitle": "Default Method Conflicts, Sealed Interfaces & Cheat Sheet",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Advanced Architecture • Part 4 of 4",
+          "headline": "What happens when two interfaces share a default method?",
+          "highlightWord": "default method",
+          "subline": "javac halts with a compile error unless you know the 3 conflict resolution rules.",
+          "narration": "If two implemented interfaces define identical default methods, javac halts with a compile error. You must know Java's three resolution rules to fix the diamond collision cleanly.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare-diamond",
+          "kind": "compare",
+          "title": "Resolving Default Method Diamond Conflicts",
+          "top": {
+            "label": "Ambiguous Default Collision",
+            "badge": "❌ Compile Error",
+            "tone": "bad",
+            "code": "interface ConsoleOutput { default void emit(String t) {} }\ninterface FileOutput { default void emit(String t) {} }\n\npublic class DualOutput implements ConsoleOutput, FileOutput {\n    // Error: inherits unrelated defaults for emit!\n}",
+            "points": [
+              "javac cannot guess which default method to invoke",
+              "Unrelated default methods clash at compile time"
+            ]
+          },
+          "bottom": {
+            "label": "Explicit Resolution Syntax",
+            "badge": "✅ Clean Override",
+            "tone": "good",
+            "code": "public class DualOutput implements ConsoleOutput, FileOutput {\n    @Override\n    public void emit(String t) {\n        ConsoleOutput.super.emit(t);\n        FileOutput.super.emit(t);\n    }\n}",
+            "points": [
+              "Class implementation always overrides interface defaults",
+              "InterfaceName.super.method() explicitly delegates"
+            ]
+          },
+          "narration": "When two unrelated interfaces declare identical default methods, compilation fails. Resolve it by overriding the method and using InterfaceName dot super dot methodName to explicitly select the behavior you want.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-sealed",
+          "kind": "code-spotlight",
+          "title": "Sealed Interfaces (Java 17+)",
+          "filename": "PaymentStatus.java",
+          "code": "public sealed interface PaymentStatus\n        permits PaymentStatus.Success,\n                PaymentStatus.Failed,\n                PaymentStatus.Pending {\n\n    record Success(String txId) implements PaymentStatus {}\n    record Failed(String code, String reason) implements PaymentStatus {}\n    record Pending(int queuePosition) implements PaymentStatus {}\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "badge": "sealed & permits",
+              "explanation": "Restricts implementation exclusively to permitted records or classes.",
+              "accent": "purple"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8
+              ],
+              "badge": "Exhaustive Switch",
+              "explanation": "Enables Java 21+ switch pattern matching to verify all cases without default clauses.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Sealed interfaces restrict which classes can implement them using permits. This creates closed domain hierarchies, enabling Java 21 switch expressions to check exhaustiveness without requiring dummy default clauses.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare-decision",
+          "kind": "compare",
+          "title": "Abstract Class vs Interface Decision Matrix",
+          "top": {
+            "label": "Abstract Class",
+            "badge": "State & Template Workflows",
+            "tone": "neutral",
+            "code": "// Use when components share state or Skeletal logic:\n- Requires instance fields (mutable / final)\n- Single inheritance (extends base class)\n- Protected / package-private template methods",
+            "points": [
+              "Best for closely related classes sharing instance fields",
+              "Enforces immutable initialization via super(...)"
+            ]
+          },
+          "bottom": {
+            "label": "Interface",
+            "badge": "Decoupled Capabilities",
+            "tone": "good",
+            "code": "// Use for public service contracts & capabilities:\n- Pure contracts without instance state\n- Multiple inheritance of types (implements)\n- Default, static & private helper methods",
+            "points": [
+              "Default choice for public APIs and service contracts",
+              "Enables loose coupling and easy mocking in tests"
+            ]
+          },
+          "narration": "Reach for abstract classes when you need shared instance state, non-public methods, or template workflows. Choose interfaces for pure capabilities, public service contracts, and decoupled multi-type APIs.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Level 1 Abstraction Complete!",
+          "takeaways": [
+            "Class implementations beat interface default method conflicts",
+            "Sealed interfaces create closed, exhaustive domain models",
+            "Prefer interfaces by default; use abstract classes for stateful skeletons"
+          ],
+          "command": "git checkout topic/level-1/abstraction",
+          "nextPartTeaser": "Full roadmap & JUnit labs at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered Java abstraction. Run git checkout topic/level-1/abstraction to practice the companion labs and head to ravishankar2463 dot github dot io slash java hub.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
