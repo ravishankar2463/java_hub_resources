@@ -1,0 +1,493 @@
+{
+  "chapterId": "level-12/kubernetes-k8s-for-java-devs",
+  "level": "level-12",
+  "levelLabel": "Level 12",
+  "slug": "kubernetes-k8s-for-java-devs",
+  "chapterTitle": "Kubernetes (K8s) for Java Devs",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-12/kubernetes-k8s-for-java-devs",
+  "branchName": "topic/level-12/kubernetes-k8s-for-java-devs",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-deployment-anatomy",
+      "partTitle": "Spring Boot Pods and Deployments",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "K8s for Java • Part 1 of 4",
+          "headline": "Why does your Spring Boot pod keep crashing?",
+          "highlightWord": "crashing",
+          "subline": "It isn't just the code. It is how you define your K8s manifest.",
+          "narration": "Running a single container is easy. Running twelve microservices across a cluster is where things break. If your JVM crashes, it's usually because you ignored how K8s handles resources.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Workload Hierarchy",
+          "subtitle": "Deployment manages ReplicaSets, which manage Pods",
+          "nodes": [
+            {
+              "label": "Deployment",
+              "detail": "Orchestrates rolling updates and rollbacks",
+              "tag": "Manager",
+              "accent": "sky"
+            },
+            {
+              "label": "ReplicaSet",
+              "detail": "Ensures exact Pod count is running",
+              "tag": "Controller",
+              "accent": "amber"
+            },
+            {
+              "label": "Pod",
+              "detail": "The atomic unit; shares network & storage",
+              "tag": "Runtime",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "You never run pods alone. A Deployment manages ReplicaSets, which ensure your desired pod count stays active. If a node dies, the controller schedules a new pod elsewhere.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-manifest",
+          "kind": "code-spotlight",
+          "title": "Production-Ready Manifest",
+          "filename": "deployment.yaml",
+          "code": "spec:\n  template:\n    spec:\n      terminationGracePeriodSeconds: 45\n      containers:\n        - name: order-service\n          resources:\n            requests:\n              memory: \"2048Mi\"\n            limits:\n              memory: \"2048Mi\"\n          env:\n            - name: JAVA_TOOL_OPTIONS\n              value: \"-XX:MaxRAMPercentage=75.0\"",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Grace Period",
+              "explanation": "Gives the JVM time to drain connections before SIGKILL.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7,
+                9
+              ],
+              "badge": "Memory Limits",
+              "explanation": "Set requests equal to limits to prevent OOM eviction.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                12
+              ],
+              "badge": "JVM Tuning",
+              "explanation": "MaxRAMPercentage ensures the heap stays within K8s limits.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Set memory requests equal to limits to avoid OOM eviction. Use MaxRAMPercentage so the JVM respects the container's memory boundary, and always define a grace period for clean shutdowns.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "CPU Limits: The Silent Killer",
+          "top": {
+            "label": "With CPU Limits",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "limits:\n  cpu: \"1000m\"",
+            "points": [
+              "Triggers CFS throttling",
+              "JVM threads freeze",
+              "Latency spikes"
+            ]
+          },
+          "bottom": {
+            "label": "Without CPU Limits",
+            "badge": "Good",
+            "tone": "good",
+            "code": "requests:\n  cpu: \"500m\"",
+            "points": [
+              "Allows burst capacity",
+              "Prevents thread freezing",
+              "Smoother startup"
+            ]
+          },
+          "narration": "Avoid hard CPU limits. They trigger CFS throttling, which freezes your JVM threads even if the node is idle. Use requests for scheduling, but leave limits off to allow for burst capacity.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Match memory requests and limits",
+            "Use MaxRAMPercentage for the JVM",
+            "Avoid hard CPU limits"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why your database health check is killing your cluster →",
+          "narration": "That's the deployment foundation. In Part 2, we tackle health probes and why checking your database in a liveness probe is a recipe for a crash loop.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-probes-and-shutdown",
+      "partTitle": "Health Probes & Graceful Shutdown",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "K8s for Java • Part 2 of 4",
+          "headline": "Is your database check killing your pods?",
+          "highlightWord": "killing your pods",
+          "subline": "Health probes are the most common cause of Java outage cycles.",
+          "narration": "If your liveness probe checks the database, a simple network blip will kill every pod in your cluster. Let's fix your health strategy.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Probe Lifecycle",
+          "subtitle": "Separate startup, liveness, and readiness",
+          "nodes": [
+            {
+              "label": "Startup",
+              "detail": "Wait for JVM boot and migrations",
+              "tag": "Init",
+              "accent": "sky"
+            },
+            {
+              "label": "Liveness",
+              "detail": "Is the JVM process alive?",
+              "tag": "Health",
+              "accent": "amber"
+            },
+            {
+              "label": "Readiness",
+              "detail": "Can we accept traffic?",
+              "tag": "Traffic",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Startup probes protect slow JVM boots. Liveness checks if the process is dead. Readiness controls traffic flow. Never mix them up.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-probes",
+          "kind": "code-spotlight",
+          "title": "Correct Probe Config",
+          "filename": "probes.yaml",
+          "code": "startupProbe:\n  httpGet: { path: /actuator/health/liveness, port: 8081 }\n  failureThreshold: 30\nlivenessProbe:\n  httpGet: { path: /actuator/health/liveness, port: 8081 }\nreadinessProbe:\n  httpGet: { path: /actuator/health/readiness, port: 8081 }",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Startup",
+              "explanation": "High threshold for slow Spring context startup.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Liveness",
+              "explanation": "Check only the JVM state, not the DB.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Readiness",
+              "explanation": "Check if the app is ready for traffic.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use the Actuator probes. Keep liveness focused on the JVM process itself. If the database is down, the app should stay alive and return a 503, not restart.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-shutdown",
+          "kind": "terminal",
+          "title": "Graceful Termination",
+          "caption": "Why you need a preStop hook",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Add a delay to drain connections"
+            },
+            {
+              "kind": "command",
+              "text": "lifecycle:\n  preStop:\n    sleep: { seconds: 10 }"
+            },
+            {
+              "kind": "output",
+              "text": "Spring: server.shutdown=graceful"
+            },
+            {
+              "kind": "success",
+              "text": "No more 502 Bad Gateway errors!"
+            }
+          ],
+          "narration": "K8s removes pods from load balancers asynchronously. Without a preStop sleep, your pod receives SIGTERM while traffic is still arriving. Add a 10-second sleep to drain connections gracefully.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Never check DB in liveness",
+            "Use Startup probes for slow boots",
+            "Add preStop sleep for zero downtime"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Secrets, ConfigMaps, and the base64 trap →",
+          "narration": "That's the health and shutdown strategy. In Part 3, we look at why your secrets aren't actually secure and how to manage configuration properly.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-secrets-and-config",
+      "partTitle": "Secrets and Configuration",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "K8s for Java • Part 3 of 4",
+          "headline": "Your K8s secrets are not encrypted.",
+          "highlightWord": "not encrypted",
+          "subline": "Base64 is encoding, not security. Here is how to actually protect your keys.",
+          "narration": "If you think K8s secrets are safe, think again. They are just base64 encoded strings. Anyone with read access can decode them in a heartbeat.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Config vs Secrets",
+          "top": {
+            "label": "ConfigMap",
+            "badge": "Public",
+            "tone": "neutral",
+            "code": "data:\n  APP_PORT: \"8080\"",
+            "points": [
+              "Non-sensitive settings",
+              "Inject as env vars"
+            ]
+          },
+          "bottom": {
+            "label": "Secret",
+            "badge": "Private",
+            "tone": "bad",
+            "code": "data:\n  DB_PASS: \"cGFzc3dvcmQ=\"",
+            "points": [
+              "Base64 is not encryption",
+              "Use external vaults"
+            ]
+          },
+          "narration": "ConfigMaps are for public settings. Secrets are for keys, but they are plain text in etcd. You must encrypt them at rest or use a sidecar to pull them from a vault.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-mount",
+          "kind": "code-spotlight",
+          "title": "Dynamic Config Refresh",
+          "filename": "application.yml",
+          "code": "spring:\n  config:\n    import: optional:configtree:/etc/config/",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "ConfigTree",
+              "explanation": "Mounts ConfigMaps as files that refresh automatically.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Don't use env vars for everything. Mount your ConfigMaps as volumes. Spring Boot can watch these files and refresh your configuration without restarting the pod.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Production Secret Management",
+          "subtitle": "Don't store secrets in Git",
+          "nodes": [
+            {
+              "label": "Vault",
+              "detail": "AWS/GCP/HashiCorp",
+              "tag": "Source",
+              "accent": "amber"
+            },
+            {
+              "label": "External Secrets",
+              "detail": "Syncs to K8s Secret",
+              "tag": "Operator",
+              "accent": "purple"
+            },
+            {
+              "label": "Pod",
+              "detail": "Mounts as volume",
+              "tag": "Consumer",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use the External Secrets Operator. It pulls credentials from a real vault and injects them into K8s. Your Git repo remains clean and your keys remain secure.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Base64 is not security",
+            "Use ConfigTree for dynamic updates",
+            "Use External Secrets Operator"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Helm and the final deployment strategy →",
+          "narration": "That's the security layer. In Part 4, we wrap everything into a Helm chart to standardize your deployments across environments.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-helm-and-scaling",
+      "partTitle": "Helm Charts and Scaling",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "K8s for Java • Part 4 of 4",
+          "headline": "Stop copy-pasting your YAML.",
+          "highlightWord": "copy-pasting",
+          "subline": "Helm is the industry standard for managing multi-environment deployments.",
+          "narration": "If you have separate folders for dev, staging, and prod, you are doing it wrong. Helm templates allow you to manage one chart for every environment.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Helm Architecture",
+          "subtitle": "Templates + Values = Manifests",
+          "nodes": [
+            {
+              "label": "Templates",
+              "detail": "Base YAML structure",
+              "tag": "Logic",
+              "accent": "sky"
+            },
+            {
+              "label": "Values",
+              "detail": "Env-specific overrides",
+              "tag": "Data",
+              "accent": "amber"
+            },
+            {
+              "label": "Release",
+              "detail": "Deployed K8s objects",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Helm uses Go templates. You define your deployment once, then use values files to override replicas, memory, or profiles per environment.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-helm",
+          "kind": "code-spotlight",
+          "title": "Parameterized Deployment",
+          "filename": "deployment.yaml",
+          "code": "spec:\n  replicas: {{ .Values.replicaCount }}\n  template:\n    spec:\n      containers:\n        - name: app\n          image: {{ .Values.image.repo }}:{{ .Values.image.tag }}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Replicas",
+              "explanation": "Scale up or down via values file.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Image",
+              "explanation": "Promote the same image across environments.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Notice the double braces. This allows you to promote the exact same container image from dev to prod, just by changing the values file.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-deploy",
+          "kind": "terminal",
+          "title": "Deploying with Helm",
+          "caption": "One command to rule them all",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "helm upgrade --install order-service ./chart \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --values ./chart/values-prod.yaml \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --namespace production"
+            },
+            {
+              "kind": "success",
+              "text": "Release installed successfully!"
+            }
+          ],
+          "narration": "Upgrade your entire stack with one command. Helm handles the diff, the rollout, and the history, making rollbacks as simple as a single command.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use Helm for environment management",
+            "Promote images, not manifests",
+            "Master your deployment lifecycle"
+          ],
+          "command": "git checkout topic/level-12/kubernetes-k8s-for-java-devs",
+          "nextPartTeaser": "Deep dive into Helm and K8s at ravishankar2463.github.io/java_hub",
+          "narration": "You now have the tools to run production-grade Java on K8s. Checkout the branch in the roadmap to run these manifests yourself. See you in the next level.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
