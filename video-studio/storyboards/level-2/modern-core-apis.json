@@ -1,0 +1,511 @@
+{
+  "chapterId": "level-2/modern-core-apis",
+  "level": "level-2",
+  "levelLabel": "Level 2",
+  "slug": "modern-core-apis",
+  "chapterTitle": "Modern Core APIs",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-2/modern-core-apis",
+  "branchName": "topic/level-2/modern-core-apis",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-java-time-api",
+      "partTitle": "Fixing Time with java.time",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Core APIs • Part 1 of 4",
+          "headline": "Is your date handling thread-unsafe?",
+          "highlightWord": "thread-unsafe",
+          "subline": "Stop using java.util.Date. It's mutable, confusing, and leaks memory.",
+          "narration": "If you are still using java dot util dot Date, you are building on a landmine. It is mutable and thread-unsafe. Modern Java replaced it with the java dot time package.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Legacy vs. Modern Time",
+          "top": {
+            "label": "Legacy (Date)",
+            "badge": "Unsafe",
+            "tone": "bad",
+            "code": "Date d = new Date();\nd.setYear(125); // Mutable!",
+            "points": [
+              "Mutable state",
+              "Thread-unsafe",
+              "Confusing offsets"
+            ]
+          },
+          "bottom": {
+            "label": "Modern (Instant)",
+            "badge": "Immutable",
+            "tone": "good",
+            "code": "Instant now = Instant.now();\nInstant later = now.plusSeconds(60);",
+            "points": [
+              "Thread-safe",
+              "Always immutable",
+              "Clear UTC timeline"
+            ]
+          },
+          "narration": "Legacy date objects are mutable, meaning any caller can change your timestamp. Modern Instant objects are immutable, making them safe to share across threads without locks.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-time",
+          "kind": "code-spotlight",
+          "title": "Machine vs. Human Time",
+          "filename": "TimeDemo.java",
+          "code": "Instant machine = Instant.now();\nLocalDate human = LocalDate.of(2026, 6, 29);\nZonedDateTime tokyo = ZonedDateTime.now(ZoneId.of(\"Asia/Tokyo\"));",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Instant",
+              "explanation": "Use for DB timestamps and logs. It is an exact point on the UTC timeline.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "LocalDate",
+              "explanation": "No time zone. Perfect for birthdays or store hours.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "ZonedDateTime",
+              "explanation": "Handles DST and historical zone rules automatically.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use Instant for machine timestamps, LocalDate for calendar dates, and ZonedDateTime when you need to respect specific regional daylight saving rules.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Duration vs. Period",
+          "subtitle": "Choosing the right interval type",
+          "nodes": [
+            {
+              "label": "Duration",
+              "detail": "Seconds and Nanoseconds (Machine time)",
+              "tag": "Exact",
+              "accent": "sky"
+            },
+            {
+              "label": "Period",
+              "detail": "Years, Months, Days (Calendar time)",
+              "tag": "Human",
+              "accent": "amber"
+            },
+            {
+              "label": "Pitfall",
+              "detail": "Period ignores DST; Duration tracks physical time",
+              "tag": "Warning",
+              "accent": "red"
+            }
+          ],
+          "narration": "Don't mix these up. Duration tracks physical time for latencies, while Period tracks calendar time for billing cycles. Adding a day across a DST transition behaves differently for each.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Done",
+          "takeaways": [
+            "Instant for UTC, LocalDate for calendar",
+            "Always use immutable java.time types",
+            "Duration = machine; Period = human"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Modern String manipulation and Text Blocks →",
+          "narration": "That is the time API. In Part 2, we look at modern String methods and text blocks that finally kill the need for manual concatenation.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-modern-strings",
+      "partTitle": "String Utilities & Text Blocks",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Core APIs • Part 2 of 4",
+          "headline": "Still using trim() for whitespace?",
+          "highlightWord": "trim()",
+          "subline": "It is legacy code. Modern Java offers smarter, Unicode-aware alternatives.",
+          "narration": "If you are still using trim to clean strings, you are missing out. It only handles ASCII. Modern Java offers better tools for real-world text processing.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-strip",
+          "kind": "code-spotlight",
+          "title": "Modern String Methods",
+          "filename": "StringUtils.java",
+          "code": "String input = \"\\u2005  Hello  \\u2005\";\ninput.strip(); // \"Hello\"\n\"-\".repeat(10); // \"----------\"\ninput.lines().count(); // 1",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "strip()",
+              "explanation": "Unicode-aware whitespace removal. Better than trim().",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "repeat()",
+              "explanation": "Efficient string repetition without loops.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "lines()",
+              "explanation": "Splits strings into a lazy stream of lines.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Strip is Unicode-aware, unlike trim. Repeat is a clean way to build separators, and lines lets you process multi-line input as a stream.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-textblock",
+          "kind": "code-spotlight",
+          "title": "Text Blocks (Java 15+)",
+          "filename": "Query.java",
+          "code": "String sql = \"\"\"\n    SELECT * FROM users\n    WHERE id = ?\n    \"\"\".formatted(userId);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                4
+              ],
+              "badge": "\"\"\"",
+              "explanation": "Multi-line strings without manual \\n or + concatenation.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "formatted()",
+              "explanation": "Clean interpolation for your text blocks.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Text blocks let you write SQL or JSON naturally. Use formatted to inject variables without breaking readability. It is the end of messy string concatenation.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Locale-Aware Formatting",
+          "top": {
+            "label": "String.format()",
+            "badge": "Risk",
+            "tone": "bad",
+            "code": "String.format(\"%.2f\", 19.95);",
+            "points": [
+              "Uses default system locale",
+              "European servers use commas!"
+            ]
+          },
+          "bottom": {
+            "label": "Locale.ROOT",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "String.format(Locale.ROOT, \"%.2f\", 19.95);",
+            "points": [
+              "Forces dot separator",
+              "Consistent for JSON/CSV"
+            ]
+          },
+          "narration": "Always use Locale dot ROOT when formatting numbers for wire formats. The default locale might use commas, which will break your JSON parsers.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Done",
+          "takeaways": [
+            "Use strip() instead of trim()",
+            "Text blocks for clean multi-line strings",
+            "Always use Locale.ROOT for wire formats"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Unmodifiable collection factories →",
+          "narration": "Strings are now much cleaner. In Part 3, we simplify your collection code with modern static factories.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-collections",
+      "partTitle": "Modern Collection Factories",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Core APIs • Part 3 of 4",
+          "headline": "Stop writing 5 lines to create a List.",
+          "highlightWord": "5 lines",
+          "subline": "Java 9+ factories make collections concise, immutable, and safer.",
+          "narration": "Creating a list used to take multiple lines. Modern Java factories make this trivial, safer, and more memory-efficient.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-factories",
+          "kind": "code-spotlight",
+          "title": "Concise Collection Factories",
+          "filename": "Collections.java",
+          "code": "List<String> roles = List.of(\"ADMIN\", \"USER\");\nSet<Integer> ports = Set.of(80, 443);\nMap<String, String> map = Map.of(\"k\", \"v\");",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "List.of()",
+              "explanation": "Creates an immutable, fixed-size list instantly.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Set.of()",
+              "explanation": "Immutable set. Rejects nulls immediately.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Map.of()",
+              "explanation": "Clean map creation for small key-value pairs.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "These factories are immutable, reject nulls, and are highly memory-optimized. They are the standard for small, read-only collections.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Factory vs. Wrapper",
+          "top": {
+            "label": "Collections.unmodifiableList",
+            "badge": "View",
+            "tone": "neutral",
+            "code": "List<String> view = Collections.unmodifiableList(list);",
+            "points": [
+              "Just a read-only view",
+              "Original list can still change"
+            ]
+          },
+          "bottom": {
+            "label": "List.of()",
+            "badge": "Instance",
+            "tone": "good",
+            "code": "List<String> list = List.of(\"A\", \"B\");",
+            "points": [
+              "Standalone instance",
+              "Truly immutable"
+            ]
+          },
+          "narration": "Don't confuse these with the old unmodifiable wrappers. List dot of creates a new, truly immutable instance that does not depend on a mutable backing collection.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "Why Nulls Fail",
+          "caption": "Fail-fast design",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "List.of(\"A\", null);"
+            },
+            {
+              "kind": "error",
+              "text": "Exception in thread \"main\" java.lang.NullPointerException"
+            },
+            {
+              "kind": "comment",
+              "text": "# Factories reject nulls to prevent bugs"
+            }
+          ],
+          "narration": "These factories reject nulls immediately. This fail-fast behavior catches bugs at creation time rather than later when you try to use the collection.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Done",
+          "takeaways": [
+            "Use List.of() for immutable lists",
+            "Factories reject nulls immediately",
+            "Truly immutable, no backing collection"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The powerful HttpClient API →",
+          "narration": "Collections are now safe and concise. In Part 4, we replace old HTTP connections with the powerful, asynchronous HttpClient.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-http-client",
+      "partTitle": "The Modern HttpClient",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Core APIs • Part 4 of 4",
+          "headline": "Stop blocking threads for HTTP calls.",
+          "highlightWord": "blocking threads",
+          "subline": "The Java 11 HttpClient supports HTTP/2, async, and streaming.",
+          "narration": "Old HTTP connections are blocking and slow. The modern HttpClient supports HTTP/2, asynchronous requests, and streaming, all built into the JDK.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-client",
+          "kind": "code-spotlight",
+          "title": "Building the Client",
+          "filename": "Client.java",
+          "code": "HttpClient client = HttpClient.newBuilder()\n    .connectTimeout(Duration.ofSeconds(5))\n    .followRedirects(Redirect.NORMAL)\n    .build();",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Reuse",
+              "explanation": "Create once, reuse everywhere. It manages connection pools.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Timeout",
+              "explanation": "Always set a connect timeout to avoid hanging.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Redirects",
+              "explanation": "Off by default. Enable for standard web behavior.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Configure the client once and reuse it. It manages connection pooling and multiplexing for you. Always set timeouts to prevent your app from hanging.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-async",
+          "kind": "code-spotlight",
+          "title": "Async Requests",
+          "filename": "Async.java",
+          "code": "client.sendAsync(request, BodyHandlers.ofString())\n    .thenApply(HttpResponse::body)\n    .thenAccept(System.out::println);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "sendAsync",
+              "explanation": "Returns a CompletableFuture immediately.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Pipeline",
+              "explanation": "Chain responses without blocking threads.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Send async requests to keep your threads free. It returns a CompletableFuture, allowing you to chain operations as the data arrives.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Streaming Large Files",
+          "subtitle": "Avoid heap memory issues",
+          "nodes": [
+            {
+              "label": "BodyPublishers",
+              "detail": "Stream file from disk to socket",
+              "tag": "Upload",
+              "accent": "sky"
+            },
+            {
+              "label": "BodyHandlers",
+              "detail": "Stream socket to file on disk",
+              "tag": "Download",
+              "accent": "amber"
+            },
+            {
+              "label": "Result",
+              "detail": "Constant memory usage",
+              "tag": "Efficient",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For large files, don't load them into memory. Use BodyPublishers and BodyHandlers to stream data directly between disk and the network socket.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Reuse HttpClient instances",
+            "Use sendAsync for non-blocking I/O",
+            "Stream files to save memory"
+          ],
+          "command": "git checkout topic/level-2/modern-core-apis",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered modern Java APIs. Check out the roadmap link to dive deeper and run the lab. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
