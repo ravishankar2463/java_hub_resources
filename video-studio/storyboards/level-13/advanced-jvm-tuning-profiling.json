@@ -1,0 +1,476 @@
+{
+  "chapterId": "level-13/advanced-jvm-tuning-profiling",
+  "level": "level-13",
+  "levelLabel": "Level 13",
+  "slug": "advanced-jvm-tuning-profiling",
+  "chapterTitle": "Advanced JVM Tuning & Profiling",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-13/advanced-jvm-tuning-profiling",
+  "branchName": "topic/level-13/advanced-jvm-tuning-profiling",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-gc-logs-and-signals",
+      "partTitle": "Reading GC Logs Like a Pro",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Tuning • Part 1 of 4",
+          "headline": "Why are you still guessing with JVM flags?",
+          "highlightWord": "guessing",
+          "subline": "Stop copying legacy blog posts. Start reading the ground truth in your GC logs.",
+          "narration": "Most teams do more harm than good by copying random JVM flags. If you have latency spikes or OOM kills, stop guessing. Start by reading the actual GC logs to see what the collector is doing.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-terminal",
+          "kind": "terminal",
+          "title": "Production Logging Config",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java -Xlog:gc*,gc+age=trace,safepoint:file=gc.log:time,uptime,pid,level,tags:filecount=5,filesize=100M -jar app.jar"
+            },
+            {
+              "kind": "comment",
+              "text": "# gc*: Tracks heap transitions & humongous allocs"
+            },
+            {
+              "kind": "comment",
+              "text": "# gc+age=trace: Spots premature promotion"
+            },
+            {
+              "kind": "comment",
+              "text": "# safepoint: Detects non-GC pause bottlenecks"
+            }
+          ],
+          "narration": "Use the Unified Logging flag. This config captures everything from evacuation phases to safepoint delays, while capping disk usage at 500MB so you never fill your container storage.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Decoding the GC Log Line",
+          "code": "GC(42) Pause Young (Normal) 1842M->412M(4096M) 6.412ms\n[info][gc,cpu] GC(42) User=0.05s Sys=0.00s Real=0.01s\n[info][safepoint] Reaching: 0.18ms, At: 6.51ms",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Heap Drop",
+              "explanation": "1842MB before, 412MB after. If this trend is rising, you have a leak.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "CPU Ratio",
+              "explanation": "If Real time exceeds User time, your container is likely CPU throttled.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Safepoint",
+              "explanation": "High 'Reaching' time means one thread is stalling the entire JVM.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Look for the heap drop. If the baseline trends upward, you have a leak. If Real time is higher than User time, Kubernetes is throttling your CPU. And always check the Reaching safepoint time.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-diagram",
+          "kind": "flow-diagram",
+          "title": "GC Log Red Flags",
+          "nodes": [
+            {
+              "label": "Rising Baseline",
+              "detail": "Sawtooth trend climbing after every GC",
+              "tag": "Leak",
+              "accent": "amber"
+            },
+            {
+              "label": "Humongous Alloc",
+              "detail": "Objects > 50% region size fragment heap",
+              "tag": "Frag",
+              "accent": "purple"
+            },
+            {
+              "label": "To-space Exhausted",
+              "detail": "G1 ran out of space, forced Full GC",
+              "tag": "Panic",
+              "accent": "red"
+            }
+          ],
+          "narration": "Watch for these three killers. Humongous allocations fragment the heap, while To-space exhausted triggers a stop-the-world Full GC that can freeze your app for seconds.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Use -Xlog for production visibility",
+            "Real > User time = CPU throttling",
+            "Rising baseline = memory leak"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Choosing between G1GC and Generational ZGC →",
+          "narration": "That is the diagnostic foundation. In Part 2, we compare the collectors and learn why Generational ZGC isn't always the right answer.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-choosing-collectors",
+      "partTitle": "G1GC vs ZGC vs Parallel",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Tuning • Part 2 of 4",
+          "headline": "Generational ZGC is fast, but is it free?",
+          "highlightWord": "is it free",
+          "subline": "Sub-millisecond pauses come with a hidden tax on your CPU and memory.",
+          "narration": "Generational ZGC gives sub-millisecond pauses, but it is not a magic bullet. It requires extra CPU and memory headroom that might actually hurt small microservices.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "top": {
+            "label": "G1GC (Default)",
+            "badge": "Balanced",
+            "tone": "good",
+            "code": "-XX:+UseG1GC",
+            "points": [
+              "Best for 2GB to 20GB heaps",
+              "Low memory overhead",
+              "Predictable pauses"
+            ]
+          },
+          "bottom": {
+            "label": "Generational ZGC",
+            "badge": "Sub-ms",
+            "tone": "neutral",
+            "code": "-XX:+UseZGC -XX:+ZGenerational",
+            "points": [
+              "Concurrent relocation",
+              "Needs 20% CPU/RAM headroom",
+              "Best for large heaps"
+            ]
+          },
+          "narration": "G1GC is the king of balance for most web services. Switch to Generational ZGC only if you have huge heaps and absolutely require sub-millisecond latency. Otherwise, the load-barrier overhead will cost you.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Sizing Memory for Containers",
+          "code": "java \\\n  -XX:InitialRAMPercentage=70.0 \\\n  -XX:MaxRAMPercentage=70.0 \\\n  -jar app.jar",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "70% Rule",
+              "explanation": "Leave 30% for Metaspace, JIT cache, and off-heap memory.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Exit Code 137",
+              "explanation": "If your total RSS exceeds the K8s limit, the kernel kills you instantly.",
+              "accent": "red"
+            }
+          ],
+          "narration": "Never set MaxRAMPercentage to 100. The JVM needs room for Metaspace, thread stacks, and JIT code. If your total process memory hits the container limit, the kernel sends a SIGKILL, and you get Exit Code 137.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow-diagram",
+          "kind": "flow-diagram",
+          "title": "The Collector Trade-off",
+          "nodes": [
+            {
+              "label": "Parallel GC",
+              "detail": "Max throughput for batch jobs",
+              "tag": "Batch",
+              "accent": "emerald"
+            },
+            {
+              "label": "G1GC",
+              "detail": "The default for most services",
+              "tag": "General",
+              "accent": "sky"
+            },
+            {
+              "label": "ZGC",
+              "detail": "Concurrent for massive heaps",
+              "tag": "Latency",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Pick your tool for the job. Parallel for batch, G1 for services, ZGC for massive scale. Don't over-engineer until you have the metrics to justify the complexity.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "G1GC is the default for a reason",
+            "ZGC needs 20% headroom",
+            "MaxRAMPercentage 70% is safer than 95%"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Hunting memory leaks with Eclipse MAT →",
+          "narration": "That is the memory strategy. In Part 3, we open up heap dumps to find exactly which object is pinning your memory and causing that OOM error.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-memory-leaks",
+      "partTitle": "Eclipse MAT & Leak Detection",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Tuning • Part 3 of 4",
+          "headline": "Your memory leak is hiding in a ThreadLocal.",
+          "highlightWord": "ThreadLocal",
+          "subline": "Pooled threads + request context = a recipe for disaster.",
+          "narration": "Memory leaks in Java happen when objects stay reachable from a GC root. The most common culprit? Forgetting to clear a ThreadLocal in a pooled servlet thread.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The ThreadLocal Trap",
+          "code": "try {\n    RequestContext.set(info);\n    chain.doFilter(req, res);\n} finally {\n    RequestContext.clear(); // CRITICAL!\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Pinning",
+              "explanation": "Without clear(), the object stays in the thread's map forever.",
+              "accent": "red"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "The Fix",
+              "explanation": "Always clear in a finally block to prevent leaks on worker threads.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Servlet containers reuse threads. If you store data in a ThreadLocal and don't clear it, that object stays pinned in memory for the life of the thread. Always use a finally block.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-terminal",
+          "kind": "terminal",
+          "title": "Capturing the Dump",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Automatic on OOM"
+            },
+            {
+              "kind": "command",
+              "text": "-XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError"
+            },
+            {
+              "kind": "comment",
+              "text": "# Manual dump"
+            },
+            {
+              "kind": "command",
+              "text": "jcmd <PID> GC.heap_dump /dumps/live.hprof"
+            }
+          ],
+          "narration": "Configure your JVM to dump on OOM so you have the evidence. If you need a manual dump, use jcmd, but remember it pauses the JVM, so drain your traffic first.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow-diagram",
+          "kind": "flow-diagram",
+          "title": "MAT Forensics Workflow",
+          "nodes": [
+            {
+              "label": "Dominator Tree",
+              "detail": "Find the biggest memory consumers",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Shallow vs Retained",
+              "detail": "Shallow is small, Retained is massive",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Path to GC Roots",
+              "detail": "Find the static field pinning the data",
+              "tag": "Step 3",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Open the dump in Eclipse MAT. Look at the Dominator Tree, compare shallow versus retained heap, and trace the path to GC roots to find the static field holding the reference.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Always clear ThreadLocals",
+            "Use jcmd for live heap dumps",
+            "Retained heap shows the true cost"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Profiling with JFR and the final tuning workflow →",
+          "narration": "You are now a memory detective. In Part 4, we wrap up with JFR profiling and the disciplined tuning workflow that keeps your services stable.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-profiling-workflow",
+      "partTitle": "JFR & Tuning Workflow",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Tuning • Part 4 of 4",
+          "headline": "Stop tuning and start measuring.",
+          "highlightWord": "measuring",
+          "subline": "Performance isn't about flags; it's about the bottleneck you haven't found yet.",
+          "narration": "Before you change a single flag, you must prove the bottleneck. Most performance issues are application code, not the JVM. JFR is your best friend here.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-terminal",
+          "kind": "terminal",
+          "title": "Production Profiling with JFR",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Start a 2-minute baseline"
+            },
+            {
+              "kind": "command",
+              "text": "jcmd <PID> JFR.start name=baseline settings=profile duration=120s filename=/tmp/base.jfr"
+            },
+            {
+              "kind": "comment",
+              "text": "# Open in JDK Mission Control"
+            }
+          ],
+          "narration": "JFR has negligible overhead. Capture a baseline under load, then open it in Mission Control. Check for lock contention and I/O wait times before blaming the garbage collector.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow-diagram",
+          "kind": "flow-diagram",
+          "title": "The Tuning Workflow",
+          "nodes": [
+            {
+              "label": "Baseline",
+              "detail": "Measure p99 latency & GC logs",
+              "tag": "1",
+              "accent": "sky"
+            },
+            {
+              "label": "Optimize Code",
+              "detail": "Reduce allocations first",
+              "tag": "2",
+              "accent": "emerald"
+            },
+            {
+              "label": "Tweak GC",
+              "detail": "Change one flag at a time",
+              "tag": "3",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Follow this loop. Measure, optimize your code to reduce allocations, and only then tweak the GC. Never change more than one flag at a time, or you will never know what worked.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "top": {
+            "label": "Bad Workflow",
+            "badge": "Chaos",
+            "tone": "bad",
+            "code": "-XX:NewRatio=2 -XX:G1HeapRegionSize=32m ...",
+            "points": [
+              "Copy-pasting flags",
+              "No measurement",
+              "Mystery tuning"
+            ]
+          },
+          "bottom": {
+            "label": "Senior Workflow",
+            "badge": "Disciplined",
+            "tone": "good",
+            "code": "1. Measure\n2. Fix Allocations\n3. One Flag Change",
+            "points": [
+              "Evidence-based",
+              "Documented changes",
+              "Stable production"
+            ]
+          },
+          "narration": "Avoid the chaos. Document every flag you add. If you can't explain why a flag is there, remove it. Your future self will thank you when you upgrade to the next Java LTS.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "JFR is production-safe",
+            "Fix code before tuning GC",
+            "Document every non-default flag"
+          ],
+          "command": "git checkout topic/level-13/advanced-jvm-tuning-profiling",
+          "nextPartTeaser": "Master the JVM at ravishankar2463.github.io/java_hub",
+          "narration": "You just mastered JVM tuning. Check out the roadmap for the full lab and deep-dive resources. Keep your services lean and your metrics honest.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
