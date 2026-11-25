@@ -1,0 +1,465 @@
+{
+  "chapterId": "level-9/oauth2-and-oidc-resource-servers",
+  "level": "level-9",
+  "levelLabel": "Level 9",
+  "slug": "oauth2-and-oidc-resource-servers",
+  "chapterTitle": "OAuth2 and OIDC Resource Servers",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-9/oauth2-and-oidc-resource-servers",
+  "branchName": "topic/level-9/oauth2-and-oidc-resource-servers",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-resource-server-fundamentals",
+      "partTitle": "Resource Servers vs. Identity Providers",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "OAuth2 Architecture • Part 1 of 4",
+          "headline": "Why your API shouldn't handle logins.",
+          "highlightWord": "shouldn't handle",
+          "subline": "Stop building custom login screens. Your API is a Resource Server, not an Identity Provider.",
+          "narration": "Stop building custom login screens. Your API is a Resource Server, not an Identity Provider. Let the IdP handle the passwords, while your Spring Boot service focuses on one thing: validating tokens.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The OAuth2 Handshake",
+          "subtitle": "Separating Identity from Resource",
+          "nodes": [
+            {
+              "label": "Client App",
+              "detail": "Requests access via Auth Code + PKCE",
+              "tag": "User-Facing",
+              "accent": "sky"
+            },
+            {
+              "label": "IdP",
+              "detail": "Authenticates user, issues JWT",
+              "tag": "Source of Truth",
+              "accent": "amber"
+            },
+            {
+              "label": "Resource Server",
+              "detail": "Validates JWT, enforces policy",
+              "tag": "API Layer",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The client app talks to the IdP to get a token. Your Resource Server receives that token, verifies the signature, and enforces access policy. Never accept an ID Token as an API credential.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-m2m",
+          "kind": "code-spotlight",
+          "title": "Machine-to-Machine Auth",
+          "filename": "application.yml",
+          "code": "spring:\n  security:\n    oauth2:\n      client:\n        registration:\n          billing-m2m:\n            provider: corporate-idp\n            authorization-grant-type: client_credentials\n            client-id: order-service\n            client-secret: ${SECRET}\n            scope: billing.charge",
+          "steps": [
+            {
+              "lines": [
+                6
+              ],
+              "badge": "grant-type",
+              "explanation": "Client Credentials flow is for backend-to-backend calls without a human user.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                9
+              ],
+              "badge": "scope",
+              "explanation": "Limit the token's power to the specific service it needs to access.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For backend-to-backend calls, use the Client Credentials grant. Spring Boot handles the token lifecycle, caching, and refreshing automatically via the OAuth2AuthorizedClientManager.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "ID Token vs. Access Token",
+          "top": {
+            "label": "ID Token",
+            "badge": "For the Client",
+            "tone": "bad",
+            "code": "sub: user_123\nemail: alice@corp.com",
+            "points": [
+              "Contains user profile info",
+              "Never send to your API"
+            ]
+          },
+          "bottom": {
+            "label": "Access Token",
+            "badge": "For the API",
+            "tone": "good",
+            "code": "aud: api.company.com\nscp: orders.read",
+            "points": [
+              "Contains permissions",
+              "Bearer token for Resource Server"
+            ]
+          },
+          "narration": "Never confuse these. The ID token is for the client to know who the user is. The Access token is for your API to know what the user is allowed to do.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "IdP handles login, API handles validation",
+            "Use PKCE for human flows",
+            "Never accept ID tokens as API credentials"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How to validate JWTs locally without network calls →",
+          "narration": "That's the foundation. In Part 2, we look at how to validate JWTs locally using JWKS endpoints, avoiding network overhead on every request.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-jwt-validation-jwks",
+      "partTitle": "JWT Validation & JWKS",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JWT Internals • Part 2 of 4",
+          "headline": "Why call the IdP for every request?",
+          "highlightWord": "every request",
+          "subline": "You shouldn't. Local validation via JWKS is the standard for high-performance microservices.",
+          "narration": "Why call the IdP for every request? You shouldn't. Local validation via JWKS is the standard for high-performance microservices. Let's see how the Resource Server validates signatures without a round trip.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Local JWT Validation",
+          "subtitle": "Caching public keys locally",
+          "nodes": [
+            {
+              "label": "IdP",
+              "detail": "Publishes JWKS at /.well-known",
+              "tag": "Key Source",
+              "accent": "amber"
+            },
+            {
+              "label": "Resource Server",
+              "detail": "Fetches and caches public keys",
+              "tag": "Verifier",
+              "accent": "sky"
+            },
+            {
+              "label": "Token",
+              "detail": "Verified by kid (key ID)",
+              "tag": "In-Memory",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Resource Server fetches public keys from the JWKS endpoint once. It caches them in memory. When a token arrives, it checks the kid header, grabs the matching key, and verifies the signature locally.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term-jwks",
+          "kind": "terminal",
+          "title": "Why kid Matters",
+          "caption": "Handling key rotation without downtime",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Token header contains the key ID"
+            },
+            {
+              "kind": "output",
+              "text": "{\"alg\": \"RS256\", \"kid\": \"key-2026-q4\"}"
+            },
+            {
+              "kind": "comment",
+              "text": "# Resource Server looks up key in cache"
+            },
+            {
+              "kind": "success",
+              "text": "Cache Hit: Found key-2026-q4"
+            },
+            {
+              "kind": "comment",
+              "text": "# If unknown, triggers rate-limited refresh"
+            },
+            {
+              "kind": "error",
+              "text": "Unknown kid: Triggering JWKS refresh..."
+            }
+          ],
+          "narration": "The kid field in the JWT header is crucial. It tells your server exactly which public key to use. This allows for zero-downtime key rotation—the IdP adds a new key, and your server fetches it on demand.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-decoder",
+          "kind": "code-spotlight",
+          "title": "Configuring Audience Validation",
+          "filename": "SecurityConfig.java",
+          "code": "OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<List<String>>(\n    \"aud\",\n    aud -> aud != null && aud.contains(\"https://api.company.com/orders\")\n);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "aud",
+              "explanation": "Always validate the audience. It prevents a token meant for a different service from being used here.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Never skip audience validation. It ensures the token was specifically minted for your microservice. Without it, a valid token for another service could be replayed against yours.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Cache JWKS to avoid network calls",
+            "Use kid for seamless key rotation",
+            "Always validate the audience claim"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Opaque tokens and why you might need them →",
+          "narration": "That's JWKS. In Part 3, we cover Opaque Tokens and Introspection—the alternative approach for when you need immediate revocation.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-opaque-tokens",
+      "partTitle": "Opaque Tokens & Introspection",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Token Strategies • Part 3 of 4",
+          "headline": "JWTs are great, until you need to revoke one.",
+          "highlightWord": "revoke one",
+          "subline": "JWTs are stateless, which makes them hard to kill. Enter Opaque Tokens.",
+          "narration": "JWTs are stateless, which makes them hard to kill. If you need immediate revocation, you can't wait for the expiration time. That's where Opaque Tokens and introspection come in.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Opaque Token Introspection",
+          "subtitle": "Back-channel validation",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Sends random string token",
+              "tag": "Request",
+              "accent": "sky"
+            },
+            {
+              "label": "Resource Server",
+              "detail": "POSTs token to IdP",
+              "tag": "Introspection",
+              "accent": "amber"
+            },
+            {
+              "label": "IdP",
+              "detail": "Checks active status",
+              "tag": "Validation",
+              "accent": "purple"
+            }
+          ],
+          "narration": "With opaque tokens, the client sends a random reference string. Your Resource Server makes a back-channel request to the IdP to check if it's still active. If the user logged out, the IdP returns false instantly.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-opaque",
+          "kind": "code-spotlight",
+          "title": "Switching to Opaque Tokens",
+          "filename": "SecurityConfig.java",
+          "code": ".oauth2ResourceServer(oauth2 -> oauth2\n    .opaqueToken(Customizer.withDefaults())\n)",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "opaqueToken",
+              "explanation": "Switches validation from local JWT decoding to remote introspection.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "In Spring Security, switching is simple. Just replace your jwt config with opaqueToken. Ensure you have the introspection URI and client credentials set in your properties file.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "JWT vs. Opaque",
+          "top": {
+            "label": "JWT",
+            "badge": "Stateless",
+            "tone": "good",
+            "code": "Fast, local validation",
+            "points": [
+              "Low latency",
+              "Hard to revoke"
+            ]
+          },
+          "bottom": {
+            "label": "Opaque",
+            "badge": "Stateful",
+            "tone": "neutral",
+            "code": "Remote validation",
+            "points": [
+              "Instant revocation",
+              "Higher latency"
+            ]
+          },
+          "narration": "JWTs offer speed, but opaque tokens offer control. Most enterprise systems use a hybrid approach: opaque tokens at the edge, and internal JWTs for microservice communication.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Opaque tokens allow instant revocation",
+            "Introspection adds network latency",
+            "Use hybrid 'Phantom Token' for best results"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Mapping custom claims and multi-tenancy →",
+          "narration": "That's opaque tokens. In Part 4, we finish with custom claim mapping and handling multi-tenant issuers in a single Resource Server.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-claims-and-multitenancy",
+      "partTitle": "Claims & Multi-Tenancy",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Advanced Config • Part 4 of 4",
+          "headline": "Your roles are hidden in nested claims.",
+          "highlightWord": "hidden",
+          "subline": "Default converters only look at 'scope'. Here is how to map your custom enterprise roles.",
+          "narration": "Your roles are hidden in nested claims. Default converters only look at 'scope'. If you don't map your custom enterprise roles, your security checks will fail every time.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-converter",
+          "kind": "code-spotlight",
+          "title": "Custom JwtAuthenticationConverter",
+          "filename": "EnterpriseConverter.java",
+          "code": "private Collection<GrantedAuthority> extractRealmRoles(Jwt jwt) {\n    Map<String, Object> realmAccess = jwt.getClaimAsMap(\"realm_access\");\n    List<String> roles = (List<String>) realmAccess.get(\"roles\");\n    return roles.stream()\n        .map(role -> new SimpleGrantedAuthority(\"ROLE_\" + role))\n        .toList();\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "extract",
+              "explanation": "Drill into nested JSON claims to find your specific role structure.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "ROLE_",
+              "explanation": "Spring Security requires the ROLE_ prefix for hasRole() checks.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Create a custom converter to drill into your IdP's specific JSON structure. Map those roles to Spring's GrantedAuthority and add the ROLE underscore prefix so hasRole works correctly.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-multitenant",
+          "kind": "code-spotlight",
+          "title": "Multi-Tenant Issuers",
+          "filename": "MultiTenantConfig.java",
+          "code": "AuthenticationManagerResolver<HttpServletRequest> resolver =\n    new JwtIssuerAuthenticationManagerResolver(issuer -> {\n        if (!TRUSTED_ISSUERS.contains(issuer)) return null;\n        return managers.computeIfAbsent(issuer, this::createManagerForIssuer);\n    });",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Allowlist",
+              "explanation": "Never trust an issuer URL from an unverified token. Check against an allowlist.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "For B2B SaaS, use JwtIssuerAuthenticationManagerResolver. It checks the issuer claim against an allowlist before creating a decoder. This prevents SSRF attacks from malicious issuers.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Scope vs. Role",
+          "top": {
+            "label": "Scope",
+            "badge": "Client Permission",
+            "tone": "neutral",
+            "code": "hasAuthority('SCOPE_orders.read')",
+            "points": [
+              "What can the app do?",
+              "Use for API access"
+            ]
+          },
+          "bottom": {
+            "label": "Role",
+            "badge": "User Permission",
+            "tone": "good",
+            "code": "hasRole('ADMIN')",
+            "points": [
+              "What can the user do?",
+              "Use for business logic"
+            ]
+          },
+          "narration": "Combine both. Scopes protect the API from the client, and roles protect the business logic from the user. It's the best way to prevent privilege escalation.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Map custom claims with a converter",
+            "Use allowlists for multi-tenant issuers",
+            "Enforce both scopes and roles"
+          ],
+          "command": "git checkout topic/level-9/oauth2-and-oidc-resource-servers",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered Resource Servers. Checkout the branch in the roadmap to see the full implementation. Keep building secure systems.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
