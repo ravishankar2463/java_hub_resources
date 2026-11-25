@@ -1,0 +1,470 @@
+{
+  "chapterId": "level-15/project-panama-foreign-function-memory-api",
+  "level": "level-15",
+  "levelLabel": "Level 15",
+  "slug": "project-panama-foreign-function-memory-api",
+  "chapterTitle": "Project Panama: Foreign Function & Memory API",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-15/project-panama-foreign-function-memory-api",
+  "branchName": "topic/level-15/project-panama-foreign-function-memory-api",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-end-of-jni",
+      "partTitle": "Replacing JNI and Unsafe",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Panama • Part 1 of 4",
+          "headline": "Why is JNI finally dying?",
+          "highlightWord": "JNI dying",
+          "subline": "Native interop used to be a nightmare of C stubs and memory leaks. Project Panama changes the game.",
+          "narration": "For years, Java native interop meant brittle JNI glue or the dangerous sun dot misc Unsafe. Both are legacy tech. Project Panama’s FFM API is the modern, safe, and performant replacement.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "FFM API Architecture",
+          "subtitle": "Bridging Java to Native Memory",
+          "nodes": [
+            {
+              "label": "Arena",
+              "detail": "Deterministic lifecycle management",
+              "tag": "Safety",
+              "accent": "emerald"
+            },
+            {
+              "label": "MemorySegment",
+              "detail": "Bounds-checked off-heap buffer",
+              "tag": "Data",
+              "accent": "sky"
+            },
+            {
+              "label": "Linker",
+              "detail": "Binds C functions to MethodHandles",
+              "tag": "Interop",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The FFM API gives us three pillars. Arenas manage memory lifecycles deterministically. MemorySegments provide bounds-checked access to off-heap memory. And the Linker binds C functions directly to Java code.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-term-flag",
+          "kind": "terminal",
+          "title": "The Native Access Flag",
+          "caption": "Security for native calls",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Restricted methods require explicit opt-in"
+            },
+            {
+              "kind": "command",
+              "text": "java --enable-native-access=ALL-UNNAMED -jar app.jar"
+            },
+            {
+              "kind": "error",
+              "text": "WARNING: Restricted method called"
+            }
+          ],
+          "narration": "Because native calls bypass Java safety, you must opt-in using the enable-native-access flag. In production, replace ALL-UNNAMED with your specific module name to keep your dependencies sandboxed.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-arena",
+          "kind": "code-spotlight",
+          "title": "Deterministic Allocation",
+          "filename": "ArenaDemo.java",
+          "code": "try (Arena arena = Arena.ofConfined()) {\n    MemorySegment buf = arena.allocate(64);\n    buf.set(ValueLayout.JAVA_LONG, 0, 42L);\n    // Memory freed immediately at end\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Arena.ofConfined()",
+              "explanation": "Fastest option: single-thread access, zero sync overhead.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Auto-cleanup",
+              "explanation": "No more waiting for GC to free native memory.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Arenas solve the non-deterministic cleanup of old direct buffers. Using try-with-resources, memory is freed the moment the block exits. No GC pressure, no memory leaks.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "FFM replaces JNI and Unsafe",
+            "Use --enable-native-access for security",
+            "Arenas provide deterministic cleanup"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Spatial and Temporal Safety →",
+          "narration": "That's the foundation. In Part 2, we look at how MemorySegments prevent the crashes that plagued Unsafe for decades.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-safety-mechanisms",
+      "partTitle": "Spatial and Temporal Safety",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Panama • Part 2 of 4",
+          "headline": "Can you crash the JVM with FFM?",
+          "highlightWord": "crash the JVM",
+          "subline": "Unsafe allowed arbitrary memory access. FFM forces safety without sacrificing raw performance.",
+          "narration": "Unsafe was a loaded gun. FFM is a professional tool. It enforces spatial and temporal safety so you can't read garbage or corrupt memory, even when working off-heap.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Unsafe vs. MemorySegment",
+          "top": {
+            "label": "sun.misc.Unsafe",
+            "badge": "Dangerous",
+            "tone": "bad",
+            "code": "unsafe.putLong(addr, 999L);",
+            "points": [
+              "No bounds checks",
+              "Causes SIGSEGV on error"
+            ]
+          },
+          "bottom": {
+            "label": "MemorySegment",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "segment.set(ValueLayout.JAVA_LONG, 0, 999L);",
+            "points": [
+              "Bounds checked at every access",
+              "Throws IndexOutOfBoundsException"
+            ]
+          },
+          "narration": "Unsafe just writes to an address. If you're wrong, the JVM crashes. MemorySegment tracks bounds. If you step outside, it throws a controlled exception instead of taking down the whole process.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-temporal",
+          "kind": "code-spotlight",
+          "title": "Temporal Safety",
+          "filename": "Safety.java",
+          "code": "Arena arena = Arena.ofConfined();\nMemorySegment seg = arena.allocate(100);\narena.close();\nseg.get(ValueLayout.JAVA_BYTE, 0); // Throws IllegalStateException",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "arena.close()",
+              "explanation": "Invalidates all segments associated with this scope.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "IllegalStateException",
+              "explanation": "Prevents use-after-free bugs common in native code.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Temporal safety is just as critical. Once an arena closes, all associated segments are invalidated. Any attempt to access them throws an exception, stopping use-after-free bugs in their tracks.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow-thread",
+          "kind": "flow-diagram",
+          "title": "Thread Confinement",
+          "subtitle": "Performance through isolation",
+          "nodes": [
+            {
+              "label": "Confined Arena",
+              "detail": "One thread only",
+              "tag": "Fastest",
+              "accent": "sky"
+            },
+            {
+              "label": "Shared Arena",
+              "detail": "Multi-threaded access",
+              "tag": "Flexible",
+              "accent": "purple"
+            },
+            {
+              "label": "Handshake",
+              "detail": "Ensures safety during close",
+              "tag": "Sync",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Confined arenas are the fastest because they forbid cross-thread access, removing synchronization overhead. Shared arenas allow multi-threaded work, using lightweight handshakes to ensure safety during closure.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Spatial safety via bounds checking",
+            "Temporal safety via Arena scopes",
+            "Confined arenas offer max performance"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Modeling C Structs →",
+          "narration": "Safety is handled. In Part 3, we see how to map complex C structs into Java using MemoryLayouts and VarHandles.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-structs-and-layout",
+      "partTitle": "Modeling C Structs",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Panama • Part 3 of 4",
+          "headline": "Stop calculating byte offsets manually.",
+          "highlightWord": "byte offsets",
+          "subline": "C structs have padding and alignment rules. Java can now handle them declaratively.",
+          "narration": "Manually calculating byte offsets for C structs is a recipe for disaster. FFM uses MemoryLayouts to define the structure, and VarHandles to access the data safely.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-layout",
+          "kind": "code-spotlight",
+          "title": "Defining a Struct",
+          "filename": "Struct.java",
+          "code": "StructLayout LAYOUT = MemoryLayout.structLayout(\n    ValueLayout.JAVA_LONG.withName(\"id\"),\n    ValueLayout.JAVA_DOUBLE.withName(\"price\"),\n    MemoryLayout.paddingLayout(8)\n);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "structLayout",
+              "explanation": "Declarative definition of the C memory map.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "paddingLayout",
+              "explanation": "Handles alignment requirements automatically.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Define your layout once. You can mix primitives and add padding to match C alignment rules exactly. This keeps your Java code clean and prevents alignment bugs.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-varhandle",
+          "kind": "code-spotlight",
+          "title": "Accessing with VarHandle",
+          "filename": "Access.java",
+          "code": "VarHandle PRICE = LAYOUT.varHandle(PathElement.groupElement(\"price\"));\n\n// Accessing field at offset\nPRICE.set(segment, offset, 99.99);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "VarHandle",
+              "explanation": "Compiled into efficient machine code by C2.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "offset",
+              "explanation": "Supports indexing into arrays of structs.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "VarHandles are the glue. They turn field names into efficient load and store instructions. C2 optimizes these so well they're nearly as fast as native field access.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-jextract",
+          "kind": "terminal",
+          "title": "The jextract Tool",
+          "caption": "Auto-generate bindings",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Parse C headers automatically"
+            },
+            {
+              "kind": "command",
+              "text": "jextract --output src/main/java lib.h"
+            },
+            {
+              "kind": "success",
+              "text": "Generated: lib_h.java"
+            }
+          ],
+          "narration": "Don't write layouts by hand for large libraries. The jextract tool parses your C header files and generates all the Java bindings for you. It's the standard way to bridge big APIs.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use MemoryLayout for C structs",
+            "VarHandles provide optimized access",
+            "jextract automates binding generation"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Native Downcalls & Upcalls →",
+          "narration": "Layouts are solid. In Part 4, we finish by calling native C functions and passing Java callbacks back to C.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-downcalls-upcalls",
+      "partTitle": "Native Downcalls and Upcalls",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Project Panama • Part 4 of 4",
+          "headline": "Call C functions without writing C.",
+          "highlightWord": "without writing C",
+          "subline": "The Linker bridge connects Java directly to the C ABI. No more JNI overhead.",
+          "narration": "The final piece is the Linker. It lets you call C functions and pass Java methods as callbacks. It’s all pure Java, with zero native build pipelines required.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-downcall",
+          "kind": "code-spotlight",
+          "title": "Downcall: Java to C",
+          "filename": "Downcall.java",
+          "code": "Linker linker = Linker.nativeLinker();\nMethodHandle strlen = linker.downcallHandle(\n    linker.defaultLookup().find(\"strlen\").get(),\n    FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS)\n);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "nativeLinker()",
+              "explanation": "Knows the host platform's C ABI.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "FunctionDescriptor",
+              "explanation": "Maps Java types to C types.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "To call a C function, look up the symbol, define the signature with a descriptor, and get a MethodHandle. It’s type-safe and incredibly fast.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-upcall",
+          "kind": "code-spotlight",
+          "title": "Upcall: C to Java",
+          "filename": "Upcall.java",
+          "code": "MemorySegment stub = linker.upcallStub(\n    methodHandle, \n    descriptor, \n    arena\n);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "upcallStub",
+              "explanation": "Creates a native function pointer.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Arena",
+              "explanation": "Stub lifetime is tied to the arena.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Upcalls are just as easy. Wrap a Java MethodHandle in an upcallStub, and you get a native function pointer you can pass to any C library. It’s perfect for custom comparators.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare-io",
+          "kind": "compare",
+          "title": "Mapped Memory Upgrades",
+          "top": {
+            "label": "MappedByteBuffer",
+            "badge": "2GB Limit",
+            "tone": "bad",
+            "code": "// 2GB ceiling, no unmap()",
+            "points": [
+              "Signed 32-bit index",
+              "Non-deterministic cleanup"
+            ]
+          },
+          "bottom": {
+            "label": "MemorySegment",
+            "badge": "Unlimited",
+            "tone": "good",
+            "code": "channel.map(..., arena);",
+            "points": [
+              "64-bit long offsets",
+              "Deterministic unmap()"
+            ]
+          },
+          "narration": "Finally, FFM fixes file I/O. MappedSegments break the 2GB limit and provide deterministic unmapping. It's the ultimate tool for high-performance databases and journals.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Linker handles C ABI calls",
+            "upcallStub passes Java to C",
+            "MappedSegments support >2GB files"
+          ],
+          "command": "git checkout topic/level-15/project-panama-foreign-function-memory-api",
+          "nextPartTeaser": "Full guide at https://ravishankar2463.github.io/java_hub/roadmap/level-15/project-panama-foreign-function-memory-api",
+          "narration": "You've mastered Project Panama. Check the branch below to run the native interop labs yourself. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
