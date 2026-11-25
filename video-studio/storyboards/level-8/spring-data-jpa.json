@@ -1,0 +1,550 @@
+{
+  "chapterId": "level-8/spring-data-jpa",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "spring-data-jpa",
+  "chapterTitle": "Spring Data JPA",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/spring-data-jpa",
+  "branchName": "topic/level-8/spring-data-jpa",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-proxies-and-interfaces",
+      "partTitle": "How Repositories Work Without Code",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Data JPA • Part 1 of 5",
+          "headline": "Why do your repository interfaces have no code?",
+          "highlightWord": "no code",
+          "subline": "It’s not magic. It’s a sophisticated dynamic proxy pipeline.",
+          "narration": "You declare a method signature and Spring magically runs the query. But where is the implementation? It doesn't exist on disk. Let's look at the proxy architecture.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Proxy Pipeline",
+          "subtitle": "From interface to database execution",
+          "nodes": [
+            {
+              "label": "Interface",
+              "detail": "Your empty repository definition",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "JDK Proxy",
+              "detail": "Intercepts calls via reflection",
+              "tag": "Proxy",
+              "accent": "amber"
+            },
+            {
+              "label": "SimpleJpaRepo",
+              "detail": "Standard CRUD implementation",
+              "tag": "Logic",
+              "accent": "purple"
+            },
+            {
+              "label": "Hibernate",
+              "detail": "Translates to SQL and hits DB",
+              "tag": "Persistence",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "At startup, Spring detects your interface. It creates a JDK Dynamic Proxy. When you call a method, an interceptor chain routes it to SimpleJpaRepository for standard CRUD or parses your method name into a query.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-repo",
+          "kind": "code-spotlight",
+          "title": "Choosing Your Base Interface",
+          "filename": "Repository.java",
+          "code": "public interface OrderRepo extends JpaRepository<Order, UUID> {\n    // Full CRUD + Batch + Paging\n}\n\npublic interface AuditRepo extends Repository<Order, UUID> {\n    // Pure marker: only expose what you need\n    Order findById(UUID id);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "JpaRepository",
+              "explanation": "The heavy lifter. Includes flush, batch deletes, and paging. Use for standard entities.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Repository",
+              "explanation": "A pure marker. Use this to hide methods like deleteAll() in domain-driven designs.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Don't just extend JpaRepository by default. Use the base Repository marker to restrict access, keeping your domain aggregate clean and preventing accidental bulk deletes.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-derived",
+          "kind": "code-spotlight",
+          "title": "Method Name Parsing",
+          "filename": "OrderRepository.java",
+          "code": "List<Order> findByCustomer_ZipCode(String zip);\n\n// 1. findBy -> Prefix\n// 2. Customer -> Entity\n// 3. _ -> Boundary\n// 4. ZipCode -> Property",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Underscore usage",
+              "explanation": "Use an underscore to disambiguate nested properties. It tells the parser exactly where the path boundary sits.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Spring parses method names at startup. If you have nested properties, use an underscore to avoid ambiguity. If the name gets too long, stop—it's time for an explicit query.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Repositories are JDK proxies, not classes",
+            "Extend Repository to hide unwanted CRUD",
+            "Use _ for nested property paths"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): JPQL vs Native SQL and the count-query trap →",
+          "narration": "That's the proxy foundation. In Part 2, we tackle custom queries and why native SQL can break your pagination.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-queries-and-pagination",
+      "partTitle": "Mastering Queries and Pagination",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Data JPA • Part 2 of 5",
+          "headline": "Is your pagination killing your database?",
+          "highlightWord": "killing",
+          "subline": "The hidden count query is a silent performance killer.",
+          "narration": "You request a page of data and suddenly the database is crawling. It's the hidden count query. Let's fix your query strategy.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Page vs Slice",
+          "top": {
+            "label": "Page<T>",
+            "badge": "2 Queries",
+            "tone": "bad",
+            "code": "Page<Order> findByStatus(Status s, Pageable p);",
+            "points": [
+              "Runs data query + COUNT(*)",
+              "Slow on large tables"
+            ]
+          },
+          "bottom": {
+            "label": "Slice<T>",
+            "badge": "1 Query",
+            "tone": "good",
+            "code": "Slice<Order> findByStatus(Status s, Pageable p);",
+            "points": [
+              "Only runs data query",
+              "Perfect for infinite scroll"
+            ]
+          },
+          "narration": "Page returns total counts, requiring a separate COUNT query. If you only need next-page navigation, use Slice. It fetches one extra row to check for more data, saving massive CPU on large tables.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-native",
+          "kind": "code-spotlight",
+          "title": "Native SQL with Count",
+          "filename": "OrderRepository.java",
+          "code": "@Query(value = \"SELECT * FROM orders...\", \n       countQuery = \"SELECT COUNT(*) FROM orders...\", \n       nativeQuery = true)\nPage<Order> findNative(Pageable pageable);",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Explicit countQuery",
+              "explanation": "When using native queries with Page, always provide a manual count query to prevent Spring from failing to parse complex SQL.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "When writing native SQL with Page, Spring can't auto-generate the count. Always provide an explicit countQuery, or your complex CTEs and window functions will crash the parser.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-sort",
+          "kind": "terminal",
+          "title": "Security: Sort Allowlisting",
+          "caption": "Never pass raw user input to Sort.by()",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// DANGEROUS: sort=passwordHash"
+            },
+            {
+              "kind": "command",
+              "text": "Set<String> ALLOWED = Set.of(\"createdAt\", \"amount\");"
+            },
+            {
+              "kind": "command",
+              "text": "String sort = ALLOWED.contains(param) ? param : \"createdAt\";"
+            },
+            {
+              "kind": "success",
+              "text": "PageRequest.of(0, 20, Sort.by(sort));"
+            }
+          ],
+          "narration": "Never pass raw HTTP sort strings to your repository. Attackers can sort by sensitive fields like password hashes. Always validate against an allowlist.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use Slice to avoid expensive COUNT queries",
+            "Always define countQuery for native pagination",
+            "Allowlist sort fields to prevent data leaks"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The L1 Cache desync bug →",
+          "narration": "Pagination mastered. In Part 3, we look at the silent bug where bulk updates leave your cache holding stale data.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-modifying-queries",
+      "partTitle": "Fixing Cache Desync",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Data JPA • Part 3 of 5",
+          "headline": "Why is your cache showing stale data?",
+          "highlightWord": "stale data",
+          "subline": "Bulk updates bypass the persistence context entirely.",
+          "narration": "You run a bulk update query, but your next findById call returns the old value. Your cache is out of sync. Here is how to force consistency.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Cache Desync Trap",
+          "subtitle": "Bulk queries vs. Persistence Context",
+          "nodes": [
+            {
+              "label": "L1 Cache",
+              "detail": "Holds stale entity snapshot",
+              "tag": "Memory",
+              "accent": "amber"
+            },
+            {
+              "label": "Bulk Query",
+              "detail": "Updates DB directly",
+              "tag": "SQL",
+              "accent": "red"
+            },
+            {
+              "label": "Result",
+              "detail": "Cache != Database",
+              "tag": "Bug",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Bulk queries run directly on the database. Hibernate's L1 cache doesn't know about these changes. If you don't clear the cache, you will read stale snapshots for the rest of the transaction.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-modifying",
+          "kind": "code-spotlight",
+          "title": "The Fix: @Modifying",
+          "filename": "UserRepository.java",
+          "code": "@Modifying(flushAutomatically = true, \n           clearAutomatically = true)\n@Query(\"UPDATE User u SET u.status = :s\")\nint updateStatus(@Param(\"s\") String status);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Auto-Clear",
+              "explanation": "flushAutomatically sends pending changes first. clearAutomatically wipes the cache after the query, forcing a fresh DB read.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use flushAutomatically and clearAutomatically on bulk updates. This ensures pending changes are saved and the cache is cleared, preventing stale reads.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Redundant Saves",
+          "top": {
+            "label": "Redundant",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "user.setName(\"New\");\nrepo.save(user); // Unnecessary!",
+            "points": [
+              "Entity is already managed",
+              "Hibernate tracks changes automatically"
+            ]
+          },
+          "bottom": {
+            "label": "Efficient",
+            "badge": "Good",
+            "tone": "good",
+            "code": "user.setName(\"New\");\n// Just commit the transaction",
+            "points": [
+              "Dirty checking handles the flush",
+              "Cleaner service layer"
+            ]
+          },
+          "narration": "Stop calling save() on managed entities. Hibernate tracks every change. When the transaction commits, it flushes the updates automatically. save() is for new or detached objects.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Bulk queries bypass the L1 cache",
+            "Use clearAutomatically to force fresh reads",
+            "Don't call save() on managed entities"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Projections for high-performance reads →",
+          "narration": "Consistency fixed. In Part 4, we learn how to stop loading full entities when you only need a few fields.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-projections",
+      "partTitle": "High-Performance Projections",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Data JPA • Part 4 of 5",
+          "headline": "Why load 50 columns when you need two?",
+          "highlightWord": "two columns",
+          "subline": "Stop wasting memory and I/O with full entity loading.",
+          "narration": "Loading full entities for read-only views is a massive waste of heap and database I/O. Use projections to fetch exactly what you need.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-interface",
+          "kind": "code-spotlight",
+          "title": "Interface Projections",
+          "filename": "OrderSummary.java",
+          "code": "public interface OrderSummary {\n    UUID getId();\n    String getStatus();\n}\n\n// Repository\nList<OrderSummary> findByStatus(Status s);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Closed Projection",
+              "explanation": "Spring creates a proxy that only fetches the columns defined in the interface. Zero entity overhead.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Interface projections are the easiest way to optimize. Define an interface with the getters you need, and Spring rewrites the SQL to select only those specific columns.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-record",
+          "kind": "code-spotlight",
+          "title": "Record Projections",
+          "filename": "OrderDto.java",
+          "code": "public record OrderDto(UUID id, String status) {}\n\n@Query(\"SELECT new com.dto.OrderDto(o.id, o.status) FROM Order o\")\nList<OrderDto> findSummaries();",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Record DTO",
+              "explanation": "Records are immutable and lightweight. Perfect for read-only data transfer.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For even better performance, use Java Records. They are immutable and have no proxy overhead. Use a constructor expression in your JPQL to map directly to the record.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Entity vs Projection",
+          "top": {
+            "label": "Full Entity",
+            "badge": "Heavy",
+            "tone": "bad",
+            "code": "List<Order> orders = repo.findAll();",
+            "points": [
+              "Loads all columns",
+              "Tracks changes in L1 cache",
+              "High memory footprint"
+            ]
+          },
+          "bottom": {
+            "label": "Projection",
+            "badge": "Light",
+            "tone": "good",
+            "code": "List<OrderDto> dtos = repo.findSummaries();",
+            "points": [
+              "Loads only requested columns",
+              "No cache tracking",
+              "Fast and memory efficient"
+            ]
+          },
+          "narration": "Full entities are for writing. Projections are for reading. Use projections to keep your memory footprint low and your database queries lean.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Use Interface projections for simple views",
+            "Use Record projections for zero-proxy overhead",
+            "Never load full entities for read-only lists"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Auditing and the final wrap-up →",
+          "narration": "Performance optimized. In Part 5, we automate your audit trails and wrap up the entire chapter.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-auditing",
+      "partTitle": "Automating Audit Trails",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Data JPA • Part 5 of 5",
+          "headline": "Still setting timestamps manually?",
+          "highlightWord": "manually",
+          "subline": "Stop the boilerplate. Automate your audit trail with JPA listeners.",
+          "narration": "Setting createdBy and lastModifiedDate in every service is legacy. Let's use JPA auditing to handle this automatically.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code-audit",
+          "kind": "code-spotlight",
+          "title": "Auditable Entity",
+          "filename": "Auditable.java",
+          "code": "@MappedSuperclass\n@EntityListeners(AuditingEntityListener.class)\npublic abstract class Auditable {\n    @CreatedDate private Instant createdAt;\n    @LastModifiedBy private String modifiedBy;\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Auditing Setup",
+              "explanation": "MappedSuperclass lets you reuse these fields. EntityListeners triggers the automatic updates.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use a MappedSuperclass with AuditingEntityListener. Annotate your fields with CreatedDate and LastModifiedBy, and Spring will fill them automatically on save.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-code-provider",
+          "kind": "code-spotlight",
+          "title": "AuditorAware Provider",
+          "filename": "AuditConfig.java",
+          "code": "@Bean\npublic AuditorAware<String> auditorProvider() {\n    return () -> Optional.of(SecurityContext.getName());\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "AuditorAware",
+              "explanation": "This bean tells Spring who the current user is. It integrates perfectly with Spring Security.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Implement AuditorAware to tell Spring who the current user is. It pulls the username from the security context, making your audit trail accurate and automatic.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-term-lab",
+          "kind": "terminal",
+          "title": "Chapter Lab",
+          "caption": "Run the full repository test suite",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-8/spring-data-jpa"
+            },
+            {
+              "kind": "comment",
+              "text": "# Run the JPA performance tests"
+            },
+            {
+              "kind": "command",
+              "text": "./mvnw test -Dtest=OrderRepositoryTest"
+            },
+            {
+              "kind": "success",
+              "text": "BUILD SUCCESSFUL"
+            }
+          ],
+          "narration": "You've mastered Spring Data JPA. Checkout the branch, run the tests, and check the roadmap for the full deep-dive documentation.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use MappedSuperclass for audit fields",
+            "Integrate AuditorAware with Spring Security",
+            "Check the roadmap for the full guide"
+          ],
+          "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/spring-data-jpa",
+          "narration": "Chapter complete. You now know how to build high-performance, maintainable repositories. Head to the roadmap link for the full technical guide.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
