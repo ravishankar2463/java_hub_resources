@@ -1,0 +1,556 @@
+{
+  "chapterId": "level-7/distributed-locking-and-cache-patterns",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "distributed-locking-and-cache-patterns",
+  "chapterTitle": "Distributed Locking and Cache Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/distributed-locking-and-cache-patterns",
+  "branchName": "topic/level-7/distributed-locking-and-cache-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-cache-stampede",
+      "partTitle": "Why Naive Caching Fails at Scale",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Caching Pitfalls • Part 1 of 5",
+          "headline": "Why does your cache crash your database?",
+          "highlightWord": "crash your database",
+          "subline": "When a hot key expires, your pods trigger a stampede.",
+          "narration": "Your cache is supposed to protect PostgreSQL, but under high load, it often becomes the exact mechanism that knocks it over. Let's look at why naive caching breaks.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Cache Stampede",
+          "subtitle": "Multiple pods hitting the DB simultaneously",
+          "nodes": [
+            {
+              "label": "Pod 1, 2, 3",
+              "detail": "Concurrent cache misses",
+              "tag": "App Layer",
+              "accent": "sky"
+            },
+            {
+              "label": "Redis",
+              "detail": "Hot key expired",
+              "tag": "Cache",
+              "accent": "amber"
+            },
+            {
+              "label": "PostgreSQL",
+              "detail": "Connection pool exhausted",
+              "tag": "Database",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When a hot key expires, every pod sees a miss at the same millisecond. They all fire identical heavy queries to PostgreSQL, exhausting your connection pool and triggering a latency cascade.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Cache-Aside vs Write-Through",
+          "top": {
+            "label": "Cache-Aside (Default)",
+            "badge": "Lazy",
+            "tone": "good",
+            "code": "if (cache.get(key) == null) {\n    val = db.query(key);\n    cache.put(key, val);\n}",
+            "points": [
+              "Only loads requested data",
+              "Evict on write to avoid stale data"
+            ]
+          },
+          "bottom": {
+            "label": "Write-Through",
+            "badge": "Strict",
+            "tone": "neutral",
+            "code": "cache.put(key, val);\ndb.update(key, val);",
+            "points": [
+              "Ensures high data freshness",
+              "Writes pay double latency"
+            ]
+          },
+          "narration": "Cache-Aside is standard for Java services. Always delete the cache key on writes rather than updating it, to avoid ordering races where stale data overwrites fresh state.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code",
+          "kind": "code-spotlight",
+          "title": "Defending Against Penetration",
+          "filename": "CacheService.java",
+          "code": "if (cached == null) {\n    Order order = repo.findById(id).orElse(null);\n    if (order == null) {\n        // Cache sentinel to stop DB hits\n        redis.set(key, \"__NULL__\", Duration.ofSeconds(60));\n        return null;\n    }\n    redis.set(key, serialize(order));\n}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Null Sentinel",
+              "explanation": "Prevents attackers from hammering the DB with non-existent IDs.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use a null sentinel to cache negative lookups. This stops cache penetration, where attackers request random IDs that don't exist, forcing every request to hit your database.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Cache-Aside: Evict on write",
+            "Use null sentinels for negative lookups",
+            "Avoid fixed TTLs to prevent avalanches"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why JVM locks fail in Kubernetes →",
+          "narration": "That's the foundation. In Part 2, we see why your synchronized blocks fail across multiple pods and how to build a real distributed lock.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-distributed-locks",
+      "partTitle": "Distributed Locking with Redisson",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Distributed Locking • Part 2 of 5",
+          "headline": "Why synchronized blocks are useless in Kubernetes.",
+          "highlightWord": "useless",
+          "subline": "JVM locks only see their own heap. You need a shared state.",
+          "narration": "Synchronized blocks only guard threads inside a single JVM. If you run ten Kubernetes pods, you have ten independent locks. You need a distributed lock in Redis.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code",
+          "kind": "code-spotlight",
+          "title": "The Redisson Watchdog",
+          "filename": "RedissonLock.java",
+          "code": "RLock lock = redisson.getLock(\"sku:123\");\ntry {\n    // Watchdog auto-renews TTL every 10s\n    if (lock.tryLock(5, -1, TimeUnit.SECONDS)) {\n        // Critical section\n    }\n} finally {\n    lock.unlock();\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Watchdog",
+              "explanation": "Redisson extends the TTL automatically if the pod is still alive.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Redisson is the industry standard. Its Watchdog timer periodically extends the lock's TTL via Lua scripts, ensuring the lock doesn't expire while your thread is still processing.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Watchdog Mechanism",
+          "subtitle": "Preventing premature expiration",
+          "nodes": [
+            {
+              "label": "Worker Thread",
+              "detail": "Holds lock",
+              "tag": "Main",
+              "accent": "sky"
+            },
+            {
+              "label": "Netty Timer",
+              "detail": "Renews TTL every 10s",
+              "tag": "Watchdog",
+              "accent": "amber"
+            },
+            {
+              "label": "Redis",
+              "detail": "Updates Hash TTL",
+              "tag": "Storage",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Watchdog runs on a Netty timer thread. If your pod crashes, the timer dies, and Redis expires the lock. No deadlocks, no manual cleanup.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Atomic Lua Deletion",
+          "caption": "Never delete another pod's lock",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "Lua script ensures only the owner can delete"
+            },
+            {
+              "kind": "command",
+              "text": "if redis.call('get', KEYS[1]) == ARGV[1] then"
+            },
+            {
+              "kind": "command",
+              "text": "  return redis.call('del', KEYS[1])"
+            },
+            {
+              "kind": "command",
+              "text": "else return 0 end"
+            }
+          ],
+          "narration": "Never use a simple DEL command. If a GC pause causes your lock to expire, you might accidentally delete a lock just acquired by another pod. Always use Lua to verify ownership.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use Redisson for distributed locks",
+            "Watchdog prevents premature expiry",
+            "Always use Lua for atomic release"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The GC pause trap →",
+          "narration": "Locks are great, but they aren't magic. In Part 3, we see why even Redisson can't save you from a 40-second stop-the-world GC pause.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-fencing-tokens",
+      "partTitle": "The Fencing Token Problem",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Correctness • Part 3 of 5",
+          "headline": "Your lock is lying to you.",
+          "highlightWord": "lying",
+          "subline": "A long GC pause can invalidate your distributed lock.",
+          "narration": "A 40-second stop-the-world GC pause freezes your app. The Watchdog can't renew the lock, Redis expires it, and another pod takes over. Your app resumes and corrupts the data.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The GC Pause Corruption",
+          "subtitle": "Why locks aren't enough for state",
+          "nodes": [
+            {
+              "label": "Pod 1",
+              "detail": "Paused by GC",
+              "tag": "Frozen",
+              "accent": "amber"
+            },
+            {
+              "label": "Redis",
+              "detail": "Lock expires",
+              "tag": "Expired",
+              "accent": "red"
+            },
+            {
+              "label": "Pod 2",
+              "detail": "Acquires lock",
+              "tag": "Active",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Pod 2 thinks it has exclusive access. Pod 1 wakes up, unaware it lost the lock, and writes to the database. You have a race condition, even with a lock.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "Fencing Tokens to the Rescue",
+          "filename": "Storage.sql",
+          "code": "UPDATE inventory_reservations\nSET qty = qty + :qty,\n    fencing_token = :token\nWHERE sku = :sku\n  AND fencing_token < :token;",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Fencing Token",
+              "explanation": "The DB rejects any request with an older token than the one it already processed.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The solution is a fencing token. Every time you acquire a lock, the service increments a counter. The database only accepts writes if the token is higher than the last one.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Efficiency vs Correctness",
+          "top": {
+            "label": "Efficiency Locking",
+            "badge": "Redis/Redisson",
+            "tone": "neutral",
+            "code": "// Avoid duplicate work\nif (lock.tryLock()) { ... }",
+            "points": [
+              "Good for cache stampedes",
+              "Acceptable if rare race occurs"
+            ]
+          },
+          "bottom": {
+            "label": "Correctness Locking",
+            "badge": "Database/Consensus",
+            "tone": "good",
+            "code": "UPDATE ... WHERE version = :v\n// Or etcd + fencing",
+            "points": [
+              "Required for financial state",
+              "Immune to GC pauses"
+            ]
+          },
+          "narration": "Use Redis locks for efficiency, like preventing cache stampedes. Use database-level optimistic locking or consensus-backed tokens for correctness, like financial transactions.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "GC pauses break lease-based locks",
+            "Fencing tokens prevent stale writes",
+            "Redis = Efficiency; DB/Etcd = Correctness"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Bloom Filters →",
+          "narration": "You now know the difference between efficiency and correctness. In Part 4, we use Bloom filters to stop cache penetration attacks.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-bloom-filters",
+      "partTitle": "Stopping Cache Penetration",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Optimization • Part 4 of 5",
+          "headline": "Stop hitting your DB for fake IDs.",
+          "highlightWord": "fake IDs",
+          "subline": "Bloom filters can reject invalid requests in memory.",
+          "narration": "Attackers love requesting non-existent IDs to force DB lookups. Don't waste your database CPU. Use a Bloom filter to reject these requests instantly.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Bloom Filter Logic",
+          "subtitle": "Probabilistic membership test",
+          "nodes": [
+            {
+              "label": "Input ID",
+              "detail": "Check against bits",
+              "tag": "Request",
+              "accent": "sky"
+            },
+            {
+              "label": "Bit Array",
+              "detail": "Multiple hash functions",
+              "tag": "Filter",
+              "accent": "amber"
+            },
+            {
+              "label": "Result",
+              "detail": "Definitely NO or Maybe YES",
+              "tag": "Decision",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "A Bloom filter is a compact bit array. If it says 'no', the ID definitely doesn't exist. If it says 'yes', it probably exists. It's a perfect shield for your database.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code",
+          "kind": "code-spotlight",
+          "title": "Redisson Bloom Filter",
+          "filename": "BloomService.java",
+          "code": "RBloomFilter<String> filter = redisson.getBloomFilter(\"orders\");\nfilter.tryInit(100000L, 0.01); // 1% error rate\n\nif (!filter.contains(orderId)) {\n    return null; // Guaranteed miss\n}\nreturn repo.findById(orderId);",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Short-circuit",
+              "explanation": "Reject invalid IDs before hitting Redis or PostgreSQL.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Initialize the filter with expected size and error rate. If the filter returns false, you save a network call to Redis and a query to PostgreSQL. It's incredibly fast.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Bloom Filter Trade-offs",
+          "caption": "Operational constraints",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "1. Cannot delete items easily"
+            },
+            {
+              "kind": "comment",
+              "text": "2. Must be repopulated on restart"
+            },
+            {
+              "kind": "comment",
+              "text": "3. False positives are possible"
+            }
+          ],
+          "narration": "Remember, Bloom filters can't delete items. You'll need to rebuild them periodically or use Cuckoo filters if your dataset changes frequently. Always plan for the cold start.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Bloom filters reject invalid keys",
+            "Asymmetric guarantee: No means No",
+            "Requires periodic rebuilds"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Final Checklist →",
+          "narration": "You're now ready to build production-grade caches. In Part 5, we wrap up with the ultimate caching checklist.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-summary",
+      "partTitle": "Distributed Locking Summary",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Summary • Part 5 of 5",
+          "headline": "Don't build your own locking logic.",
+          "highlightWord": "don't build",
+          "subline": "Use battle-tested libraries and patterns.",
+          "narration": "Distributed locking is deceptively simple but architecturally dangerous. Don't roll your own. Use Redisson, respect the Watchdog, and always use fencing tokens for correctness.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-compare",
+          "kind": "compare",
+          "title": "The Caching Checklist",
+          "top": {
+            "label": "The Good",
+            "badge": "Best Practices",
+            "tone": "good",
+            "code": "// Use jittered TTLs\n// Use Bloom filters\n// Use fencing tokens",
+            "points": [
+              "Randomize TTLs to avoid avalanches",
+              "Use fencing for transactional state"
+            ]
+          },
+          "bottom": {
+            "label": "The Bad",
+            "badge": "Anti-patterns",
+            "tone": "bad",
+            "code": "// Fixed TTLs\n// Synchronized blocks\n// Unchecked DB writes",
+            "points": [
+              "Fixed TTLs cause avalanches",
+              "JVM locks break in clusters"
+            ]
+          },
+          "narration": "Follow this checklist. Avoid fixed TTLs, never rely on JVM locks for cluster coordination, and always validate your storage layer with fencing tokens if you care about data integrity.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-terminal",
+          "kind": "terminal",
+          "title": "Final Command",
+          "caption": "Get the code",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-7/distributed-locking-and-cache-patterns"
+            },
+            {
+              "kind": "comment",
+              "text": "See the full implementation at:"
+            },
+            {
+              "kind": "command",
+              "text": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/distributed-locking-and-cache-patterns"
+            }
+          ],
+          "narration": "Grab the full implementation in the repo. It includes the Redisson configuration and the logic for stampede protection. Build robust systems, not just fast ones.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Distributed Architecture",
+          "subtitle": "The complete picture",
+          "nodes": [
+            {
+              "label": "Bloom Filter",
+              "detail": "Shield",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Redisson Lock",
+              "detail": "Mutex",
+              "tag": "Coordination",
+              "accent": "amber"
+            },
+            {
+              "label": "Fencing Token",
+              "detail": "Safety",
+              "tag": "Storage",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "This is your stack: Bloom filters for entry, Redisson for coordination, and fencing tokens for storage safety. You're ready for production.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Redisson = Efficiency",
+            "Fencing Tokens = Correctness",
+            "Bloom Filters = Performance"
+          ],
+          "narration": "That's a wrap on distributed locking. Check the roadmap for the full guide and JUnit tests. See you in the next level.",
+          "durationSec": 7,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
