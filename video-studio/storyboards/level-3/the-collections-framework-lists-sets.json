@@ -1,0 +1,616 @@
+{
+  "chapterId": "level-3/the-collections-framework-lists-sets",
+  "level": "level-3",
+  "levelLabel": "Level 3",
+  "slug": "the-collections-framework-lists-sets",
+  "chapterTitle": "The Collections Framework (Lists & Sets)",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-3/the-collections-framework-lists-sets",
+  "branchName": "topic/level-3/the-collections-framework-lists-sets",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-arraylist-resizing-mechanics",
+      "partTitle": "ArrayList Internals & Resizing Mechanics",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "ArrayList Mechanics • Part 1 of 5",
+          "headline": "Your empty ArrayList allocates zero bytes.",
+          "highlightWord": "zero bytes",
+          "subline": "Its initial allocation waits until the very first add call.",
+          "narration": "Your empty ArrayList starts with zero allocated backing array space. Its first add call forces a ten element array allocation on the heap. Understanding this growth prevents hidden resizes in your applications.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "ArrayList 1.5x Capacity Growth",
+          "subtitle": "How OpenJDK resizes backing Object arrays",
+          "nodes": [
+            {
+              "label": "Empty ArrayList",
+              "detail": "Points to shared empty array to save heap space",
+              "tag": "Init",
+              "accent": "sky"
+            },
+            {
+              "label": "First add() Call",
+              "detail": "Allocates default array of length 10",
+              "tag": "Cap: 10",
+              "accent": "amber"
+            },
+            {
+              "label": "Array Full (size == cap)",
+              "detail": "Triggers grow() method using bitwise right shift",
+              "tag": "Resize",
+              "accent": "purple"
+            },
+            {
+              "label": "New Object Array",
+              "detail": "Copies items via System.arraycopy to capacity 15",
+              "tag": "Cap: 15",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "On creation, an empty ArrayList points to a shared empty array. When you add the first element, OpenJDK allocates ten slots. When full, it computes old capacity plus half of old capacity, expanding by 1.5x.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Unsized vs. Pre-Sized ArrayList",
+          "top": {
+            "label": "Default ArrayList",
+            "badge": "24 Resizes!",
+            "tone": "bad",
+            "code": "List<Order> orders = new ArrayList<>();\nfor (int i = 0; i < 100_000; i++) {\n    orders.add(fetchOrder(i));\n}",
+            "points": [
+              "Triggers 24 separate array re-allocations",
+              "Generates excessive short-lived heap garbage"
+            ]
+          },
+          "bottom": {
+            "label": "Pre-Sized ArrayList",
+            "badge": "0 Resizes",
+            "tone": "good",
+            "code": "List<Order> orders = new ArrayList<>(100_000);\nfor (int i = 0; i < 100_000; i++) {\n    orders.add(fetchOrder(i));\n}",
+            "points": [
+              "Allocates single backing array up front",
+              "Amortized O(1) appends with zero copying"
+            ]
+          },
+          "narration": "Adding one hundred thousand items to a default list triggers over twenty array allocations and copy cycles. Pre-sizing the list allocates one backing array up front and eliminates resize overhead completely.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code",
+          "kind": "code-spotlight",
+          "title": "Internal Bitwise Capacity Growth",
+          "filename": "ArrayList.java",
+          "code": "private void grow(int minCapacity) {\n    int oldCapacity = elementData.length;\n    int newCapacity = oldCapacity + (oldCapacity >> 1);\n    if (newCapacity - minCapacity < 0)\n        newCapacity = minCapacity;\n    elementData = Arrays.copyOf(elementData, newCapacity);\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "1.5x Bitwise Growth",
+              "explanation": "Bitwise right shift by 1 computes 50 percent capacity increase instantly.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Native Array Copy",
+              "explanation": "Arrays.copyOf delegates to native System.arraycopy for maximum memory performance.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Inside OpenJDK source, the grow method calculates new capacity by adding half the current length using a bitwise right shift. Arrays dot copyOf then delegates to native System dot arraycopy to move reference pointers fast.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "ArrayList Resizing Mastered",
+          "takeaways": [
+            "ArrayList starts lazy and allocates 10 on first add",
+            "Growth factor is 1.5x via bitwise right shift",
+            "Pre-size collections when count is known"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why LinkedList is often 6x slower than ArrayList →",
+          "narration": "That is how ArrayList manages contiguous heap memory. Next in Part 2, we compare ArrayList against LinkedList to see why pointer chasing wrecks CPU caches in production.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-linkedlist-vs-arraylist-hardware",
+      "partTitle": "LinkedList vs ArrayList Hardware Realities",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Hardware Realities • Part 2 of 5",
+          "headline": "LinkedList is often 6x slower than ArrayList.",
+          "highlightWord": "6x slower",
+          "subline": "Big-O notation hides the physical impact of CPU cache lines.",
+          "narration": "LinkedList claims constant time insertion at both ends, but in real benchmark tests it runs six times slower and consumes six times more memory than ArrayList due to CPU cache misses.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Memory Footprint per Element",
+          "top": {
+            "label": "ArrayList Memory",
+            "badge": "4 Bytes / Slot",
+            "tone": "good",
+            "code": "// Contiguous array of 4-byte references\nObject[] elementData = new Object[1_000_000];",
+            "points": [
+              "4 MB array memory for 1 million items",
+              "Packed contiguously with minimal header overhead"
+            ]
+          },
+          "bottom": {
+            "label": "LinkedList Memory",
+            "badge": "24 Bytes / Node",
+            "tone": "bad",
+            "code": "private static class Node<E> {\n    E item;       // 4 bytes\n    Node<E> next; // 4 bytes\n    Node<E> prev; // 4 bytes\n}",
+            "points": [
+              "24 bytes per node wrapper on 64-bit JVM",
+              "24 MB total memory for 1 million elements"
+            ]
+          },
+          "narration": "With compressed object pointers, an ArrayList slot uses four bytes per reference. LinkedList wraps every element in a separate Node object with pointers and headers, using twenty-four bytes per entry.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Cache Locality vs Pointer Chasing",
+          "subtitle": "Why contiguous arrays outperform scattered heap nodes",
+          "nodes": [
+            {
+              "label": "64-Byte Cache Line",
+              "detail": "CPUs fetch memory in 64-byte blocks from RAM into L1 cache",
+              "tag": "Hardware",
+              "accent": "sky"
+            },
+            {
+              "label": "ArrayList Iteration",
+              "detail": "Contiguous slots fit 16 references per line with prefetching",
+              "tag": "Fast",
+              "accent": "emerald"
+            },
+            {
+              "label": "Node Allocation",
+              "detail": "LinkedList nodes sit scattered across heap memory addresses",
+              "tag": "Scattered",
+              "accent": "amber"
+            },
+            {
+              "label": "Pointer Chasing",
+              "detail": "Dereferencing node.next stalls CPU waiting on memory",
+              "tag": "Slow",
+              "accent": "purple"
+            }
+          ],
+          "narration": "CPUs pull memory into sixty-four byte cache lines. Scanning contiguous ArrayList memory lets hardware prefetch incoming items effortlessly. Traversing LinkedList forces the CPU to chase scattered heap pointers, causing frequent cache misses.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code",
+          "kind": "code-spotlight",
+          "title": "Replacing LinkedList with ArrayDeque",
+          "filename": "QueueDemo.java",
+          "code": "import java.util.*;\n\npublic class QueueDemo {\n    // Bad: 24-byte Node objects per element\n    Queue<String> slow = new LinkedList<>();\n\n    // Good: circular array, 0 node allocations\n    Deque<String> fast = new ArrayDeque<>();\n}",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "LinkedList Queue",
+              "explanation": "LinkedList creates a new double-pointer node object for every queued item.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "ArrayDeque",
+              "explanation": "ArrayDeque uses a resizable circular array with high cache locality and zero node overhead.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "If you need a queue or stack with constant time push and pop, use ArrayDeque instead of LinkedList. ArrayDeque relies on a resizable circular array without wrapper objects, saving memory and maximizing CPU cache hits.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Hardware Realities Mastered",
+          "takeaways": [
+            "ArrayList uses 4B per slot vs 24B per LinkedList node",
+            "Contiguous arrays enable CPU cache line prefetching",
+            "Use ArrayDeque for efficient queues and stacks"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): HashSet internals and the silent mutable hashCode bug →",
+          "narration": "Hardware mechanics explain why contiguous memory wins. Coming up in Part 3, we dive into HashSet internals and see how mutating set elements creates silent memory leaks.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-hashset-internals-mutable-bug",
+      "partTitle": "HashSet Internals & The Mutable Key Bug",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Set Internals • Part 3 of 5",
+          "headline": "Mutating an element inside a HashSet permanently leaks memory.",
+          "highlightWord": "leaks memory",
+          "subline": "The item stays trapped inside the set, unreachable by contains or remove.",
+          "narration": "Mutating an object field after placing it in a HashSet will cause contains and remove calls to fail silently, trapping that object inside heap memory permanently.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code",
+          "kind": "code-spotlight",
+          "title": "HashSet Backing HashMap Source",
+          "filename": "HashSet.java",
+          "code": "public class HashSet<E> extends AbstractSet<E> implements Set<E> {\n    private transient HashMap<E, Object> map;\n    private static final Object PRESENT = new Object();\n\n    public HashSet() {\n        map = new HashMap<>();\n    }\n\n    public boolean add(E e) {\n        return map.put(e, PRESENT) == null;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Shared Dummy Object",
+              "explanation": "HashSet uses a single static dummy Object called PRESENT as value for all entries.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                9,
+                10
+              ],
+              "badge": "HashMap Delegate",
+              "explanation": "Set elements reside as keys in an internal HashMap to guarantee uniqueness.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "HashSet does not build its own hashing table. Under the hood, it wraps a HashMap and stores your elements as map keys, pairing every single item with a shared static dummy object named PRESENT.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "The Mutable Element Bug",
+          "filename": "MutableDemo.java",
+          "code": "public class MutableDemo {\n    public static void testBug() {\n        Set<Tag> tags = new HashSet<>();\n        Tag tag = new Tag(\"java\");\n        tags.add(tag);\n\n        tag.name = \"jvm\"; // Alters hashCode!\n\n        System.out.println(tags.contains(tag)); // false\n        System.out.println(tags.remove(tag));   // false\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Field Mutation",
+              "explanation": "Changing name alters tag.hashCode(), pointing lookup to a different bucket index.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                9,
+                10
+              ],
+              "badge": "Stranded Element",
+              "explanation": "HashSet inspects the new hash bucket, missing the original entry completely.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When you mutate a field participating in hashCode, the computed hash code changes. Future contains or remove calls inspect the new hash bucket, missing the element stranded in its original bucket.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "HashSet vs. LinkedHashSet",
+          "top": {
+            "label": "Standard HashSet",
+            "badge": "Unordered",
+            "tone": "neutral",
+            "code": "Set<String> set = new HashSet<>();\nset.add(\"alpha\");\nset.add(\"beta\");",
+            "points": [
+              "Iterates in arbitrary hash bucket order",
+              "Slightly lower memory footprint per item"
+            ]
+          },
+          "bottom": {
+            "label": "LinkedHashSet",
+            "badge": "Insertion Order",
+            "tone": "good",
+            "code": "Set<String> set = new LinkedHashSet<>();\nset.add(\"alpha\");\nset.add(\"beta\");",
+            "points": [
+              "Maintains doubly-linked list across entries",
+              "Guarantees predictable insertion-order iteration"
+            ]
+          },
+          "narration": "Standard HashSet iteration order is arbitrary because it depends on bucket distribution. If you need constant time lookup combined with deterministic insertion order, use LinkedHashSet, which maintains a doubly-linked chain across entries.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Set Internals Locked In",
+          "takeaways": [
+            "HashSet delegates to HashMap with a dummy value",
+            "Never mutate hashCode fields while in a Set",
+            "LinkedHashSet preserves deterministic iteration order"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): TreeSet ordering traps & silent duplicate deletions →",
+          "narration": "That is how hash sets manage uniqueness and ordering. Next in Part 4, we examine TreeSet and uncover how bad comparators silently delete valid domain records.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-treeset-ordering-pitfalls",
+      "partTitle": "TreeSet Ordering Mechanics & Comparison Pitfalls",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "TreeSet Ordering • Part 4 of 5",
+          "headline": "TreeSet ignores the equals method entirely.",
+          "highlightWord": "ignores equals",
+          "subline": "An incomplete comparator will silently discard valid business records.",
+          "narration": "TreeSet completely ignores the equals method when checking for duplicate entries, meaning an incomplete comparator will silently discard valid business records without throwing errors.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "HashSet vs. TreeSet Duplication Logic",
+          "top": {
+            "label": "HashSet Duplication",
+            "badge": "hashCode() + equals()",
+            "tone": "neutral",
+            "code": "// Uses hashCode bucket + equals() match\nSet<Order> set = new HashSet<>();",
+            "points": [
+              "Checks bucket hash first",
+              "Compares elements using equals()"
+            ]
+          },
+          "bottom": {
+            "label": "TreeSet Duplication",
+            "badge": "compareTo() == 0",
+            "tone": "bad",
+            "code": "// Ignores equals() completely!\nSet<Order> set = new TreeSet<>(\n    Comparator.comparingDouble(Order::price)\n);",
+            "points": [
+              "Compares only via Comparator or Comparable",
+              "If compare returns 0, second item is discarded!"
+            ]
+          },
+          "narration": "HashSet checks duplicate elements using hashCode and equals. TreeSet uses a Red-Black tree and determines uniqueness strictly when compareTo or compare returns zero. If two distinct items share the same price, TreeSet drops the second one.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code",
+          "kind": "code-spotlight",
+          "title": "Chaining Unique Tie-Breakers",
+          "filename": "SafeTreeSet.java",
+          "code": "import java.util.*;\n\npublic class SafeTreeSet {\n    record Order(String id, double price) {}\n\n    public static NavigableSet<Order> build() {\n        Comparator<Order> comp = Comparator\n            .comparingDouble(Order::price)\n            .thenComparing(Order::id);\n        return new TreeSet<>(comp);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                8
+              ],
+              "badge": "Primary Price Sort",
+              "explanation": "Sorts orders primarily by double price ascending.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                9
+              ],
+              "badge": "Mandatory Tie-Breaker",
+              "explanation": "Chaining orderId guarantees distinct orders never evaluate to zero.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "To keep TreeSet consistent with equals, always chain a unique secondary field with thenComparing. Here, comparing price first and then orderId guarantees two distinct orders never evaluate to zero, protecting your collection from silent data loss.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-code",
+          "kind": "code-spotlight",
+          "title": "NavigableSet Range Queries",
+          "filename": "NavigableDemo.java",
+          "code": "import java.util.*;\n\npublic class NavigableDemo {\n    public static void demo() {\n        NavigableSet<Integer> set = new TreeSet<>(List.of(10, 20, 30));\n\n        System.out.println(set.first());    // 10\n        System.out.println(set.last());     // 30\n        System.out.println(set.ceiling(25));// 30\n        System.out.println(set.floor(25));  // 20\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                7,
+                8
+              ],
+              "badge": "Logarithmic Boundaries",
+              "explanation": "Fetches minimum and maximum elements in logarithmic O(log n) time.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                9,
+                10
+              ],
+              "badge": "Nearest Match Lookups",
+              "explanation": "Ceiling returns least element >= key; floor returns greatest <= key.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "TreeSet implements NavigableSet, enabling logarithmic range lookups. Calling first or last returns tree boundaries, while ceiling and floor instantly locate nearest matching values relative to any given search key.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "TreeSet Mechanics Mastered",
+          "takeaways": [
+            "TreeSet checks duplicates via compareTo == 0",
+            "Chain thenComparing to avoid silent element loss",
+            "NavigableSet provides O(log n) range queries"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Fail-fast iteration & Java 21 Sequenced Collections →",
+          "narration": "Now you understand tree ordering traps. In Part 5, we cover fail-fast iterator mechanics and explore Java 21 Sequenced Collections.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-fail-fast-and-sequenced-collections",
+      "partTitle": "Fail-Fast Iterators & Java 21 Sequenced Collections",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Modern Java • Part 5 of 5",
+          "headline": "A single-threaded loop can crash with ConcurrentModificationException.",
+          "highlightWord": "single-threaded loop",
+          "subline": "Mutating a collection during for-each iteration triggers modCount checks.",
+          "narration": "Modifying a collection inside an enhanced for-each loop triggers a ConcurrentModificationException instantly, even when running on a single isolated thread.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code",
+          "kind": "code-spotlight",
+          "title": "Safe Collection Removals",
+          "filename": "SafeRemoval.java",
+          "code": "import java.util.*;\n\npublic class SafeRemoval {\n    public static void clean(List<String> items) {\n        Iterator<String> it = items.iterator();\n        while (it.hasNext()) {\n            if (it.next().equals(\"B\")) it.remove();\n        }\n        items.removeIf(item -> item.equals(\"C\"));\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Iterator.remove()",
+              "explanation": "Updates expectedModCount synchronously to keep iteration safe.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                9
+              ],
+              "badge": "Linear removeIf()",
+              "explanation": "Performs bulk removal in linear time without multi-pass array shifts.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Collections track internal modifications using a modCount counter. Direct list removal during iteration causes modCount mismatch. To remove safely, call Iterator dot remove or use modern removeIf, which keeps counters in sync.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-code",
+          "kind": "code-spotlight",
+          "title": "Java 21 Sequenced Collections (JEP 431)",
+          "filename": "SequencedDemo.java",
+          "code": "import java.util.*;\n\npublic class SequencedDemo {\n    public static void main(String[] args) {\n        SequencedSet<String> set = new LinkedHashSet<>(List.of(\"a\", \"b\", \"c\"));\n        String head = set.getFirst(); // \"a\"\n        String tail = set.getLast();  // \"c\"\n        SequencedSet<String> rev = set.reversed();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Unified First / Last",
+              "explanation": "getFirst() and getLast() operate uniformly across Lists, Sets, and Deques.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "Zero-Copy Reverse View",
+              "explanation": "reversed() returns a reverse view with zero memory allocations.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Java 21 introduced SequencedCollection to standardize ordered operations. Methods like getFirst and getLast provide uniform access across lists and sets, while reversed returns a zero-allocation reverse view.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-term",
+          "kind": "terminal",
+          "title": "ModCount Verification Output",
+          "caption": "Fail-Fast Iteration Exception Output",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java com.javahub.collections.FailFastDemo"
+            },
+            {
+              "kind": "error",
+              "text": "Exception in thread \"main\" java.util.ConcurrentModificationException"
+            },
+            {
+              "kind": "output",
+              "text": "  at java.base/java.util.ArrayList$Itr.checkForComodification(ArrayList.java:1013)"
+            },
+            {
+              "kind": "comment",
+              "text": "# Fix: Use items.removeIf(pred) or Iterator.remove()"
+            },
+            {
+              "kind": "success",
+              "text": "Build succeeded after applying removeIf filter"
+            }
+          ],
+          "narration": "When checkForComodification fails inside ArrayList Itr, HotSpot throws ConcurrentModificationException immediately. Replacing loop removal with removeIf fixes the exception and streamlines code execution.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Collections Mastery Complete!",
+          "takeaways": [
+            "Use Iterator.remove() or removeIf to avoid fail-fast bugs",
+            "Java 21 Sequenced Collections provide uniform first/last access",
+            "reversed() creates zero-allocation reverse views"
+          ],
+          "command": "git checkout topic/level-3/the-collections-framework-lists-sets",
+          "nextPartTeaser": "Full roadmap & interactive labs at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered Java Lists, Sets, and Sequenced Collections. Checkout the companion git branch to run the complete Java 21 performance labs and unit tests yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
