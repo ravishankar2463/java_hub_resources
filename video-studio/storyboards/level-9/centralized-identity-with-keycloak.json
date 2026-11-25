@@ -1,0 +1,473 @@
+{
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-architecture-and-realms",
+      "partTitle": "Keycloak Architecture: Realms & Clients",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Identity Engineering • Part 1 of 4",
+          "headline": "Why custom login tables are a security nightmare.",
+          "highlightWord": "security nightmare",
+          "subline": "Stop building auth from scratch. Delegate to a central IAM server.",
+          "narration": "Building your own login tables, BCrypt encoders, and session logic feels fast at first. By the time you need SAML, MFA, and Active Directory sync, it’s a massive security liability. Here is how to centralize identity with Keycloak.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Keycloak Identity Hierarchy",
+          "subtitle": "Isolation is the primary goal",
+          "nodes": [
+            {
+              "label": "Realm",
+              "detail": "Isolated security domain (Users, Roles, Clients)",
+              "tag": "Boundary",
+              "accent": "sky"
+            },
+            {
+              "label": "Client",
+              "detail": "Apps requesting tokens (SPA, BFF, Microservice)",
+              "tag": "Application",
+              "accent": "amber"
+            },
+            {
+              "label": "Groups",
+              "detail": "Hierarchical roles & attributes for users",
+              "tag": "Organization",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Keycloak uses Realms to isolate security domains. Never put business apps in the master realm. Use Clients to represent your services, and Groups to manage permissions through organizational hierarchy instead of individual assignments.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Client Types: Public vs Confidential",
+          "top": {
+            "label": "Public (SPA/Mobile)",
+            "badge": "No Secret",
+            "tone": "neutral",
+            "code": "Authorization Code + PKCE",
+            "points": [
+              "Cannot keep secrets safe",
+              "Mandatory PKCE for security"
+            ]
+          },
+          "bottom": {
+            "label": "Confidential (Backend)",
+            "badge": "Secret Enabled",
+            "tone": "good",
+            "code": "Client Secret / private_key_jwt",
+            "points": [
+              "Secure machine-to-machine",
+              "Supports Service Accounts"
+            ]
+          },
+          "narration": "Public clients like React apps can't hide secrets, so they must use PKCE. Confidential backend services use secrets or certificates to request tokens directly, allowing for machine-to-machine communication without human intervention.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-roles",
+          "kind": "code-spotlight",
+          "title": "Role Scoping Strategy",
+          "filename": "Roles.java",
+          "code": "/* JWT Structure */\n{\n  \"realm_access\": { \"roles\": [\"ADMIN\"] },\n  \"resource_access\": {\n    \"billing-service\": { \"roles\": [\"invoice:approve\"] }\n  }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Realm Roles",
+              "explanation": "Global permissions shared across the whole realm.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Client Roles",
+              "explanation": "Scoped to one service. Prevents namespace pollution.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use Client Roles for microservices. They reside under resource access in the JWT, meaning teams can define their own permissions without colliding with other services. It scales perfectly as your architecture grows.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Realms = isolated security domains",
+            "PKCE for public, Secrets for confidential",
+            "Client Roles prevent namespace collisions"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Spring Boot 3 SSO & the Logout Bug →",
+          "narration": "That's the architecture. In Part 2, we integrate Spring Boot 3 and fix the silent logout bug that keeps user sessions alive after they click exit.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-spring-boot-sso",
+      "partTitle": "Spring Boot 3 SSO & Logout Handling",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Security • Part 2 of 4",
+          "headline": "Why your logout button is lying to you.",
+          "highlightWord": "lying",
+          "subline": "Destroying the local session isn't enough.",
+          "narration": "Clicking logout in your app destroys the local cookie, but the Keycloak SSO session remains active. The next time a user visits, they are silently logged back in. Let's fix that.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-config",
+          "kind": "code-spotlight",
+          "title": "Configuring OIDC Logout",
+          "filename": "SsoSecurityConfig.java",
+          "code": "private LogoutSuccessHandler oidcLogoutSuccessHandler(ClientRegistrationRepository repo) {\n    OidcClientInitiatedLogoutSuccessHandler handler = \n        new OidcClientInitiatedLogoutSuccessHandler(repo);\n    handler.setPostLogoutRedirectUri(\"{baseUrl}/public/signed-out\");\n    return handler;\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "OidcClientInitiated",
+              "explanation": "This handler redirects the browser to Keycloak's end_session_endpoint.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Redirect",
+              "explanation": "Ensures the user lands on a safe public page after global logout.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use the OidcClientInitiatedLogoutSuccessHandler. It signals Keycloak to terminate the central SSO session, not just your local Spring session. Without this, your security boundary is effectively non-existent.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-term-deps",
+          "kind": "terminal",
+          "title": "Standardizing Dependencies",
+          "caption": "Avoid legacy proprietary starters",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Use standard Spring Security starters"
+            },
+            {
+              "kind": "command",
+              "text": "implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'"
+            },
+            {
+              "kind": "command",
+              "text": "implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'"
+            },
+            {
+              "kind": "error",
+              "text": "✗ Avoid: keycloak-spring-boot-starter (Deprecated)"
+            }
+          ],
+          "narration": "Stop using the archived Keycloak starter. It couples your code to Keycloak's release cycle. Use standard Spring Security OAuth2 starters—they rely on OIDC discovery, making your code portable to any identity provider.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-claims",
+          "kind": "code-spotlight",
+          "title": "Reading Custom Claims",
+          "filename": "DashboardController.java",
+          "code": "@GetMapping(\"/api/v1/tenant-dashboard\")\npublic ResponseEntity<DashboardData> getDashboard(@AuthenticationPrincipal Jwt jwt) {\n    String tenantId = jwt.getClaimAsString(\"tenant_id\");\n    List<String> groups = jwt.getClaimAsStringList(\"groups\");\n    return ResponseEntity.ok(dashboardService.loadForTenant(tenantId, groups));\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "JWT Claims",
+              "explanation": "Extract mapped attributes directly from the verified token.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Don't query a database for user details on every request. Use Keycloak Protocol Mappers to inject tenant IDs or group memberships directly into the JWT. Your API just reads the claims from the token.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use OidcClientInitiatedLogoutSuccessHandler",
+            "Avoid deprecated proprietary starters",
+            "Map claims to avoid DB lookups"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Token Exchange & The Confused Deputy →",
+          "narration": "That's SSO handled. In Part 3, we tackle the confused deputy problem using RFC 8693 Token Exchange, so your services can call each other securely.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-token-exchange",
+      "partTitle": "RFC 8693 Token Exchange",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Security Patterns • Part 3 of 4",
+          "headline": "Forwarding user tokens is a security hole.",
+          "highlightWord": "security hole",
+          "subline": "The Confused Deputy problem explained.",
+          "narration": "If you forward a user's token from Service A to Service B, you've created a confused deputy. If Service A is compromised, the attacker can replay that token against any other service in your cluster.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Token Exchange (RFC 8693)",
+          "subtitle": "Down-scoping tokens for downstream services",
+          "nodes": [
+            {
+              "label": "User Token",
+              "detail": "Audience: Order Service",
+              "tag": "Inbound",
+              "accent": "sky"
+            },
+            {
+              "label": "Keycloak",
+              "detail": "Validate & Exchange",
+              "tag": "Exchange",
+              "accent": "amber"
+            },
+            {
+              "label": "New Token",
+              "detail": "Audience: Billing Service",
+              "tag": "Outbound",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Token Exchange lets your service request a new, short-lived token from Keycloak. This new token is audience-restricted to the specific downstream service, preventing blanket access and limiting the blast radius of a compromise.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-exchange",
+          "kind": "code-spotlight",
+          "title": "Performing the Exchange",
+          "filename": "TokenExchange.java",
+          "code": "form.add(\"grant_type\", \"urn:ietf:params:oauth:grant-type:token-exchange\");\nform.add(\"subject_token\", incomingUserToken);\nform.add(\"audience\", \"billing-service\");\n\n// POST to Keycloak Token Endpoint",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Grant Type",
+              "explanation": "Use the standard OAuth2 Token Exchange grant.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Audience",
+              "explanation": "Restrict the new token to the target service only.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The exchange request is simple. You pass the original token as the subject token and specify the target audience. Keycloak validates the request and returns a fresh token that only the billing service will accept.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Token Forwarding vs Exchange",
+          "top": {
+            "label": "Forwarding",
+            "badge": "❌ Risky",
+            "tone": "bad",
+            "code": "Bearer <original_token>",
+            "points": [
+              "Over-privileged",
+              "Replay attacks possible"
+            ]
+          },
+          "bottom": {
+            "label": "Exchange",
+            "badge": "✅ Secure",
+            "tone": "good",
+            "code": "Bearer <downscoped_token>",
+            "points": [
+              "Principle of least privilege",
+              "Audience-restricted"
+            ]
+          },
+          "narration": "Forwarding tokens is lazy and dangerous. Token Exchange enforces least privilege, ensuring that even if one service is taken over, the attacker cannot use that identity to access unrelated parts of your system.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Avoid forwarding tokens",
+            "Use RFC 8693 Token Exchange",
+            "Down-scope tokens by audience"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): mTLS & Zero-Trust Networking →",
+          "narration": "That's the logic layer secured. In Part 4, we move to the transport layer with mTLS and certificate-bound tokens to achieve true zero-trust communication.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-mtls-zero-trust",
+      "partTitle": "mTLS & Certificate-Bound Tokens",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Zero Trust • Part 4 of 4",
+          "headline": "Internal networks are not safe.",
+          "highlightWord": "not safe",
+          "subline": "Assume every pod is compromised.",
+          "narration": "Even inside your private VPC, plain HTTP is a risk. An attacker sniffing traffic can steal your bearer tokens. We need cryptographic proof of identity at the transport layer.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "mTLS Handshake",
+          "subtitle": "Both sides prove identity",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Presents X.509 Cert",
+              "tag": "Order Service",
+              "accent": "sky"
+            },
+            {
+              "label": "Server",
+              "detail": "Presents X.509 Cert",
+              "tag": "Billing Service",
+              "accent": "amber"
+            },
+            {
+              "label": "CA",
+              "detail": "Verifies both sides",
+              "tag": "Trust",
+              "accent": "purple"
+            }
+          ],
+          "narration": "mTLS requires both the client and server to present X.509 certificates. If the certificate isn't signed by your internal CA, the handshake fails immediately—before a single HTTP request is processed.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-mtls",
+          "kind": "code-spotlight",
+          "title": "Spring SSL Bundles",
+          "filename": "application.yml",
+          "code": "server:\n  ssl:\n    bundle: internal-mtls\n    client-auth: need\n\nspring:\n  ssl:\n    bundle:\n      pem:\n        internal-mtls:\n          reload-on-update: true",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "client-auth: need",
+              "explanation": "Forces Tomcat to reject connections without a valid cert.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                9
+              ],
+              "badge": "reload-on-update",
+              "explanation": "Hot-reloads certs without restarting the pod.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Spring Boot 3 SSL Bundles make mTLS configuration trivial. Set client-auth to need, and Spring handles the rest. Enable reload-on-update so your system automatically picks up rotated certificates from disk.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-rfc",
+          "kind": "terminal",
+          "title": "RFC 8705: Bound Tokens",
+          "caption": "Binding JWTs to TLS certificates",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# JWT cnf (confirmation) claim"
+            },
+            {
+              "kind": "output",
+              "text": "\"cnf\": { \"x5t#S256\": \"bwcK0esc3ACC...\" }"
+            },
+            {
+              "kind": "comment",
+              "text": "# Even if stolen, the token is useless"
+            },
+            {
+              "kind": "comment",
+              "text": "# without the matching private key!"
+            }
+          ],
+          "narration": "For maximum security, use RFC 8705. Keycloak embeds the certificate's thumbprint into the JWT. If an attacker steals that token, they can't use it because they don't have the client's private key.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "mTLS for transport-layer identity",
+            "Use Spring SSL Bundles for configuration",
+            "RFC 8705 binds tokens to private keys"
+          ],
+          "command": "git checkout topic/level-9/centralized-identity-with-keycloak",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered centralized identity. Checkout the companion branch to run the mTLS lab and secure your microservices. See the full roadmap at the link below.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ],
+  "chapterId": "level-9/centralized-identity-with-keycloak",
+  "level": "level-9",
+  "levelLabel": "Level 9",
+  "slug": "centralized-identity-with-keycloak",
+  "chapterTitle": "Centralized Identity with Keycloak",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-9/centralized-identity-with-keycloak",
+  "branchName": "topic/level-9/centralized-identity-with-keycloak",
+  "voice": "af_heart",
+  "speed": 1.24
+}
