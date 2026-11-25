@@ -1,0 +1,480 @@
+{
+  "chapterId": "level-10/kafka-consumer-groups-and-rebalances",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "kafka-consumer-groups-and-rebalances",
+  "chapterTitle": "Kafka Consumer Groups and Rebalances",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/kafka-consumer-groups-and-rebalances",
+  "branchName": "topic/level-10/kafka-consumer-groups-and-rebalances",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-group-mechanics",
+      "partTitle": "Consumer Groups & Partition Assignment",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 1 of 4",
+          "headline": "Why does scaling your consumer group stall throughput?",
+          "highlightWord": "stall throughput",
+          "subline": "It isn't just network lag. It's how Kafka handles partition rebalancing.",
+          "narration": "Scaling your consumer group should boost performance, but often it causes massive stalls. If you have four partitions and six pods, two pods sit idle. Let's look at why.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Partition Ownership Rules",
+          "subtitle": "One partition, one consumer per group",
+          "nodes": [
+            {
+              "label": "Topic Partitions",
+              "detail": "4 partitions total",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Consumer Group",
+              "detail": "3 active pods",
+              "tag": "Group",
+              "accent": "amber"
+            },
+            {
+              "label": "Idle Pods",
+              "detail": "Pods 4, 5, 6 do nothing",
+              "tag": "Waste",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Within one group, each partition maps to exactly one consumer. If your pod count exceeds your partition count, those extra pods are useless hot standbys. Kafka enforces this to guarantee strict message ordering.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-thread",
+          "kind": "code-spotlight",
+          "title": "The Thread-Safety Trap",
+          "filename": "KafkaConsumer.java",
+          "code": "KafkaConsumer<String, String> consumer = ...;\n\n// WRONG: Concurrent access throws exception\nnew Thread(() -> consumer.poll(Duration.ZERO)).start();\n\n// RIGHT: Single-threaded loop\nwhile (true) {\n    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));\n    process(records);\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Not Thread-Safe",
+              "explanation": "KafkaConsumer is NOT thread-safe. All poll and commit calls must reside on the same thread.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7,
+                8
+              ],
+              "badge": "Single Thread",
+              "explanation": "Spring Kafka handles concurrency by spawning separate consumer instances, not sharing one.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never call poll from multiple threads. KafkaConsumer is not thread-safe. If you need more throughput, spin up separate consumer instances—Spring does this automatically with the concurrency setting.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Eager vs. Cooperative Rebalancing",
+          "top": {
+            "label": "Eager (Old)",
+            "badge": "Stop-the-world",
+            "tone": "bad",
+            "code": "Revoke All -> Rebalance -> Assign All",
+            "points": [
+              "Stalls entire group",
+              "High latency"
+            ]
+          },
+          "bottom": {
+            "label": "Cooperative (KIP-429)",
+            "badge": "Incremental",
+            "tone": "good",
+            "code": "Revoke Only Affected Partitions",
+            "points": [
+              "Zero pause for most pods",
+              "Sticky assignment"
+            ]
+          },
+          "narration": "Avoid Eager rebalancing. It stops the world for every pod. Cooperative Sticky Assignor keeps unaffected partitions running while only moving the necessary ones, keeping your pipeline flowing.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Partitions map 1:1 per group",
+            "KafkaConsumer is not thread-safe",
+            "Use CooperativeStickyAssignor"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why auto-commit is a data loss trap →",
+          "narration": "That's the foundation. In Part 2, we tackle the dangerous auto-commit default and the hybrid commit pattern for production-grade reliability.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-commit-strategies",
+      "partTitle": "Auto-Commit, Sync, and Async",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 2 of 4",
+          "headline": "Is your auto-commit losing data?",
+          "highlightWord": "losing data",
+          "subline": "The default setting is a ticking time bomb for business-critical events.",
+          "narration": "Auto-commit is the easiest way to lose data. If your app crashes after the commit but before processing finishes, those records are gone forever. Let's fix your commit strategy.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Commit Strategies",
+          "top": {
+            "label": "commitSync()",
+            "badge": "Blocking",
+            "tone": "neutral",
+            "code": "consumer.commitSync();",
+            "points": [
+              "Guaranteed delivery",
+              "Slows down throughput"
+            ]
+          },
+          "bottom": {
+            "label": "commitAsync()",
+            "badge": "Non-Blocking",
+            "tone": "good",
+            "code": "consumer.commitAsync();",
+            "points": [
+              "High throughput",
+              "No automatic retries"
+            ]
+          },
+          "narration": "Sync is safe but slow. Async is fast but lacks retries. Why? Because a late retry could overwrite a newer, successful commit, causing duplicate processing. Always use a hybrid approach.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-hybrid",
+          "kind": "code-spotlight",
+          "title": "The Hybrid Commit Pattern",
+          "filename": "ConsumerLoop.java",
+          "code": "while (true) {\n    var records = consumer.poll(Duration.ofMillis(200));\n    process(records);\n    \n    // Async for steady state\n    consumer.commitAsync();\n}\n\n// Sync on shutdown/rebalance\npublic void onPartitionsRevoked(...) {\n    consumer.commitSync();\n}",
+          "steps": [
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Async",
+              "explanation": "Use async for high-throughput steady-state processing.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                10
+              ],
+              "badge": "Sync",
+              "explanation": "Use sync during rebalances to ensure no work is lost before partition handoff.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The production standard: use commitAsync in your loop for speed. But, implement a RebalanceListener to call commitSync when partitions are revoked. This guarantees you finish work before losing the partition.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Static Membership",
+          "caption": "Eliminate rebalances on pod restarts",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Set in consumer config"
+            },
+            {
+              "kind": "output",
+              "text": "group.instance.id=billing-pod-0"
+            },
+            {
+              "kind": "output",
+              "text": "session.timeout.ms=60000"
+            },
+            {
+              "kind": "success",
+              "text": "Result: Zero rebalance on restart!"
+            }
+          ],
+          "narration": "If you use Kubernetes StatefulSets, set group.instance.id. This lets your pod restart and reclaim its old partitions within the session timeout, bypassing the rebalance storm entirely.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Disable auto-commit for critical data",
+            "Use hybrid commit (Async loop + Sync revoke)",
+            "Static membership saves rebalance time"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The poison pill loop →",
+          "narration": "Commits are now safe. In Part 3, we look at poison pills—the malformed records that can wedge your partition in an infinite retry loop.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-poison-pills",
+      "partTitle": "Poison Pills & Error Handling",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 3 of 4",
+          "headline": "One bad record can stop your entire service.",
+          "highlightWord": "stop your service",
+          "subline": "Deserialization happens before your code runs. Here is how to survive.",
+          "narration": "A malformed JSON record is a poison pill. It crashes deserialization inside the poll loop, so your code never even sees it. The consumer retries the same bad record forever.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Poison Pill Loop",
+          "subtitle": "Why your partition gets wedged",
+          "nodes": [
+            {
+              "label": "Poll()",
+              "detail": "Fetches bad record",
+              "tag": "Step 1",
+              "accent": "amber"
+            },
+            {
+              "label": "Deserializer",
+              "detail": "Throws Exception",
+              "tag": "Step 2",
+              "accent": "purple"
+            },
+            {
+              "label": "Retry Loop",
+              "detail": "Fetches same record again",
+              "tag": "Failure",
+              "accent": "red"
+            }
+          ],
+          "narration": "The deserializer runs inside poll. If it fails, the offset never advances. You are stuck in a loop. You need to move that bad record to a Dead Letter Topic.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-dlt",
+          "kind": "code-spotlight",
+          "title": "ErrorHandlingDeserializer",
+          "filename": "Config.java",
+          "code": "props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, \n    ErrorHandlingDeserializer.class);\n\n// Recoverer sends to DLT\nDeadLetterPublishingRecoverer recoverer = \n    new DeadLetterPublishingRecoverer(template);\n\nDefaultErrorHandler handler = \n    new DefaultErrorHandler(recoverer, backOff);",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Wrapper",
+              "explanation": "Wraps your real deserializer to catch errors without crashing the thread.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6,
+                9
+              ],
+              "badge": "DLT",
+              "explanation": "Routes the poison pill to a separate topic so the main queue can keep moving.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use ErrorHandlingDeserializer. It catches the exception and passes a null payload to your listener. Then, use a DeadLetterPublishingRecoverer to push that bad record to a DLT, allowing your partition to advance.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "Timeout Tuning",
+          "caption": "Don't let slow processing trigger rebalances",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Max time between poll() calls"
+            },
+            {
+              "kind": "output",
+              "text": "max.poll.interval.ms=300000"
+            },
+            {
+              "kind": "comment",
+              "text": "# Reduce records to avoid timeouts"
+            },
+            {
+              "kind": "output",
+              "text": "max.poll.records=50"
+            }
+          ],
+          "narration": "If your processing is slow, your poll interval will expire. Drop max.poll.records to 50. This ensures you finish batches faster, keeping your consumer inside the group and avoiding unnecessary rebalances.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use ErrorHandlingDeserializer for poison pills",
+            "Route bad records to DLT",
+            "Tune max.poll.records for slow processing"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): KIP-848 and the future of Kafka →",
+          "narration": "Poison pills are handled. In Part 4, we look at the next-gen rebalance protocol that moves assignment to the broker, effectively killing the rebalance problem.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-kip-848",
+      "partTitle": "KIP-848 & The Future",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 4 of 4",
+          "headline": "Rebalances are finally getting fixed.",
+          "highlightWord": "finally fixed",
+          "subline": "KIP-848 moves the heavy lifting from the client to the broker.",
+          "narration": "Rebalances have been a pain for years. KIP-848 changes the game by moving partition assignment to the broker. No more group leader, no more synchronization barriers.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "KIP-848 Architecture",
+          "subtitle": "Broker-side assignment",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Lightweight heartbeat",
+              "tag": "Consumer",
+              "accent": "sky"
+            },
+            {
+              "label": "Group Coordinator",
+              "detail": "Calculates assignment",
+              "tag": "Broker",
+              "accent": "amber"
+            },
+            {
+              "label": "Partition",
+              "detail": "Incremental update",
+              "tag": "State",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "In the new protocol, the broker does all the work. Clients just send heartbeats. The coordinator pushes incremental updates to each member, making rebalances continuous and non-blocking.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "Enable KIP-848",
+          "caption": "The new consumer protocol",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Enable the new protocol"
+            },
+            {
+              "kind": "output",
+              "text": "group.protocol=consumer"
+            },
+            {
+              "kind": "comment",
+              "text": "# Server-side assignment"
+            },
+            {
+              "kind": "output",
+              "text": "group.remote.assignor=range"
+            }
+          ],
+          "narration": "Just set group.protocol to consumer. You no longer need to manage strategies on every client. It's production-ready in Kafka 4.0 and it's the future of scalable event streaming.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Classic vs. New Protocol",
+          "top": {
+            "label": "Classic (KIP-429)",
+            "badge": "Client-Side",
+            "tone": "neutral",
+            "code": "Group Leader calculates",
+            "points": [
+              "Complex sync barriers",
+              "High latency"
+            ]
+          },
+          "bottom": {
+            "label": "New (KIP-848)",
+            "badge": "Broker-Side",
+            "tone": "good",
+            "code": "Coordinator calculates",
+            "points": [
+              "Continuous, non-blocking",
+              "Zero sync wait"
+            ]
+          },
+          "narration": "The classic way requires clients to agree on the state. The new way is server-driven. It's faster, simpler, and makes large-scale consumer groups much more stable.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "KIP-848 moves assignment to the broker",
+            "Use group.protocol=consumer",
+            "Continuous rebalances = no more stalls"
+          ],
+          "command": "git checkout topic/level-10/kafka-consumer-groups-and-rebalances",
+          "nextPartTeaser": "Full lab and code at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered Kafka consumer groups. Grab the lab code from the repo, run the tests, and see the rebalance logic in action. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
