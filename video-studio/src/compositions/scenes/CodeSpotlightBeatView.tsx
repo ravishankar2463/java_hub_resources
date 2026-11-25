@@ -13,6 +13,7 @@ const ACCENT_MAP = {
   emerald: { bar: THEME.emerald, bg: "rgba(16,185,129,0.16)", text: THEME.emeraldLight },
   amber: { bar: THEME.amber, bg: "rgba(245,158,11,0.16)", text: "#fcd34d" },
   sky: { bar: THEME.sky, bg: "rgba(56,189,248,0.16)", text: "#7dd3fc" },
+  purple: { bar: THEME.purple, bg: "rgba(167,139,250,0.18)", text: "#c4b5fd" },
   rose: { bar: THEME.rose, bg: "rgba(251,113,133,0.18)", text: "#fda4af" },
 } as const;
 
@@ -38,7 +39,9 @@ export const CodeSpotlightBeatView: React.FC<{
 
   const activeStep = activeStepIdx >= 0 ? steps[activeStepIdx] : null;
   const activeLines = new Set(activeStep?.lines ?? []);
-  const accent = ACCENT_MAP[activeStep?.accent ?? "emerald"];
+  const accent =
+    ACCENT_MAP[(activeStep?.accent ?? "emerald") as keyof typeof ACCENT_MAP] ??
+    ACCENT_MAP.emerald;
 
   // Local frame within the active step for snappy callout pop
   const stepSpan = Math.max(1, Math.floor(durationInFrames / Math.max(1, steps.length)));

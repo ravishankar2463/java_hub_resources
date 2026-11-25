@@ -64,7 +64,9 @@ export const FlowDiagramBeatView: React.FC<{
         {nodes.map((node, idx) => {
           const isReached = idx <= activeIdx;
           const isCurrent = idx === activeIdx;
-          const colors = NODE_ACCENTS[node.accent ?? "emerald"];
+          const colors =
+            NODE_ACCENTS[(node.accent ?? "emerald") as keyof typeof NODE_ACCENTS] ??
+            NODE_ACCENTS.emerald;
           const revealStart = Math.floor((idx / Math.max(1, nodes.length)) * (durationInFrames * 0.72));
           const pop = spring({
             frame: Math.max(0, frame - Math.min(revealStart, idx * 8)),

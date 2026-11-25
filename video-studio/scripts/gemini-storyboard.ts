@@ -371,7 +371,29 @@ ${markdown}`;
     );
 
     try {
-      const parsed = JSON.parse(lastRaw) as ChapterStoryboardBundle;
+      const rawParsed = JSON.parse(lastRaw) as unknown;
+      let parsed: ChapterStoryboardBundle;
+      if (Array.isArray(rawParsed)) {
+        parsed = { parts: rawParsed } as ChapterStoryboardBundle;
+      } else if (rawParsed && typeof rawParsed === "object") {
+        const obj = rawParsed as Record<string, unknown>;
+        if (Array.isArray(obj.parts)) {
+          parsed = obj as unknown as ChapterStoryboardBundle;
+        } else {
+          // Check for nested wrapper like { storyboard: { parts: [...] } } or { chapter: { parts: [...] } }
+          const nested = Object.values(obj).find(
+            (v) => v && typeof v === "object" && Array.isArray((v as Record<string, unknown>).parts)
+          ) as ChapterStoryboardBundle | undefined;
+          const firstArray = Object.values(obj).find((v) => Array.isArray(v));
+          parsed = nested
+            ? nested
+            : firstArray
+            ? ({ parts: firstArray } as ChapterStoryboardBundle)
+            : (obj as unknown as ChapterStoryboardBundle);
+        }
+      } else {
+        throw new Error("Root JSON must be an object or array of parts.");
+      }
       parsed.chapterId = chapterId;
       parsed.level = level;
       parsed.levelLabel = levelLabel;

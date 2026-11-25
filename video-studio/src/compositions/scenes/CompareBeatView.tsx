@@ -31,7 +31,9 @@ const TONE_STYLES = {
 } as const;
 
 const SideCard: React.FC<{ side: CompareSide; anim: number }> = ({ side, anim }) => {
-  const tone = TONE_STYLES[side.tone];
+  const tone =
+    TONE_STYLES[(side.tone ?? "neutral") as keyof typeof TONE_STYLES] ??
+    TONE_STYLES.neutral;
   return (
     <div
       style={{
