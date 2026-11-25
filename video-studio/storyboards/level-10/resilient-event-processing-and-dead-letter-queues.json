@@ -1,0 +1,464 @@
+{
+  "chapterId": "level-10/resilient-event-processing-and-dead-letter-queues",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "resilient-event-processing-and-dead-letter-queues",
+  "chapterTitle": "Resilient Event Processing and Dead Letter Queues",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/resilient-event-processing-and-dead-letter-queues",
+  "branchName": "topic/level-10/resilient-event-processing-and-dead-letter-queues",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-poison-pill-loops",
+      "partTitle": "Why Kafka Consumers Get Stuck",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Resilience • Part 1 of 4",
+          "headline": "One bad message can kill your entire Kafka partition.",
+          "highlightWord": "kill your partition",
+          "subline": "If you fail to commit the offset, you're trapped in a poison pill loop forever.",
+          "narration": "A single malformed JSON message can lock up your Kafka consumer. Because Kafka is an immutable log, if you can't process offset 42, you can't move to 43. You're trapped in a poison pill loop.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Poison Pill Trap",
+          "nodes": [
+            {
+              "label": "Kafka Topic",
+              "detail": "Offset 42: Bad JSON",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "Consumer",
+              "detail": "Throws Exception",
+              "tag": "Process",
+              "accent": "amber"
+            },
+            {
+              "label": "Result",
+              "detail": "Offset never commits",
+              "tag": "Stall",
+              "accent": "red"
+            }
+          ],
+          "narration": "When your code throws an exception, the offset isn't committed. The consumer restarts, polls the same bad message, and fails again. You've just created a permanent bottleneck for your entire pipeline.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-deserializer",
+          "kind": "code-spotlight",
+          "title": "The Deserialization Blindspot",
+          "filename": "KafkaConfig.java",
+          "code": "consumer:\n  key-deserializer: ErrorHandlingDeserializer\n  value-deserializer: ErrorHandlingDeserializer\n  properties:\n    spring.deserializer.value.delegate.class: JsonDeserializer",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Critical Fix",
+              "explanation": "Standard deserializers throw exceptions before your code runs. Use ErrorHandlingDeserializer to catch these early.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Deserialization happens before your listener starts. If you use raw JSON deserializers, the error happens in the poll loop. Use ErrorHandlingDeserializer to catch it, attach the error to headers, and move on.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Transient vs Permanent Failures",
+          "top": {
+            "label": "Transient (503, DB Lock)",
+            "badge": "Retryable",
+            "tone": "good",
+            "code": "throw new TransientException();",
+            "points": [
+              "Retry with exponential backoff",
+              "System will likely recover"
+            ]
+          },
+          "bottom": {
+            "label": "Permanent (Bad JSON)",
+            "badge": "Poison Pill",
+            "tone": "bad",
+            "code": "throw new ValidationException();",
+            "points": [
+              "Skip retries immediately",
+              "Route to Dead Letter Topic"
+            ]
+          },
+          "narration": "Not all errors are equal. If it's a transient network glitch, retry. If it's a permanent validation error, don't waste CPU cycles. Send it to the DLT and keep the pipeline moving.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Never block on poison pills",
+            "Use ErrorHandlingDeserializer",
+            "Classify errors before retrying"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Blocking retries with DefaultErrorHandler →",
+          "narration": "That's the foundation. In Part 2, we implement the DefaultErrorHandler to handle transient failures without crashing your consumer group.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-blocking-retries",
+      "partTitle": "Blocking Retries with DefaultErrorHandler",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Resilience • Part 2 of 4",
+          "headline": "Should you block your consumer thread for retries?",
+          "highlightWord": "block your thread",
+          "subline": "Blocking retries are safe for ordering, but dangerous for your poll interval.",
+          "narration": "Blocking retries keep your events in order, but if you wait too long, the broker thinks your consumer is dead and triggers a rebalance storm. Here is how to balance it.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-error-handler",
+          "kind": "code-spotlight",
+          "title": "Configuring DefaultErrorHandler",
+          "filename": "BlockingRetryConfig.java",
+          "code": "DefaultErrorHandler handler = new DefaultErrorHandler(\n    recoverer, \n    new ExponentialBackOffWithMaxRetries(3)\n);\nhandler.addNotRetryableExceptions(ValidationException.class);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Backoff",
+              "explanation": "Limits retries to 3 attempts with exponential delay.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Performance",
+              "explanation": "Explicitly exclude permanent errors to avoid wasting time.",
+              "accent": "red"
+            }
+          ],
+          "narration": "The DefaultErrorHandler is your first line of defense. It retries locally on the same thread. Just remember to add your permanent exceptions to the non-retryable list so you don't stall the partition.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "The Rebalance Risk",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Watch your poll interval!"
+            },
+            {
+              "kind": "output",
+              "text": "WARN: Consumer group rebalance triggered"
+            },
+            {
+              "kind": "output",
+              "text": "REASON: max.poll.interval.ms exceeded"
+            }
+          ],
+          "narration": "If your total retry time exceeds max.poll.interval.ms, Kafka kicks you out. If you need longer delays, blocking retries are the wrong tool. You need non-blocking retry topics.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "When to use Blocking Retries",
+          "nodes": [
+            {
+              "label": "Strict Ordering",
+              "detail": "Account ledgers, inventory",
+              "tag": "Use",
+              "accent": "emerald"
+            },
+            {
+              "label": "Short Backoff",
+              "detail": "< 5 seconds",
+              "tag": "Use",
+              "accent": "emerald"
+            },
+            {
+              "label": "Long Backoff",
+              "detail": "Minutes or hours",
+              "tag": "Avoid",
+              "accent": "red"
+            }
+          ],
+          "narration": "Use blocking retries only for short delays and strict ordering requirements. If your downstream dependency is down for minutes, blocking is a recipe for disaster.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Blocking retries preserve order",
+            "Watch max.poll.interval.ms",
+            "Exclude permanent errors"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Non-blocking @RetryableTopic →",
+          "narration": "Blocking is fine until it isn't. In Part 3, we move to non-blocking retry topics to keep your main consumer running at full speed.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-non-blocking-retries",
+      "partTitle": "Non-Blocking Retries with @RetryableTopic",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Resilience • Part 3 of 4",
+          "headline": "Stop blocking your main consumer thread.",
+          "highlightWord": "stop blocking",
+          "subline": "Use non-blocking retry topics to keep healthy events flowing.",
+          "narration": "Non-blocking retries move failed messages to separate topics. This allows your main listener to commit the offset and keep processing healthy events immediately.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-retryable",
+          "kind": "code-spotlight",
+          "title": "The @RetryableTopic Pattern",
+          "filename": "PaymentConsumer.java",
+          "code": "@RetryableTopic(\n    attempts = \"4\",\n    backoff = @Backoff(delay = 1000, multiplier = 5.0),\n    dltStrategy = DltStrategy.FAIL_ON_ERROR\n)",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Attempts",
+              "explanation": "1 initial + 3 retry topics.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "DLT",
+              "explanation": "Sends to DLT after all retries fail.",
+              "accent": "red"
+            }
+          ],
+          "narration": "Spring Kafka handles the heavy lifting here. It creates separate listener containers for each retry topic. Your main consumer stays free, and the failed message waits in a separate topic until its turn.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Non-Blocking Flow",
+          "nodes": [
+            {
+              "label": "Main Topic",
+              "detail": "Healthy events flow",
+              "tag": "Fast",
+              "accent": "emerald"
+            },
+            {
+              "label": "Retry Topic",
+              "detail": "Delayed processing",
+              "tag": "Buffer",
+              "accent": "amber"
+            },
+            {
+              "label": "DLT",
+              "detail": "Manual intervention",
+              "tag": "Final",
+              "accent": "red"
+            }
+          ],
+          "narration": "This breaks strict per-key ordering, but it saves your throughput. If you need strict ordering, use entity versions or idempotent state machines to handle out-of-order events.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Blocking vs Non-Blocking",
+          "top": {
+            "label": "Blocking",
+            "badge": "Simple",
+            "tone": "neutral",
+            "code": "DefaultErrorHandler",
+            "points": [
+              "Preserves order",
+              "Risk of rebalance"
+            ]
+          },
+          "bottom": {
+            "label": "Non-Blocking",
+            "badge": "Scalable",
+            "tone": "good",
+            "code": "@RetryableTopic",
+            "points": [
+              "High throughput",
+              "Breaks order"
+            ]
+          },
+          "narration": "Choose based on your business constraints. If order is life, block. If throughput is life, go non-blocking.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "@RetryableTopic for throughput",
+            "Breaks per-key ordering",
+            "Use idempotency to compensate"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Circuit Breakers & Backpressure →",
+          "narration": "You've got the retry strategy down. In Part 4, we use Circuit Breakers to pause consumption entirely during system-wide outages.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-circuit-breakers",
+      "partTitle": "Backpressure with Circuit Breakers",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Resilience • Part 4 of 4",
+          "headline": "Don't flood a dead service with retries.",
+          "highlightWord": "don't flood",
+          "subline": "Pause your consumer when downstream services go dark.",
+          "narration": "If your payment processor is down, don't keep retrying. You'll just fill your DLT with perfectly valid orders. You need a circuit breaker to pause the consumer.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-breaker",
+          "kind": "code-spotlight",
+          "title": "Pausing the Listener",
+          "filename": "CircuitBreakerConfig.java",
+          "code": "if (nextState == CircuitBreaker.State.OPEN) {\n    container.pause();\n} else if (nextState == CircuitBreaker.State.HALF_OPEN) {\n    container.resume();\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Pause",
+              "explanation": "Stops fetching but keeps heartbeats alive.",
+              "accent": "red"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Resume",
+              "explanation": "Automatically resumes to probe the service.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When the circuit opens, pause the container. Because you're still calling poll, the consumer stays alive in the group. Once the service recovers, the circuit moves to half-open and resumes consumption.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "Backpressure in Action",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Circuit Breaker status"
+            },
+            {
+              "kind": "output",
+              "text": "WARN: Circuit breaker OPEN; pausing listener"
+            },
+            {
+              "kind": "comment",
+              "text": "# Consumer stays in group, but lag builds up"
+            },
+            {
+              "kind": "output",
+              "text": "INFO: Circuit breaker HALF_OPEN; resuming"
+            }
+          ],
+          "narration": "This is elegant backpressure. Lag builds up safely in Kafka, not in your DLT. You avoid false alerts and unnecessary operational replays.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Circuit Breaker State Machine",
+          "nodes": [
+            {
+              "label": "CLOSED",
+              "detail": "Normal operation",
+              "tag": "Healthy",
+              "accent": "emerald"
+            },
+            {
+              "label": "OPEN",
+              "detail": "Downstream fail",
+              "tag": "Paused",
+              "accent": "red"
+            },
+            {
+              "label": "HALF_OPEN",
+              "detail": "Probing service",
+              "tag": "Testing",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Ensure you enable automatic transitions from open to half-open. Otherwise, your consumer stays paused forever because no new calls arrive to trigger the state change.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Pause with container.pause()",
+            "Keep heartbeats alive",
+            "Enable automatic state transitions"
+          ],
+          "command": "git checkout topic/level-10/resilient-event-processing-and-dead-letter-queues",
+          "nextPartTeaser": "Full lab at ravishankar2463.github.io/java_hub/roadmap/level-10/resilient-event-processing-and-dead-letter-queues",
+          "narration": "You're now a Kafka resilience expert. Check the roadmap for the full lab and keep building fault-tolerant systems.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
