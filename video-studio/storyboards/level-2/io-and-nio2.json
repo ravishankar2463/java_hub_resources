@@ -1,0 +1,550 @@
+{
+  "chapterId": "level-2/io-and-nio2",
+  "level": "level-2",
+  "levelLabel": "Level 2",
+  "slug": "io-and-nio2",
+  "chapterTitle": "I/O and NIO.2",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-2/io-and-nio2",
+  "branchName": "topic/level-2/io-and-nio2",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-streams-and-encoding",
+      "partTitle": "Byte vs. Character Streams",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "I/O Foundations • Part 1 of 5",
+          "headline": "Why does your text look like garbage?",
+          "highlightWord": "garbage",
+          "subline": "Mixing up byte and character streams is the fastest way to corrupt your data.",
+          "narration": "If your logs display question marks instead of characters, you have misused Java's I/O layers. Let's fix your stream strategy.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Byte Streams vs. Character Streams",
+          "top": {
+            "label": "Byte Streams (InputStream)",
+            "badge": "Binary",
+            "tone": "neutral",
+            "code": "InputStream / OutputStream",
+            "points": [
+              "Raw 8-bit bytes",
+              "Use for images, PDFs, ZIPs"
+            ]
+          },
+          "bottom": {
+            "label": "Character Streams (Reader)",
+            "badge": "Text",
+            "tone": "good",
+            "code": "Reader / Writer",
+            "points": [
+              "16-bit UTF-16 chars",
+              "Use for JSON, Logs, CSV"
+            ]
+          },
+          "narration": "Byte streams move raw data without interpretation. Character streams apply a Charset to decode bytes into text. Use the wrong one, and you will slice multi-byte UTF-8 characters in half.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-charset",
+          "kind": "code-spotlight",
+          "title": "The Golden Rule: Explicit Charsets",
+          "filename": "Reader.java",
+          "code": "try (var reader = new BufferedReader(\n    new InputStreamReader(\n        new FileInputStream(path),\n        StandardCharsets.UTF_8))) {\n    String line = reader.readLine();\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "StandardCharsets.UTF_8",
+              "explanation": "Never rely on the system default. It changes between Windows, Linux, and Docker, causing silent production bugs.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always pass an explicit Charset. Before Java 18, the default varied by OS. Even now, explicitly defining UTF-8 makes your code portable and immune to environment-specific encoding drift.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-decorator",
+          "kind": "flow-diagram",
+          "title": "The Decorator Pattern",
+          "nodes": [
+            {
+              "label": "FileInputStream",
+              "detail": "Raw byte source",
+              "tag": "Base",
+              "accent": "sky"
+            },
+            {
+              "label": "BufferedInputStream",
+              "detail": "Reduces syscalls",
+              "tag": "Layer 1",
+              "accent": "amber"
+            },
+            {
+              "label": "DataInputStream",
+              "detail": "Parses primitives",
+              "tag": "Layer 2",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Java I/O uses the Decorator pattern. You wrap a raw stream in buffers to reduce expensive OS system calls. Always use try-with-resources to ensure the outermost decorator flushes and closes everything.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Byte streams for binary, Readers for text",
+            "Always specify StandardCharsets.UTF_8",
+            "Use try-with-resources for all streams"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why java.nio.file is safer than java.io.File →",
+          "narration": "That is the foundation. In Part 2, we move to NIO.2, where file operations actually tell you why they failed instead of returning false.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-nio2-files",
+      "partTitle": "Modern Filesystem API (NIO.2)",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "NIO.2 • Part 2 of 5",
+          "headline": "Stop using java.io.File.",
+          "highlightWord": "Stop using",
+          "subline": "It is legacy, error-prone, and hides critical exceptions.",
+          "narration": "Legacy File objects are silent failures. NIO.2 gives you rich exceptions, symbolic link support, and atomic operations. Here is how to modernize your filesystem code.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-path",
+          "kind": "code-spotlight",
+          "title": "Safe Path Construction",
+          "filename": "Paths.java",
+          "code": "Path base = Path.of(\"/var/uploads\");\nPath target = base.resolve(userInput).normalize();\n\nif (!target.startsWith(base)) {\n    throw new SecurityException(\"Traversal attempt!\");\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "resolve()",
+              "explanation": "Never use string concatenation for paths. resolve() handles separators correctly across OS boundaries.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Validation",
+              "explanation": "Always normalize and check the prefix to prevent path traversal attacks like ../../etc/passwd.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Never concatenate strings for paths. Use Path.of and resolve. Crucially, always normalize user input and verify the prefix to block path traversal attacks that could leak your system files.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-term-files",
+          "kind": "terminal",
+          "title": "Files Utility Methods",
+          "caption": "One-liners for common tasks",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "Files.readString(path);"
+            },
+            {
+              "kind": "command",
+              "text": "Files.writeString(path, content, APPEND);"
+            },
+            {
+              "kind": "command",
+              "text": "Files.lines(path).filter(...).count();"
+            }
+          ],
+          "narration": "The Files utility class handles the boilerplate. Need to read a small config? Files.readString. Need to process a massive log file without blowing the heap? Files.lines returns a lazy stream.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow-atomic",
+          "kind": "flow-diagram",
+          "title": "Atomic File Replacement",
+          "nodes": [
+            {
+              "label": "Temp File",
+              "detail": "Write data to local temp",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Atomic Move",
+              "detail": "Metadata swap",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Success",
+              "detail": "Data is consistent",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "To update a file safely, write to a temp file in the same directory, then use ATOMIC_MOVE. This prevents partial writes if the app crashes mid-update. Always keep the temp file on the same mount point.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use Path.of() over File",
+            "Always normalize and validate paths",
+            "Files.lines() needs try-with-resources"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): ByteBuffer internals and why you need to flip() →",
+          "narration": "Filesystem handled. In Part 3, we dive into the low-level world of Channels and Buffers, where a missing flip call will ruin your day.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-channels-and-buffers",
+      "partTitle": "Channels and ByteBuffer Internals",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "NIO • Part 3 of 5",
+          "headline": "Why did your buffer just return empty?",
+          "highlightWord": "empty",
+          "subline": "The #1 NIO bug is forgetting to flip your buffer.",
+          "narration": "NIO buffers are state machines. If you forget to flip, your data is trapped. Let's decode the position, limit, and capacity pointers.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow-buffer",
+          "kind": "flow-diagram",
+          "title": "ByteBuffer Lifecycle",
+          "nodes": [
+            {
+              "label": "Write Mode",
+              "detail": "pos: 0, limit: cap",
+              "tag": "Fill",
+              "accent": "amber"
+            },
+            {
+              "label": "flip()",
+              "detail": "pos: 0, limit: written",
+              "tag": "Switch",
+              "accent": "purple"
+            },
+            {
+              "label": "Read Mode",
+              "detail": "pos: 0, limit: written",
+              "tag": "Drain",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "A buffer tracks position and limit. After writing to a channel, you must call flip. This sets the limit to your current position and resets the position to zero, so you can drain the data you just wrote.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-compact",
+          "kind": "code-spotlight",
+          "title": "Compact vs Clear",
+          "filename": "Buffer.java",
+          "code": "if (buffer.hasRemaining()) {\n    buffer.compact(); // Saves unread bytes\n} else {\n    buffer.clear();   // Resets fully\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "compact()",
+              "explanation": "Shifts unread bytes to index 0. Essential for partial network reads.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Do not just use clear. If you have unread bytes, clear throws them away. Use compact to slide them to the front, so the next read appends correctly. It is the secret to robust protocol parsing.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-direct",
+          "kind": "compare",
+          "title": "Heap vs Direct Buffers",
+          "top": {
+            "label": "Heap Buffer",
+            "badge": "Standard",
+            "tone": "neutral",
+            "code": "ByteBuffer.allocate(4096)",
+            "points": [
+              "Backed by byte[]",
+              "Easier to manage"
+            ]
+          },
+          "bottom": {
+            "label": "Direct Buffer",
+            "badge": "Native",
+            "tone": "good",
+            "code": "ByteBuffer.allocateDirect(4096)",
+            "points": [
+              "Reside in native memory",
+              "Zero-copy potential"
+            ]
+          },
+          "narration": "Heap buffers are standard but require an extra copy for OS I/O. Direct buffers reside in native memory, allowing the OS to access them directly. Use direct buffers only for high-throughput, long-lived data.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Flip after writing, before reading",
+            "Use compact() for partial reads",
+            "Direct buffers for high-perf I/O"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Zero-copy transfers and memory mapping →",
+          "narration": "Buffers mastered. In Part 4, we explore zero-copy transfers and memory-mapped files—the techniques that make Apache Kafka so fast.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-zero-copy-and-mmap",
+      "partTitle": "Zero-Copy and Memory Mapping",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Performance • Part 4 of 5",
+          "headline": "Why copy data when you do not have to?",
+          "highlightWord": "do not have to",
+          "subline": "Zero-copy transfers bypass the JVM heap entirely.",
+          "narration": "Standard I/O copies data four times. Zero-copy does it in two. Let's look at how to stream files directly to the network stack.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow-zerocopy",
+          "kind": "flow-diagram",
+          "title": "The Zero-Copy Pipeline",
+          "nodes": [
+            {
+              "label": "Disk",
+              "detail": "Kernel Page Cache",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "transferTo()",
+              "detail": "Direct DMA pipe",
+              "tag": "Kernel",
+              "accent": "amber"
+            },
+            {
+              "label": "NIC",
+              "detail": "Network Card",
+              "tag": "Target",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "FileChannel.transferTo uses the sendfile syscall. It pipes data from the OS page cache directly to the network card. Your JVM heap is never touched, saving CPU and memory bandwidth.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-mmap",
+          "kind": "code-spotlight",
+          "title": "Memory Mapped Files",
+          "filename": "Mmap.java",
+          "code": "MappedByteBuffer buffer = channel.map(\n    MapMode.READ_WRITE, 0, size);\n\nbuffer.putLong(1001L);\nbuffer.force(); // Flush to disk",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "mmap",
+              "explanation": "Maps a file slice directly into virtual memory. Accessing it is as fast as RAM.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Memory mapping treats files like an array in memory. The OS handles page faults, loading data from disk on demand. It is perfect for high-speed journals and search indexes.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal-warning",
+          "kind": "terminal",
+          "title": "The Mmap Gotcha",
+          "caption": "Watch out for file locking",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "Cannot delete file on Windows!"
+            },
+            {
+              "kind": "comment",
+              "text": "# Mapped buffers stay open until GC"
+            },
+            {
+              "kind": "command",
+              "text": "// Use Java 22+ Arena for deterministic unmap"
+            }
+          ],
+          "narration": "Classic MappedByteBuffer files stay locked until GC runs. This breaks file deletion on Windows. Use the new Java 22+ Arena API to close mappings deterministically.",
+          "durationSec": 11,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "transferTo() for zero-copy streaming",
+            "mmap for high-speed random access",
+            "Use Arena for Java 22+ file unmapping"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): Why you should avoid Java Serialization →",
+          "narration": "Performance optimized. In our final part, we tackle the security nightmare that is Java Serialization and why you should never use it for untrusted data.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-serialization-security",
+      "partTitle": "Serialization Security & Wrap-up",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Security • Part 5 of 5",
+          "headline": "Java Serialization is a security hole.",
+          "highlightWord": "security hole",
+          "subline": "It allows remote code execution on your server.",
+          "narration": "Built-in Java serialization is a legacy trap. It allows attackers to execute arbitrary code via gadget chains. Let's look at how to secure your system.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p5-b2-compare-serialization",
+          "kind": "compare",
+          "title": "Serialization Strategy",
+          "top": {
+            "label": "Built-in",
+            "badge": "Risky",
+            "tone": "bad",
+            "code": "ObjectInputStream.readObject()",
+            "points": [
+              "Gadget chain exploits",
+              "Brittle class coupling"
+            ]
+          },
+          "bottom": {
+            "label": "Modern",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "JSON / Protobuf / Avro",
+            "points": [
+              "Language neutral",
+              "Schema versioning"
+            ]
+          },
+          "narration": "Never use ObjectInputStream on untrusted data. It instantiates classes and runs their hooks before you can validate them. Use JSON or Protobuf for all network communication.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-code-filter",
+          "kind": "code-spotlight",
+          "title": "JEP 290 Allowlist",
+          "filename": "Security.java",
+          "code": "ois.setObjectInputFilter(info -> {\n    Class<?> clazz = info.serialClass();\n    return (clazz == Session.class) \n        ? Status.ALLOWED : Status.REJECTED;\n});",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "ObjectInputFilter",
+              "explanation": "Strictly limit which classes can be deserialized. Reject everything else by default.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "If you are stuck with legacy serialization, use JEP 290 filters. An allowlist rejects unexpected gadget classes before they can trigger RCE. It is your last line of defense.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-terminal-summary",
+          "kind": "terminal",
+          "title": "Chapter Summary",
+          "caption": "I/O Mastery Checklist",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "1. Use Readers for text, Streams for binary"
+            },
+            {
+              "kind": "success",
+              "text": "2. Path.of() + normalize() for safety"
+            },
+            {
+              "kind": "success",
+              "text": "3. Flip buffers before reading"
+            },
+            {
+              "kind": "success",
+              "text": "4. Avoid ObjectInputStream"
+            }
+          ],
+          "narration": "You have mastered Java I/O, from basic streams to zero-copy performance and security. Apply these patterns to keep your applications fast and safe.",
+          "durationSec": 10,
+          "sfx": "success"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use JSON/Protobuf over Serializable",
+            "JEP 290 filters for legacy code",
+            "git checkout topic/level-2/io-and-nio2"
+          ],
+          "nextPartTeaser": "Full guide + Lab at ravishankar2463.github.io/java_hub",
+          "narration": "Check out the repo to run the NIO lab. Master these APIs, and you will handle any I/O bottleneck. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
