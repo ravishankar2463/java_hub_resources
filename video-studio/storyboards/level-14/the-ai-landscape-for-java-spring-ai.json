@@ -1,0 +1,476 @@
+{
+  "chapterId": "level-14/the-ai-landscape-for-java-spring-ai",
+  "level": "level-14",
+  "levelLabel": "Level 14",
+  "slug": "the-ai-landscape-for-java-spring-ai",
+  "chapterTitle": "The AI Landscape for Java: Spring AI",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-14/the-ai-landscape-for-java-spring-ai",
+  "branchName": "topic/level-14/the-ai-landscape-for-java-spring-ai",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-spring-ai-advantage",
+      "partTitle": "Why Spring AI Beats Hand-Rolled Clients",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring AI • Part 1 of 4",
+          "headline": "Why hand-rolling LLM clients is a liability?",
+          "highlightWord": "liability",
+          "subline": "Stop pasting raw JSON. Spring AI brings enterprise-grade orchestration to your JVM services.",
+          "narration": "Hand-rolling HTTP clients for LLMs is a recipe for disaster. Every provider has different schemas for streaming and tools. Spring AI brings the same portability to AI that Spring Data brought to databases.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Spring AI Abstraction Layer",
+          "subtitle": "Decoupling business logic from vendor APIs",
+          "nodes": [
+            {
+              "label": "Service",
+              "detail": "Your domain logic using ChatClient",
+              "tag": "Consumer",
+              "accent": "sky"
+            },
+            {
+              "label": "Spring AI",
+              "detail": "ChatModel, Advisors, Prompts",
+              "tag": "Interface",
+              "accent": "amber"
+            },
+            {
+              "label": "Provider",
+              "detail": "OpenAI, Anthropic, Gemini, Ollama",
+              "tag": "Implementation",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Your service talks to portable interfaces like ChatClient. Spring AI handles the plumbing, auto-configuration, and vendor-specific serialization. You swap providers by changing a starter, not your business logic.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-client",
+          "kind": "code-spotlight",
+          "title": "The Fluent ChatClient API",
+          "filename": "ReviewService.java",
+          "code": "ChatResponse response = chatClient.prompt()\n    .system(\"Review for security bugs.\")\n    .user(u -> u.text(\"{code}\").param(\"code\", source))\n    .call()\n    .chatResponse();",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "System Prompt",
+              "explanation": "Sets the persona and constraints globally.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Template Params",
+              "explanation": "Injects dynamic data into prompts safely.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The fluent API makes prompt assembly readable. You define system roles, inject dynamic user content, and execute calls with built-in support for retries and observability.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Spring AI vs. LangChain4j",
+          "top": {
+            "label": "Spring AI",
+            "badge": "Spring Native",
+            "tone": "good",
+            "code": "ChatClient.builder()...",
+            "points": [
+              "Deep Spring Boot integration",
+              "Uses Actuator & Micrometer"
+            ]
+          },
+          "bottom": {
+            "label": "LangChain4j",
+            "badge": "Framework Agnostic",
+            "tone": "neutral",
+            "code": "@AiService interface...",
+            "points": [
+              "Declarative proxy interfaces",
+              "Great for Quarkus/Micronaut"
+            ]
+          },
+          "narration": "Choose Spring AI if you are already in the Spring ecosystem. It uses familiar patterns like RestClient. If you need framework-agnostic declarative proxies, LangChain4j is your go-to.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Done",
+          "takeaways": [
+            "Spring AI abstracts vendor APIs",
+            "Use ChatClient for orchestration",
+            "Choose based on your framework stack"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Structured output converters and record schemas →",
+          "narration": "That covers the architecture. In Part 2, we look at StructuredOutputConverter to turn LLM text into type-safe Java records.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-structured-output",
+      "partTitle": "Type-Safe AI with Structured Output",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Data Handling • Part 2 of 4",
+          "headline": "Why parse LLM strings manually?",
+          "highlightWord": "manually",
+          "subline": "Stop writing regex for LLM responses. Use StructuredOutputConverter to map AI output directly to Java records.",
+          "narration": "Stop writing fragile regex to parse LLM responses. Spring AI's StructuredOutputConverter uses Jackson to map AI output directly into your Java records, ensuring type safety at the edge.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-record",
+          "kind": "code-spotlight",
+          "title": "Strongly Typed AI Responses",
+          "filename": "TicketSummary.java",
+          "code": "public record TicketSummary(\n    String category,\n    String severity\n) {}\n\nTicketSummary s = chatClient.prompt()\n    .call()\n    .entity(TicketSummary.class);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                3
+              ],
+              "badge": "Java Record",
+              "explanation": "Immutable data carrier for JSON mapping.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": ".entity()",
+              "explanation": "Generates schema instructions and parses JSON.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Define a record, call dot entity, and Spring AI does the rest. It injects formatting rules into the prompt and deserializes the JSON response into your object automatically.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Conversion Pipeline",
+          "subtitle": "From prompt to typed object",
+          "nodes": [
+            {
+              "label": "Schema Gen",
+              "detail": "Converter reflects on Record",
+              "tag": "Pre-Call",
+              "accent": "sky"
+            },
+            {
+              "label": "Inference",
+              "detail": "Model returns structured JSON",
+              "tag": "Execution",
+              "accent": "amber"
+            },
+            {
+              "label": "Jackson",
+              "detail": "Maps JSON to Java Record",
+              "tag": "Post-Call",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The converter acts as a bridge. It tells the model how to format the output before the call, then uses Jackson to safely instantiate your Java record after the response arrives.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-term-bom",
+          "kind": "terminal",
+          "title": "Managing Dependencies",
+          "caption": "Use the BOM to avoid version hell",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "Import Spring AI BOM in pom.xml"
+            },
+            {
+              "kind": "command",
+              "text": "<dependencyManagement> ... </dependencyManagement>"
+            },
+            {
+              "kind": "comment",
+              "text": "Add model starter"
+            },
+            {
+              "kind": "command",
+              "text": "spring-ai-starter-model-openai"
+            }
+          ],
+          "narration": "Always import the Spring AI BOM. It keeps your model starters and vector store dependencies in sync, preventing runtime classpath conflicts between different AI modules.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked",
+          "takeaways": [
+            "Use records for structured output",
+            "Call .entity() for auto-parsing",
+            "BOM manages version alignment"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Local LLMs with Ollama →",
+          "narration": "That's how you keep AI data clean. In Part 3, we move to local development with Ollama to save costs and keep data private.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-local-ollama",
+      "partTitle": "Local AI Development with Ollama",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Local Dev • Part 3 of 4",
+          "headline": "Why pay for GPT-4 during local testing?",
+          "highlightWord": "pay",
+          "subline": "Run quantized models locally with Ollama. It is fast, free, and keeps your data off the cloud.",
+          "narration": "Why burn API credits during local testing? Ollama lets you run open-weight models like Llama 3 locally. It is fast, free, and keeps your proprietary data within your own machine.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-term-ollama",
+          "kind": "terminal",
+          "title": "Spinning up Ollama",
+          "caption": "Docker-based local inference",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "docker run -p 11434:11434 ollama/ollama"
+            },
+            {
+              "kind": "command",
+              "text": "docker exec -it ollama ollama pull llama3.2"
+            },
+            {
+              "kind": "success",
+              "text": "Model pulled successfully!"
+            }
+          ],
+          "narration": "Spin up the container, pull your model, and you have a local inference engine. Spring AI connects to it via standard HTTP, making it a drop-in replacement for cloud models.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-yaml",
+          "kind": "code-spotlight",
+          "title": "Configuring Local Models",
+          "filename": "application-local.yml",
+          "code": "spring:\n  ai:\n    ollama:\n      base-url: http://localhost:11434\n      chat:\n        options:\n          model: llama3.2",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Base URL",
+              "explanation": "Points to local Docker container.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Model Name",
+              "explanation": "Must match the model pulled.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Just point the base URL to your local port. Use Spring profiles to toggle between cloud providers for production and Ollama for your local dev environment.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Cloud vs. Local Strategy",
+          "top": {
+            "label": "Cloud",
+            "badge": "Production",
+            "tone": "neutral",
+            "code": "high-latency, high-cost",
+            "points": [
+              "Best reasoning",
+              "Requires API keys"
+            ]
+          },
+          "bottom": {
+            "label": "Local",
+            "badge": "Dev/Test",
+            "tone": "good",
+            "code": "low-latency, zero-cost",
+            "points": [
+              "Data stays local",
+              "Perfect for testing"
+            ]
+          },
+          "narration": "Use cloud models for complex reasoning tasks in production. Use local models for development, integration tests, and scenarios where data privacy is non-negotiable.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Complete",
+          "takeaways": [
+            "Ollama runs models locally",
+            "Use profiles for environment switching",
+            "Keep data private"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Production guardrails and observability →",
+          "narration": "Local dev is now sorted. In Part 4, we wrap up with production guardrails and how to monitor token usage with Micrometer.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-production-guardrails",
+      "partTitle": "Production Guardrails & Observability",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Production • Part 4 of 4",
+          "headline": "Is your AI service bleeding money?",
+          "highlightWord": "bleeding money",
+          "subline": "Unbounded LLM calls are a financial risk. Monitor tokens and set strict timeouts.",
+          "narration": "Unbounded LLM calls are a financial risk. A stuck loop can burn thousands of tokens in seconds. You need strict token limits, timeouts, and observability before going to production.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-metrics",
+          "kind": "code-spotlight",
+          "title": "Monitoring Token Usage",
+          "filename": "ReviewService.java",
+          "code": "Usage usage = response.getMetadata().getUsage();\nint total = usage.getTotalTokens();\n\nmeterRegistry.counter(\"app.ai.tokens\")\n             .increment(total);",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Metadata",
+              "explanation": "Extract usage stats from response.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Micrometer",
+              "explanation": "Track token consumption.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always extract usage metadata. Push these counts to Micrometer so you can visualize token spend in Grafana and set alerts if usage spikes unexpectedly.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Production Guardrails",
+          "subtitle": "Protecting your service",
+          "nodes": [
+            {
+              "label": "Limits",
+              "detail": "Set max-tokens in YAML",
+              "tag": "Cost",
+              "accent": "amber"
+            },
+            {
+              "label": "Timeouts",
+              "detail": "Configure RestClient",
+              "tag": "Latency",
+              "accent": "sky"
+            },
+            {
+              "label": "Redaction",
+              "detail": "Strip PII before sending",
+              "tag": "Security",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Guardrails are non-negotiable. Set token caps to prevent runaway costs, configure strict HTTP timeouts to fail fast, and redact PII to keep your data compliant.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-term-final",
+          "kind": "terminal",
+          "title": "Chapter Summary",
+          "caption": "Mastering the AI landscape",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "1. Use Spring AI for portability"
+            },
+            {
+              "kind": "success",
+              "text": "2. Map outputs to Java records"
+            },
+            {
+              "kind": "success",
+              "text": "3. Localize dev with Ollama"
+            },
+            {
+              "kind": "success",
+              "text": "4. Monitor tokens with Micrometer"
+            }
+          ],
+          "narration": "You now have the blueprint for production-ready AI in Java. Use these patterns to build resilient, observable, and cost-effective AI services.",
+          "durationSec": 10,
+          "sfx": "success"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Bound tokens to save costs",
+            "Track metrics with Micrometer",
+            "Redact PII before calls"
+          ],
+          "command": "git checkout topic/level-14/the-ai-landscape-for-java-spring-ai",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub/roadmap/level-14/the-ai-landscape-for-java-spring-ai",
+          "narration": "Grab the source code from the branch below. Check the roadmap for the full lab and deep-dive documentation.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
