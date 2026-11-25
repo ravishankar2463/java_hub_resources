@@ -1,0 +1,473 @@
+{
+  "chapterId": "level-8/build-tools",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "build-tools",
+  "chapterTitle": "Build Tools",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/build-tools",
+  "branchName": "topic/level-8/build-tools",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-maven-gradle-paradigms",
+      "partTitle": "Maven vs. Gradle: The Build Engine Showdown",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Build Tools • Part 1 of 4",
+          "headline": "Why does your build fail on CI but work locally?",
+          "highlightWord": "fail on CI",
+          "subline": "It is not your code; it is your build tool configuration. Let us fix that.",
+          "narration": "Why does your build fail on CI but work locally? It is usually a mismatch in build tool configuration. You are not just compiling code; you are orchestrating a complex dependency graph.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Maven vs. Gradle Paradigms",
+          "top": {
+            "label": "Apache Maven",
+            "badge": "Declarative",
+            "tone": "neutral",
+            "code": "<project>\n  <modelVersion>4.0.0</modelVersion>\n  <artifactId>order-service</artifactId>\n</project>",
+            "points": [
+              "Fixed lifecycle phases",
+              "Convention over configuration"
+            ]
+          },
+          "bottom": {
+            "label": "Gradle",
+            "badge": "Dynamic",
+            "tone": "good",
+            "code": "tasks.register(\"build\") {\n  dependsOn(compileJava)\n}",
+            "points": [
+              "Directed Acyclic Graph",
+              "Incremental build cache"
+            ]
+          },
+          "narration": "Maven uses a rigid, declarative lifecycle—compile, test, package. It is predictable and standard. Gradle uses a dynamic task graph, calculating exactly what changed to skip unnecessary work.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Maven Lifecycle Internals",
+          "subtitle": "Phases vs. Plugin Goals",
+          "nodes": [
+            {
+              "label": "Phase: compile",
+              "detail": "Abstract milestone",
+              "tag": "Step",
+              "accent": "sky"
+            },
+            {
+              "label": "Goal: compiler:compile",
+              "detail": "Actual plugin logic",
+              "tag": "Action",
+              "accent": "amber"
+            },
+            {
+              "label": "Output: .class files",
+              "detail": "Artifact generation",
+              "tag": "Result",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Do not confuse phases with goals. A phase is just a milestone. A goal is the actual plugin logic bound to that phase. Maven runs the chain; you just define the target.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-scope",
+          "kind": "code-spotlight",
+          "title": "Dependency Scopes Explained",
+          "filename": "pom.xml",
+          "code": "<dependency>\n    <groupId>org.postgresql</groupId>\n    <artifactId>postgresql</artifactId>\n    <scope>runtime</scope>\n</dependency>",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "runtime scope",
+              "explanation": "Keeps driver classes off your compile classpath, preventing accidental dependency on database-specific internals.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use runtime scope for your JDBC drivers. It keeps your business logic clean by preventing direct imports of database-specific classes that should only exist at runtime.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Maven = Fixed phases, strict conventions",
+            "Gradle = Task DAG, incremental caching",
+            "Use runtime scope for JDBC drivers"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Solving the Dependency Diamond Hell →",
+          "narration": "That is the foundation. In Part 2, we tackle the diamond dependency problem—why your build picks the wrong version and how to force alignment.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-dependency-resolution",
+      "partTitle": "Solving Dependency Hell",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Dependency Management • Part 2 of 4",
+          "headline": "Why is your build downgrading your libraries?",
+          "highlightWord": "downgrading",
+          "subline": "Transitive dependencies are a silent killer. Here is how to control them.",
+          "narration": "Why is your build silently downgrading your libraries? It is the diamond dependency problem. Two libraries need different versions of the same JAR, and your build tool has to pick a winner.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Diamond Conflict",
+          "subtitle": "Root -> LibA(v25) & LibB(v32)",
+          "nodes": [
+            {
+              "label": "Root Project",
+              "detail": "Your Application",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Maven: Nearest Wins",
+              "detail": "Picks v25 (closer to root)",
+              "tag": "Strategy",
+              "accent": "amber"
+            },
+            {
+              "label": "Gradle: Highest Wins",
+              "detail": "Picks v32 (newest version)",
+              "tag": "Strategy",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Maven picks the version closest to the root. Gradle picks the highest version. Both can cause NoSuchMethodError if the version chosen is missing methods required by your code.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term-debug",
+          "kind": "terminal",
+          "title": "Diagnosing the Tree",
+          "caption": "Stop guessing, start tracing",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "./mvnw dependency:tree -Dincludes=guava"
+            },
+            {
+              "kind": "output",
+              "text": "[INFO] +- com.google.guava:guava:jar:25.0:compile"
+            },
+            {
+              "kind": "command",
+              "text": "./gradlew dependencyInsight --dependency guava"
+            },
+            {
+              "kind": "success",
+              "text": "selection reason: forced by highest version"
+            }
+          ],
+          "narration": "Never guess why a JAR was pulled in. Use dependency tree in Maven or dependencyInsight in Gradle. These commands show you exactly which library brought in that unwanted version.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-bom",
+          "kind": "code-spotlight",
+          "title": "Aligning with BOMs",
+          "filename": "pom.xml",
+          "code": "<dependencyManagement>\n  <dependency>\n    <groupId>org.springframework.boot</groupId>\n    <artifactId>spring-boot-dependencies</artifactId>\n    <version>3.3.5</version>\n    <type>pom</type>\n    <scope>import</scope>\n  </dependency>\n</dependencyManagement>",
+          "steps": [
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "BOM Import",
+              "explanation": "Forces all managed dependencies to use the versions defined in the BOM, overriding transitive conflicts.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use a Bill of Materials, or BOM. It centralizes version alignment. By importing it in dependency management, you force your entire project to use tested, compatible versions regardless of graph depth.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Maven = Nearest-wins, Gradle = Highest-wins",
+            "Use dependencyInsight to trace conflicts",
+            "BOMs are the source of truth for versions"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Compilation Avoidance & API vs Implementation →",
+          "narration": "Dependency hell is now manageable. In Part 3, we optimize your build speed using Gradle's compilation avoidance and the difference between api and implementation.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-gradle-optimization",
+      "partTitle": "Optimizing Build Speed",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Performance • Part 3 of 4",
+          "headline": "Why does your build recompile everything?",
+          "highlightWord": "recompile everything",
+          "subline": "You are likely leaking dependencies. Here is how to fix it.",
+          "narration": "Why does your build recompile everything every single time? You are likely leaking dependencies. If you use the wrong configuration, you force downstream modules to recompile unnecessarily.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Compilation Avoidance",
+          "subtitle": "API vs Implementation",
+          "nodes": [
+            {
+              "label": "API Dependency",
+              "detail": "Leaked to consumers",
+              "tag": "Slow",
+              "accent": "amber"
+            },
+            {
+              "label": "Implementation",
+              "detail": "Hidden from consumers",
+              "tag": "Fast",
+              "accent": "emerald"
+            },
+            {
+              "label": "Result",
+              "detail": "Avoids recompilation",
+              "tag": "Optimization",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use implementation by default. It hides the dependency from downstream compile classpaths. Only use api if the dependency types are part of your public method signatures.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-gradle",
+          "kind": "code-spotlight",
+          "title": "Configuration Phase Pitfall",
+          "filename": "build.gradle.kts",
+          "code": "// BAD: Runs on every build!\ntasks.register(\"publish\") {\n  val token = fetchVaultToken()\n  doLast { upload(token) }\n}\n\n// GOOD: Runs only when task executes\ntasks.register(\"publish\") {\n  doLast { val token = fetchVaultToken(); upload(token) }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Configuration Phase",
+              "explanation": "This code runs during every Gradle invocation, even ./gradlew clean, slowing down every single build.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                8,
+                9
+              ],
+              "badge": "Execution Phase",
+              "explanation": "Defer all I/O and network calls to doLast to keep your build cacheable and fast.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never put network calls or I/O in the configuration block. It runs every time you invoke Gradle, even if you are just cleaning. Defer these to doLast to keep your build cacheable.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Build Wrappers",
+          "top": {
+            "label": "System Installed",
+            "badge": "Unstable",
+            "tone": "bad",
+            "code": "mvn clean install",
+            "points": [
+              "Depends on local PATH",
+              "Version drift across team"
+            ]
+          },
+          "bottom": {
+            "label": "Wrapper Script",
+            "badge": "Reproducible",
+            "tone": "good",
+            "code": "./mvnw clean install",
+            "points": [
+              "Pinned version in Git",
+              "Identical CI results"
+            ]
+          },
+          "narration": "Stop relying on global installs. Use the wrapper. It pins the exact build tool version in Git, ensuring that your local machine and CI runner are always perfectly in sync.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Use implementation, not api",
+            "Defer I/O to doLast actions",
+            "Always commit the wrapper"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Final Checklist & Lab →",
+          "narration": "Your build is now fast and reproducible. In Part 4, we wrap up with a final checklist and the lab command to master these tools.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-final-checklist",
+      "partTitle": "Build Tool Master Checklist",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Mastery • Part 4 of 4",
+          "headline": "Is your build production-ready?",
+          "highlightWord": "production-ready",
+          "subline": "Check these four pillars before you ship.",
+          "narration": "Is your build actually production-ready? Before you ship, verify these four pillars. If you cannot answer yes to all of them, your build is a technical debt time bomb.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Production Checklist",
+          "subtitle": "4 Pillars of a Solid Build",
+          "nodes": [
+            {
+              "label": "Reproducibility",
+              "detail": "Wrapper pinned",
+              "tag": "1",
+              "accent": "sky"
+            },
+            {
+              "label": "Dependency Hygiene",
+              "detail": "BOMs used",
+              "tag": "2",
+              "accent": "amber"
+            },
+            {
+              "label": "Build Speed",
+              "detail": "Cache enabled",
+              "tag": "3",
+              "accent": "purple"
+            },
+            {
+              "label": "CI Integrity",
+              "detail": "No local state",
+              "tag": "4",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Reproducibility via wrappers, dependency hygiene via BOMs, build speed via caching, and CI integrity by removing all local state. This is the gold standard for Java builds.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-term-analyze",
+          "kind": "terminal",
+          "title": "Final Analysis",
+          "caption": "Run this before every release",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "./mvnw dependency:analyze"
+            },
+            {
+              "kind": "success",
+              "text": "No unused dependencies found."
+            },
+            {
+              "kind": "command",
+              "text": "./gradlew build --scan"
+            },
+            {
+              "kind": "success",
+              "text": "Build scan published to scans.gradle.com"
+            }
+          ],
+          "narration": "Run dependency analyze in Maven or build scans in Gradle. These tools catch unused dependencies and performance bottlenecks that you would otherwise miss until production crashes.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "The Golden Rule",
+          "top": {
+            "label": "Manual / Ad-hoc",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "cp lib/*.jar ./target",
+            "points": [
+              "Manual classpath management",
+              "Runtime classloader hell"
+            ]
+          },
+          "bottom": {
+            "label": "Build Tool Managed",
+            "badge": "Robust",
+            "tone": "good",
+            "code": "mvn clean verify",
+            "points": [
+              "Automated dependency resolution",
+              "Repeatable artifacts"
+            ]
+          },
+          "narration": "Never manage JARs manually. If you are copying files into a lib folder, you have already lost. Let the build tool handle the classpath and artifact lifecycle.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use wrappers for version pinning",
+            "Analyze dependencies regularly",
+            "Automate everything via build tools"
+          ],
+          "command": "git checkout topic/level-8/build-tools",
+          "nextPartTeaser": "Full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered build tools. Checkout the branch to run the lab, and visit the roadmap for the full JavaHub curriculum. Keep building.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
