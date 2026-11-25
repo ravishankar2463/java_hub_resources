@@ -1,0 +1,554 @@
+{
+  "chapterId": "level-2/enums",
+  "level": "level-2",
+  "levelLabel": "Level 2",
+  "slug": "enums",
+  "chapterTitle": "Enums",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-2/enums",
+  "branchName": "topic/level-2/enums",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-enum-internals",
+      "partTitle": "Enums are Classes, Not Integers",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Enums • Part 1 of 5",
+          "headline": "Why are Java Enums actually classes?",
+          "highlightWord": "actually classes",
+          "subline": "Stop treating them like simple integer constants. They are powerful singletons.",
+          "narration": "Before Java 5, we used integers for constants, which was a type-safety nightmare. Today, Java enums are full-blown classes that extend java.lang.Enum. Let's see what the compiler actually builds.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-code-gen",
+          "kind": "code-spotlight",
+          "title": "What javac generates",
+          "filename": "OrderStatus.java",
+          "code": "public enum OrderStatus { PENDING, SHIPPED }\n\n// Compiled bytecode equivalent:\npublic final class OrderStatus extends Enum<OrderStatus> {\n    public static final OrderStatus PENDING = new OrderStatus(\"PENDING\", 0);\n    public static final OrderStatus SHIPPED = new OrderStatus(\"SHIPPED\", 1);\n    private OrderStatus(String name, int ordinal) { super(name, ordinal); }\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Final Class",
+              "explanation": "Enums are final and extend Enum. You cannot extend other classes, but you can implement interfaces.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Static Singletons",
+              "explanation": "Each constant is a public static final instance created at class load time.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The compiler turns your enum into a final class. Each constant becomes a static singleton instance. This is why you can safely compare them with double-equals—it's just a reference check.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Why == beats .equals()",
+          "top": {
+            "label": "Using .equals()",
+            "badge": "Risky",
+            "tone": "bad",
+            "code": "if (status.equals(OrderStatus.SHIPPED))",
+            "points": [
+              "Throws NPE if status is null"
+            ]
+          },
+          "bottom": {
+            "label": "Using ==",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "if (status == OrderStatus.SHIPPED)",
+            "points": [
+              "Null-safe",
+              "Compile-time type checking"
+            ]
+          },
+          "narration": "Always use double-equals for enums. It is null-safe and catches type mismatches at compile time. If you compare an OrderStatus to a Permission, the code simply won't compile.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-flow",
+          "kind": "flow-diagram",
+          "title": "The values() Trap",
+          "subtitle": "Performance warning for loops",
+          "nodes": [
+            {
+              "label": "values()",
+              "detail": "Returns a new array clone",
+              "tag": "Call",
+              "accent": "amber"
+            },
+            {
+              "label": "Array Clone",
+              "detail": "Defensive copy to prevent mutation",
+              "tag": "Heap",
+              "accent": "purple"
+            },
+            {
+              "label": "Cache it",
+              "detail": "Store in a List or array field",
+              "tag": "Fix",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Calling values() creates a new array clone every single time to protect the internal state. In hot loops, cache the result once instead of calling it repeatedly.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Enums are final classes",
+            "Use == for null-safety",
+            "Cache values() in loops"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Attaching data and logic to your constants →",
+          "narration": "That is the foundation. In Part 2, we stop using parallel lookup tables and start attaching domain data directly to our enum constants.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-enum-data-logic",
+      "partTitle": "Fields, Constructors & Logic",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Enums • Part 2 of 5",
+          "headline": "Stop using parallel lookup tables.",
+          "highlightWord": "lookup tables",
+          "subline": "Your enums can hold fields, constructors, and business logic.",
+          "narration": "Why maintain a separate map for enum codes? You can pack that data directly into the enum definition. Let's build a robust shipping method enum.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-data",
+          "kind": "code-spotlight",
+          "title": "Rich Enum Constants",
+          "filename": "ShippingMethod.java",
+          "code": "public enum ShippingMethod {\n    STANDARD(\"STD\", 5.00),\n    EXPRESS(\"EXP\", 15.00);\n\n    private final String code;\n    private final double rate;\n\n    ShippingMethod(String code, double rate) {\n        this.code = code;\n        this.rate = rate;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Data",
+              "explanation": "Pass initialization data directly to the constructor.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Immutable",
+              "explanation": "Always use private final fields to prevent shared mutable state.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Enum constructors are implicitly private. Always mark your fields private and final. Since enums are global singletons, mutable state is a recipe for thread-safety disasters.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-logic",
+          "kind": "code-spotlight",
+          "title": "Constant-Specific Behavior",
+          "filename": "Operation.java",
+          "code": "public enum Operation {\n    PLUS { public double apply(double a, double b) { return a + b; } },\n    MINUS { public double apply(double a, double b) { return a - b; } };\n\n    public abstract double apply(double a, double b);\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Anonymous Subclasses",
+              "explanation": "Each constant implements the abstract method differently.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Abstract Method",
+              "explanation": "Forces every constant to provide its own implementation.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Need different behavior per constant? Define an abstract method. The compiler forces every constant to implement it, creating anonymous subclasses under the hood.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-map",
+          "kind": "terminal",
+          "title": "O(1) Lookup Strategy",
+          "caption": "Avoid Enum.valueOf() for external codes",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "// Use a static map for fast lookups"
+            },
+            {
+              "kind": "output",
+              "text": "private static final Map<String, ShippingMethod> BY_CODE = ..."
+            },
+            {
+              "kind": "command",
+              "text": "ShippingMethod.fromCode(\"STD\"); // Returns Optional"
+            }
+          ],
+          "narration": "Don't use Enum.valueOf for external codes; it throws exceptions. Build a static map on startup to return an Optional. It is clean, fast, and safe.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use private final fields",
+            "Abstract methods for behavior",
+            "Static maps for lookups"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Modern switch expressions and exhaustiveness →",
+          "narration": "Data and logic are now inside the enum. In Part 3, we look at how modern switch expressions make your code bulletproof against future changes.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-switch-expressions",
+      "partTitle": "Exhaustive Switch Expressions",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Enums • Part 3 of 5",
+          "headline": "Your switch statement is a ticking time bomb.",
+          "highlightWord": "ticking time bomb",
+          "subline": "Adding a new enum constant won't break your build—until it's too late.",
+          "narration": "Traditional switch statements are dangerous. If you add a new constant to your enum, the compiler stays silent while your logic silently fails. Let's fix that.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare-switch",
+          "kind": "compare",
+          "title": "Statement vs. Expression",
+          "top": {
+            "label": "Traditional Switch",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "switch(status) {\n  case PENDING: ...\n  default: throw ...\n}",
+            "points": [
+              "Default hides missing cases"
+            ]
+          },
+          "bottom": {
+            "label": "Switch Expression",
+            "badge": "Exhaustive",
+            "tone": "good",
+            "code": "return switch(status) {\n  case PENDING -> true;\n  case SHIPPED -> false;\n};",
+            "points": [
+              "Compiler checks all cases"
+            ]
+          },
+          "narration": "Switch expressions require every case to be handled. If you add a new enum constant, your build will immediately fail, forcing you to handle the new state. No more silent bugs.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-pattern",
+          "kind": "code-spotlight",
+          "title": "Java 21+ Pattern Matching",
+          "filename": "StatusHandler.java",
+          "code": "return switch (status) {\n    case PENDING -> \"Wait\";\n    case null -> \"Unknown\";\n    default -> \"Active\";\n};",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Null Handling",
+              "explanation": "Handle nulls explicitly in the switch expression.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Modern Java lets you handle nulls directly inside the switch. It is clean, readable, and keeps your logic centralized without extra null checks cluttering your methods.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Switch Internals",
+          "subtitle": "How it works across modules",
+          "nodes": [
+            {
+              "label": "Same Class",
+              "detail": "Switches on ordinal()",
+              "tag": "Fast",
+              "accent": "sky"
+            },
+            {
+              "label": "Different Class",
+              "detail": "Synthetic lookup array",
+              "tag": "Stable",
+              "accent": "amber"
+            },
+            {
+              "label": "Recompilation",
+              "detail": "Safe if constants move",
+              "tag": "Resilient",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When switching across classes, the compiler generates a synthetic lookup array. This ensures that even if a library reorders constants, your switch still hits the correct branch.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use switch expressions",
+            "Avoid default for exhaustiveness",
+            "Handle nulls explicitly"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The ordinal() persistence trap →",
+          "narration": "Switch expressions are the gold standard. In Part 4, we discuss why saving ordinal values to your database is a critical architectural mistake.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-persistence-pitfalls",
+      "partTitle": "The Ordinal() Persistence Trap",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Enums • Part 4 of 5",
+          "headline": "Your database is lying to you.",
+          "highlightWord": "lying",
+          "subline": "Storing ordinal values in SQL will eventually corrupt your data.",
+          "narration": "Every enum has an ordinal—its declaration position. If you save that integer to a database, you are creating a time bomb. Let's see why.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Ordinal Shift",
+          "subtitle": "Adding a constant breaks history",
+          "nodes": [
+            {
+              "label": "PENDING (0)",
+              "detail": "Saved as 0",
+              "tag": "Old",
+              "accent": "sky"
+            },
+            {
+              "label": "NEW (1)",
+              "detail": "Inserted here",
+              "tag": "Change",
+              "accent": "amber"
+            },
+            {
+              "label": "SHIPPED (2)",
+              "detail": "Was 1, now 2!",
+              "tag": "Broken",
+              "accent": "red"
+            }
+          ],
+          "narration": "If you insert a new constant in the middle, every subsequent constant shifts its ordinal. Your database records will suddenly map to the wrong status. Total disaster.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "Persistence Strategy",
+          "top": {
+            "label": "EnumType.ORDINAL",
+            "badge": "Dangerous",
+            "tone": "bad",
+            "code": "@Enumerated(EnumType.ORDINAL)\nprivate OrderStatus status;",
+            "points": [
+              "Breaks on reordering"
+            ]
+          },
+          "bottom": {
+            "label": "EnumType.STRING",
+            "badge": "Stable",
+            "tone": "good",
+            "code": "@Enumerated(EnumType.STRING)\nprivate OrderStatus status;",
+            "points": [
+              "Resilient to reordering"
+            ]
+          },
+          "narration": "Always persist as a STRING or use a custom business code. String is human-readable and survives reordering. Never rely on the default ordinal mapping in JPA.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-code-stable",
+          "kind": "code-spotlight",
+          "title": "The Business Code Pattern",
+          "filename": "Status.java",
+          "code": "public enum OrderStatus {\n    PENDING(\"PND\"),\n    SHIPPED(\"SHP\");\n\n    private final String dbCode;\n    OrderStatus(String code) { this.dbCode = code; }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Stable Code",
+              "explanation": "Use an explicit code field that never changes, even if the enum name changes.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For mission-critical data, use an explicit business code. It decouples your database from your Java source code, allowing you to refactor names without breaking your SQL records.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Never persist ordinal()",
+            "Use EnumType.STRING",
+            "Use stable business codes"
+          ],
+          "nextPartTeaser": "Up Next (Part 5): High-performance collections →",
+          "narration": "Persistence solved. In Part 5, we wrap up with EnumSet and EnumMap—the hidden performance weapons for your collection handling.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-specialized-collections",
+      "partTitle": "EnumSet & EnumMap Performance",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Enums • Part 5 of 5",
+          "headline": "Why use HashSet when you have bits?",
+          "highlightWord": "bits",
+          "subline": "EnumSet and EnumMap are the fastest collections in the JVM.",
+          "narration": "Stop using generic HashMaps for your enums. The standard library provides specialized collections that are faster, smaller, and cleaner. Let's see how they work.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code-set",
+          "kind": "code-spotlight",
+          "title": "EnumSet: Bit Vectors",
+          "filename": "Permissions.java",
+          "code": "Set<Permission> perms = EnumSet.of(READ, WRITE);\n\n// Internally:\n// A single 64-bit long stores the set!\n// contains() is just a bitwise AND.",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Bit Vector",
+              "explanation": "Stores membership as bits in a long. No node allocations.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "EnumSet is just a bit vector. For enums with under 64 constants, it uses a single long. Operations like contains are just bitwise checks. It is incredibly fast.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-code-map",
+          "kind": "code-spotlight",
+          "title": "EnumMap: Array Indexing",
+          "filename": "Counts.java",
+          "code": "Map<OrderStatus, Integer> counts = new EnumMap<>(OrderStatus.class);\n\n// Internally:\n// Object[] array indexed by ordinal.\n// No hashing, no collisions.",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Array Indexed",
+              "explanation": "Direct array access using ordinal() as the index.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "EnumMap is even better. It uses a plain array indexed by the ordinal. No hash codes, no bucket collisions, and no entry objects. It is the most efficient map you can use.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-term-summary",
+          "kind": "terminal",
+          "title": "Performance Summary",
+          "caption": "When to use what",
+          "lines": [
+            {
+              "kind": "output",
+              "text": "HashSet/HashMap -> Generic, high overhead"
+            },
+            {
+              "kind": "output",
+              "text": "EnumSet/EnumMap -> Specialized, zero overhead"
+            },
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-2/enums"
+            }
+          ],
+          "narration": "Use EnumSet and EnumMap by default for enum keys. They are faster, cleaner, and use less memory. Check out the roadmap link below for the full lab and tests.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use EnumSet for bit flags",
+            "Use EnumMap for fast lookups",
+            "Avoid generic hash collections"
+          ],
+          "nextPartTeaser": "Full guide + lab at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered Java enums. Grab the code from the branch above, run the tests, and level up your architecture. See you in the next chapter.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
