@@ -1,0 +1,482 @@
+{
+  "chapterId": "level-10/kafka-producers-and-delivery-guarantees",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "kafka-producers-and-delivery-guarantees",
+  "chapterTitle": "Kafka Producers and Delivery Guarantees",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/kafka-producers-and-delivery-guarantees",
+  "branchName": "topic/level-10/kafka-producers-and-delivery-guarantees",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-producer-internals",
+      "partTitle": "The Truth About producer.send()",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Kafka Internals • Part 1 of 4",
+          "headline": "Does producer.send() actually send data?",
+          "highlightWord": "actually send",
+          "subline": "Hint: It never touches the network directly.",
+          "narration": "Calling producer dot send looks like a simple RPC, but it's a lie. Your application thread never touches the network. It just drops bytes into a buffer and walks away.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Producer Pipeline",
+          "subtitle": "App Thread vs. Background Sender",
+          "nodes": [
+            {
+              "label": "App Thread",
+              "detail": "Serializes record & appends to buffer",
+              "tag": "Producer",
+              "accent": "sky"
+            },
+            {
+              "label": "RecordAccumulator",
+              "detail": "32MB buffer holding Deque of batches",
+              "tag": "Memory",
+              "accent": "amber"
+            },
+            {
+              "label": "Sender Thread",
+              "detail": "Drains batches via NIO when full or timed out",
+              "tag": "I/O",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Your thread serializes the record and appends it to the RecordAccumulator. A dedicated background thread then drains these batches to the broker using Java NIO. This decoupling is what makes Kafka fast.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-batch",
+          "kind": "code-spotlight",
+          "title": "Batching Logic",
+          "filename": "ProducerConfig.java",
+          "code": "producer.send(record);\n\n// Tuning for Throughput\nprops.put(\"linger.ms\", 20);\nprops.put(\"batch.size\", 65536);\nprops.put(\"buffer.memory\", 67108864);",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "linger.ms",
+              "explanation": "Wait 20ms to pack more records into one batch.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "batch.size",
+              "explanation": "Increase to 64KB for better compression.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Don't leave linger ms at zero. By waiting a few milliseconds, you pack more records into a single batch, which drastically improves compression ratios and reduces broker CPU overhead.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Latency vs. Throughput",
+          "top": {
+            "label": "Default (linger=0)",
+            "badge": "Low Latency",
+            "tone": "neutral",
+            "code": "send() -> immediate network I/O",
+            "points": [
+              "High broker CPU",
+              "Poor compression"
+            ]
+          },
+          "bottom": {
+            "label": "Tuned (linger=20ms)",
+            "badge": "High Throughput",
+            "tone": "good",
+            "code": "send() -> buffer -> batch -> send",
+            "points": [
+              "Better compression",
+              "Lower broker load"
+            ]
+          },
+          "narration": "You are trading a tiny bit of latency for massive throughput gains. For high-volume event streams, batching is not optional—it is required to keep the cluster healthy.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "send() is non-blocking async",
+            "batching happens in RecordAccumulator",
+            "linger.ms is your best friend for throughput"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Why acks=all isn't enough for durability →",
+          "narration": "That's the pipeline. In Part 2, we break down why acks=all can still lose data if your broker settings are misconfigured.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-delivery-guarantees",
+      "partTitle": "At-Least-Once vs Exactly-Once",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Durability • Part 2 of 4",
+          "headline": "Is acks=all actually safe?",
+          "highlightWord": "actually safe",
+          "subline": "Most teams get this wrong by ignoring the ISR.",
+          "narration": "Everyone says use acks=all for safety. But if your min.insync.replicas is set to one, you are one broker crash away from permanent data loss. Here is why.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Durability Gap",
+          "subtitle": "Why acks=all needs min.insync.replicas",
+          "nodes": [
+            {
+              "label": "Leader",
+              "detail": "Writes locally, waits for ISR",
+              "tag": "Broker",
+              "accent": "amber"
+            },
+            {
+              "label": "ISR Set",
+              "detail": "Only followers in sync count",
+              "tag": "Replicas",
+              "accent": "purple"
+            },
+            {
+              "label": "Data Loss",
+              "detail": "If min.insync=1, leader dies = data gone",
+              "tag": "Risk",
+              "accent": "red"
+            }
+          ],
+          "narration": "Acks all only waits for the In-Sync Replicas. If your min insync replicas is one, the leader acknowledges the write even if it is the only one who has it. If that disk dies, your data is gone.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-compare",
+          "kind": "compare",
+          "title": "Delivery Guarantees",
+          "top": {
+            "label": "At-Most-Once",
+            "badge": "acks=0",
+            "tone": "neutral",
+            "code": "No retries, no ACKs",
+            "points": [
+              "Fastest",
+              "Data loss risk"
+            ]
+          },
+          "bottom": {
+            "label": "Exactly-Once",
+            "badge": "Idempotent + TX",
+            "tone": "good",
+            "code": "enable.idempotence=true",
+            "points": [
+              "No duplicates",
+              "Atomic writes"
+            ]
+          },
+          "narration": "For financial data, use idempotence and transactions. It prevents duplicates during retries and ensures atomic multi-topic writes. It is the gold standard for Kafka-to-Kafka pipelines.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-term-config",
+          "kind": "terminal",
+          "title": "Production-Grade Config",
+          "caption": "The 'Safe' defaults",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Force these explicitly"
+            },
+            {
+              "kind": "command",
+              "text": "acks: all"
+            },
+            {
+              "kind": "command",
+              "text": "enable.idempotence: true"
+            },
+            {
+              "kind": "command",
+              "text": "min.insync.replicas: 2"
+            },
+            {
+              "kind": "success",
+              "text": "Durability: High"
+            }
+          ],
+          "narration": "Never rely on defaults. Explicitly set acks to all, idempotence to true, and ensure your topic has at least two in-sync replicas. Fail fast if these are misconfigured.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "acks=all requires min.insync.replicas=2",
+            "Idempotence prevents retry duplicates",
+            "Transactions ensure atomic writes"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): How Idempotence actually works under the hood →",
+          "narration": "That's the durability layer. In Part 3, we look at the PID and sequence numbers that make idempotent producers possible.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-idempotence-internals",
+      "partTitle": "How Idempotence Prevents Duplicates",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Idempotence • Part 3 of 4",
+          "headline": "How does Kafka stop duplicate retries?",
+          "highlightWord": "stop duplicates",
+          "subline": "It's not magic—it's a 64-bit ID and a sequence number.",
+          "narration": "If a network blip happens after the broker writes your data but before the ACK reaches you, your producer will retry. Without idempotence, you get a duplicate. Here is how Kafka prevents it.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Idempotent Sequence Tracking",
+          "subtitle": "PID + Seq Number = Deduplication",
+          "nodes": [
+            {
+              "label": "Producer ID (PID)",
+              "detail": "Unique ID per session",
+              "tag": "Identity",
+              "accent": "sky"
+            },
+            {
+              "label": "Sequence Number",
+              "detail": "Monotonic 0, 1, 2...",
+              "tag": "Ordering",
+              "accent": "amber"
+            },
+            {
+              "label": "Broker Check",
+              "detail": "Discards if Seq exists for PID",
+              "tag": "Dedupe",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The producer gets a unique PID on startup. Every batch gets a sequence number. The broker tracks these per PID. If it sees a sequence number it already committed, it discards the retry.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-seq",
+          "kind": "code-spotlight",
+          "title": "Out of Order Protection",
+          "filename": "ProducerState.java",
+          "code": "// max.in.flight.requests.per.connection = 5\n// Broker rejects Seq 2 if Seq 1 is missing\n\nif (receivedSeq > lastCommittedSeq + 1) {\n    throw new OutOfOrderSequenceException();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "In-flight",
+              "explanation": "Allows 5 concurrent requests for speed.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Strict Ordering",
+              "explanation": "Broker enforces sequence integrity.",
+              "accent": "red"
+            }
+          ],
+          "narration": "You can have five requests in flight for performance, but the broker enforces strict ordering. If batch two arrives before batch one, the broker rejects it until the gap is filled.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Idempotence Scope",
+          "top": {
+            "label": "Producer Session",
+            "badge": "PID-based",
+            "tone": "good",
+            "code": "Deduplicates network retries",
+            "points": [
+              "Within one JVM life"
+            ]
+          },
+          "bottom": {
+            "label": "App Restart",
+            "badge": "New PID",
+            "tone": "bad",
+            "code": "New PID = New Sequence",
+            "points": [
+              "Consumer-side dedupe needed"
+            ]
+          },
+          "narration": "Remember, idempotence only works for the current session. If your app restarts, you get a new PID. Always build consumer-side deduplication if your business logic requires it.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "PID + Seq prevents retry duplicates",
+            "Broker enforces strict sequence ordering",
+            "Idempotence is session-scoped"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Custom partitioning and compression trade-offs →",
+          "narration": "That's the deduplication logic. In Part 4, we wrap up with custom partitioners to solve hot-partition issues and selecting the right compression codec.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-partitioning-compression",
+      "partTitle": "Partitioning and Compression",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Optimization • Part 4 of 4",
+          "headline": "Why is one partition always hot?",
+          "highlightWord": "always hot",
+          "subline": "Default hashing is failing your high-volume tenants.",
+          "narration": "Default hashing works for most, but if you have a VIP tenant generating 40% of your traffic, they will crush one partition while others sit idle. Here is how to fix it.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-partitioner",
+          "kind": "code-spotlight",
+          "title": "Custom Partitioner",
+          "filename": "TenantAwarePartitioner.java",
+          "code": "public int partition(...) {\n    if (dedicatedTenants.contains(key)) {\n        return totalPartitions - 1; // VIP Partition\n    }\n    return hash(key) % (totalPartitions - 1);\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "VIP Routing",
+              "explanation": "Isolate high-volume keys to a dedicated partition.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Standard Hash",
+              "explanation": "Distribute everyone else normally.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Implement the Partitioner interface to route specific keys to dedicated partitions. This prevents noisy neighbors from slowing down your critical traffic.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "Compression Codecs",
+          "top": {
+            "label": "LZ4",
+            "badge": "Default",
+            "tone": "neutral",
+            "code": "Low CPU overhead",
+            "points": [
+              "Fastest",
+              "Good for most"
+            ]
+          },
+          "bottom": {
+            "label": "Zstd",
+            "badge": "Best Ratio",
+            "tone": "good",
+            "code": "High ratio, low CPU",
+            "points": [
+              "Best for JSON logs",
+              "Saves network cost"
+            ]
+          },
+          "narration": "Use Zstd for JSON logs. It gives you the best compression ratio with minimal CPU impact, saving you significant money on cross-AZ network traffic.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-term-lab",
+          "kind": "terminal",
+          "title": "Final Checklist",
+          "caption": "Production Readiness",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Verify your producer"
+            },
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-10/kafka-producers-and-delivery-guarantees"
+            },
+            {
+              "kind": "success",
+              "text": "Check roadmap for full lab code"
+            },
+            {
+              "kind": "output",
+              "text": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/kafka-producers-and-delivery-guarantees"
+            }
+          ],
+          "narration": "You have the theory. Now run the lab. Checkout the branch, run the tests, and see how these producer settings behave under load. Link is on screen.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use custom partitioners for hot keys",
+            "Zstd is the best all-around codec",
+            "Always verify your producer config"
+          ],
+          "command": "git checkout topic/level-10/kafka-producers-and-delivery-guarantees",
+          "nextPartTeaser": "See the full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "That is the producer chapter. Master these internals, and you'll be the one fixing the production Kafka issues. See you in the next level.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
