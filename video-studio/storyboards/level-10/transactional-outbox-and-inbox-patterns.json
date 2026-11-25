@@ -1,0 +1,460 @@
+{
+  "chapterId": "level-10/transactional-outbox-and-inbox-patterns",
+  "level": "level-10",
+  "levelLabel": "Level 10",
+  "slug": "transactional-outbox-and-inbox-patterns",
+  "chapterTitle": "Transactional Outbox and Inbox Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-10/transactional-outbox-and-inbox-patterns",
+  "branchName": "topic/level-10/transactional-outbox-and-inbox-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-dual-write-trap",
+      "partTitle": "Why Dual-Writes Always Fail",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reliable Messaging • Part 1 of 4",
+          "headline": "Why does your microservice keep losing events?",
+          "highlightWord": "losing events",
+          "subline": "The dual-write problem is a silent killer in distributed systems.",
+          "narration": "You save to PostgreSQL and send to Kafka. If the database rolls back after Kafka sends, or the pod crashes before sending, your system state is permanently corrupted. You cannot fix this with code alone.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "The Dual-Write Anti-Pattern",
+          "top": {
+            "label": "Naive Approach",
+            "badge": "Broken",
+            "tone": "bad",
+            "code": "@Transactional\npublic void process(Order o) {\n  repo.save(o);\n  kafka.send(o);\n}",
+            "points": [
+              "Kafka is not in the DB transaction",
+              "Atomic commit is impossible"
+            ]
+          },
+          "bottom": {
+            "label": "Transactional Outbox",
+            "badge": "Atomic",
+            "tone": "good",
+            "code": "@Transactional\npublic void process(Order o) {\n  repo.save(o);\n  outbox.save(event);\n}",
+            "points": [
+              "Both writes share ACID scope",
+              "Guaranteed consistency"
+            ]
+          },
+          "narration": "The naive approach splits your logic across two systems that don't share a transaction. The Outbox pattern forces the event into the same database transaction as your business state, ensuring atomicity.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-outbox",
+          "kind": "code-spotlight",
+          "title": "The Outbox Schema",
+          "filename": "schema.sql",
+          "code": "CREATE TABLE outbox_events (\n    id UUID PRIMARY KEY,\n    aggregate_id VARCHAR(64),\n    payload JSONB NOT NULL,\n    status VARCHAR(16) DEFAULT 'PENDING'\n);\nCREATE INDEX idx_pending ON outbox_events(created_at)\nWHERE status = 'PENDING';",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Metadata",
+              "explanation": "Store the event payload and aggregate ID inside your own DB.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Partial Index",
+              "explanation": "Keep polling fast by only indexing pending rows.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Your outbox table acts as a persistent buffer. By using a partial index on pending status, your relay can fetch events without scanning the entire history of your application.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-flow-outbox",
+          "kind": "flow-diagram",
+          "title": "Outbox Lifecycle",
+          "nodes": [
+            {
+              "label": "Service",
+              "detail": "Writes Order + Event",
+              "tag": "Atomic",
+              "accent": "sky"
+            },
+            {
+              "label": "DB",
+              "detail": "Commits both rows",
+              "tag": "ACID",
+              "accent": "amber"
+            },
+            {
+              "label": "Relay",
+              "detail": "Polls & Publishes",
+              "tag": "Async",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The service commits both records atomically. A background relay then picks up the event, publishes it to Kafka, and marks it as processed. This is the foundation of reliable event-driven architecture.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Dual-writes are never atomic",
+            "Outbox shares ACID transaction",
+            "Partial indexes keep polling fast"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Polling vs CDC →",
+          "narration": "That is the core pattern. In Part 2, we compare the simple polling relay against the high-performance Debezium CDC approach for streaming your outbox events.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-polling-vs-cdc",
+      "partTitle": "Polling vs. Debezium CDC",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Relay Strategies • Part 2 of 4",
+          "headline": "Should you poll or stream your outbox?",
+          "highlightWord": "poll or stream",
+          "subline": "Choosing the wrong relay strategy will bottleneck your database.",
+          "narration": "Polling is easy to build, but CDC is the gold standard for scale. Let's look at the trade-offs between simple SQL polling and log-based streaming.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-poll",
+          "kind": "code-spotlight",
+          "title": "Polling with SKIP LOCKED",
+          "filename": "Relay.java",
+          "code": "jdbcClient.sql(\"\"\"\n  SELECT * FROM outbox_events\n  WHERE status = 'PENDING'\n  FOR UPDATE SKIP LOCKED\n  LIMIT 50\"\"\")\n  .query(OutboxRow.class).list();",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "SKIP LOCKED",
+              "explanation": "Allows multiple pods to poll the same table without blocking each other.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use SKIP LOCKED to let multiple instances process the outbox concurrently. It prevents row contention, but beware: it adds load to your database and can cause ordering issues if not sharded correctly.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-flow-cdc",
+          "kind": "flow-diagram",
+          "title": "Debezium CDC Pipeline",
+          "nodes": [
+            {
+              "label": "PostgreSQL WAL",
+              "detail": "Write-ahead log stream",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Debezium",
+              "detail": "Tails the WAL log",
+              "tag": "Connector",
+              "accent": "purple"
+            },
+            {
+              "label": "Kafka",
+              "detail": "Real-time delivery",
+              "tag": "Sink",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "CDC tails the database WAL log directly. It captures changes without any extra SQL queries, providing sub-millisecond latency and zero polling overhead on your production tables.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Polling vs. CDC",
+          "top": {
+            "label": "Polling",
+            "badge": "Simple",
+            "tone": "neutral",
+            "points": [
+              "Easy to implement",
+              "Adds DB query load"
+            ]
+          },
+          "bottom": {
+            "label": "Debezium CDC",
+            "badge": "High Scale",
+            "tone": "good",
+            "points": [
+              "Near-zero DB impact",
+              "Requires Kafka Connect"
+            ]
+          },
+          "narration": "Polling is perfect for low-traffic services where simplicity wins. Use Debezium CDC when you need massive throughput and want to avoid the performance tax of constant table scanning.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use SKIP LOCKED for polling",
+            "CDC tails WAL for performance",
+            "Polling is simple, CDC is scalable"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The Inbox Pattern →",
+          "narration": "Now you have the producer side covered. In Part 3, we tackle the consumer side with the Transactional Inbox pattern to handle at-least-once delivery duplicates.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-transactional-inbox",
+      "partTitle": "Handling Duplicates with Inbox",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Consumer Safety • Part 3 of 4",
+          "headline": "Your consumer will receive the same event twice.",
+          "highlightWord": "twice",
+          "subline": "At-least-once delivery is a feature, not a bug.",
+          "narration": "Kafka guarantees delivery, but network retries mean you will eventually process the same event multiple times. If your logic isn't idempotent, you're going to have a very bad day.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-inbox",
+          "kind": "code-spotlight",
+          "title": "The Inbox Pattern",
+          "filename": "Handler.java",
+          "code": "@Transactional\npublic void handle(UUID msgId, String payload) {\n  int inserted = jdbc.sql(\"\"\"\n    INSERT INTO inbox(msg_id) VALUES (?)\n    ON CONFLICT DO NOTHING\"\"\")\n    .param(msgId).update();\n  if (inserted == 0) return; // Duplicate!\n  process(payload);\n}",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Idempotency Key",
+              "explanation": "Use ON CONFLICT DO NOTHING to safely ignore repeated events.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The inbox table tracks processed message IDs. By using ON CONFLICT DO NOTHING, we ensure the business logic runs exactly once per message, even if Kafka redelivers the record.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow-inbox",
+          "kind": "flow-diagram",
+          "title": "Inbox Atomicity",
+          "nodes": [
+            {
+              "label": "Kafka",
+              "detail": "Redelivers message",
+              "tag": "Network",
+              "accent": "sky"
+            },
+            {
+              "label": "Inbox Table",
+              "detail": "Checks unique ID",
+              "tag": "Filter",
+              "accent": "purple"
+            },
+            {
+              "label": "Business Logic",
+              "detail": "Executes once",
+              "tag": "Action",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The inbox insert and your business logic share the same transaction. If the transaction commits, the event is marked as processed. If it fails, the event remains unprocessed for a retry.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-terminal-ack",
+          "kind": "terminal",
+          "title": "The Acknowledge Trap",
+          "caption": "Where to commit the Kafka offset",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "❌ Wrong: Ack inside @Transactional"
+            },
+            {
+              "kind": "comment",
+              "text": "Offset commits before DB finishes!"
+            },
+            {
+              "kind": "success",
+              "text": "✅ Correct: Ack after method returns"
+            },
+            {
+              "kind": "command",
+              "text": "ack.acknowledge(); // Outside transaction"
+            }
+          ],
+          "narration": "Never acknowledge the Kafka offset inside your transaction. If the database commit fails after the offset is acknowledged, the message is lost forever. Always acknowledge after the transaction succeeds.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Inbox prevents duplicate processing",
+            "Use ON CONFLICT DO NOTHING",
+            "Ack Kafka offsets after DB commit"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Retention & Cleanup →",
+          "narration": "You are now building bulletproof event-driven systems. In Part 4, we wrap up with table retention strategies to keep your database lean and performant.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-retention-and-cleanup",
+      "partTitle": "Retention and Cleanup Strategies",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Maintenance • Part 4 of 4",
+          "headline": "Your outbox table will grow forever.",
+          "highlightWord": "grow forever",
+          "subline": "Unmanaged outbox tables kill database performance.",
+          "narration": "If you don't clean up your outbox and inbox tables, you'll eventually hit storage limits and index bloat. Here is how to manage retention without locking your production tables.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-partition",
+          "kind": "code-spotlight",
+          "title": "Daily Partitioning",
+          "filename": "ddl.sql",
+          "code": "CREATE TABLE outbox_events (\n  id UUID, created_at TIMESTAMPTZ\n) PARTITION BY RANGE (created_at);\n\n-- Drop old data instantly\nDROP TABLE outbox_events_y2025_m10;",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Partitioning",
+              "explanation": "Partition by date to make cleanup a simple metadata operation.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Fast Cleanup",
+              "explanation": "Dropping a partition is instantaneous compared to DELETE.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Partitioning is the secret to massive scale. Instead of running expensive DELETE queries that bloat your table, just drop the old partition. It is instant and keeps your indexes clean.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow-retention",
+          "kind": "flow-diagram",
+          "title": "Retention Strategy",
+          "nodes": [
+            {
+              "label": "Retention Window",
+              "detail": "Keep for 14-30 days",
+              "tag": "Policy",
+              "accent": "sky"
+            },
+            {
+              "label": "Cleanup Job",
+              "detail": "Drop old partitions",
+              "tag": "Automation",
+              "accent": "purple"
+            },
+            {
+              "label": "Database",
+              "detail": "Healthy performance",
+              "tag": "Status",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Keep your events long enough to cover your Kafka retention and any potential manual replay window. Automate the cleanup, and your database will stay fast indefinitely.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-summary",
+          "kind": "compare",
+          "title": "The Full Architecture",
+          "top": {
+            "label": "Producer Side",
+            "badge": "Outbox",
+            "tone": "good",
+            "points": [
+              "Atomic commit",
+              "Polling or CDC relay"
+            ]
+          },
+          "bottom": {
+            "label": "Consumer Side",
+            "badge": "Inbox",
+            "tone": "good",
+            "points": [
+              "Idempotent processing",
+              "Safe offset management"
+            ]
+          },
+          "narration": "You now have a complete, reliable, and scalable event-driven pattern. Use the Outbox for atomic publishing and the Inbox for idempotent consumption. Your microservices are now truly resilient.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Partition tables for cleanup",
+            "Drop partitions, don't DELETE",
+            "Keep retention > Kafka window"
+          ],
+          "command": "git checkout topic/level-10/transactional-outbox-and-inbox-patterns",
+          "nextPartTeaser": "Full lab at ravishankar2463.github.io/java_hub",
+          "narration": "Mastered the patterns. Run the lab to see these in action. Checkout the branch, run the tests, and verify your implementation. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
