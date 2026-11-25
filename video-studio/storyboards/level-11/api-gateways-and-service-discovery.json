@@ -1,0 +1,471 @@
+{
+  "chapterId": "level-11/api-gateways-and-service-discovery",
+  "level": "level-11",
+  "levelLabel": "Level 11",
+  "slug": "api-gateways-and-service-discovery",
+  "chapterTitle": "API Gateways and Service Discovery",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/api-gateways-and-service-discovery",
+  "branchName": "topic/level-11/api-gateways-and-service-discovery",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-gateway-anatomy",
+      "partTitle": "API Gateway: The Edge Protector",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Architecture • Part 1 of 4",
+          "headline": "Why is your API Gateway a bottleneck?",
+          "highlightWord": "bottleneck",
+          "subline": "Stop putting business logic at the edge. Here is how to route traffic safely.",
+          "narration": "If your API gateway is running database queries or complex orchestration, you have a massive problem. It is a shared runtime dependency. If it fails, your entire system goes dark.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Edge Traffic Flow",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Mobile or Web SPA",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "Gateway",
+              "detail": "Auth, Rate Limit, Routing",
+              "tag": "Edge",
+              "accent": "amber"
+            },
+            {
+              "label": "Services",
+              "detail": "Order, Billing, Catalog",
+              "tag": "Internal",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The gateway is your single public front door. It handles TLS termination, JWT validation, and routing. Keep it thin. Never leak internal hostnames or private network subnets to the public internet.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-yaml",
+          "kind": "code-spotlight",
+          "title": "Declarative Routing",
+          "filename": "application.yml",
+          "code": "spring:\n  cloud:\n    gateway:\n      routes:\n        - id: order-service\n          uri: lb://order-service\n          predicates:\n            - Path=/api/v1/orders/**\n          filters:\n            - TokenRelay=\n            - RewritePath=/api/v1/orders/(?<seg>.*), /internal/${seg}",
+          "steps": [
+            {
+              "lines": [
+                5
+              ],
+              "badge": "lb://",
+              "explanation": "Uses service discovery to resolve the name to a live IP dynamically.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                9
+              ],
+              "badge": "TokenRelay",
+              "explanation": "Forwards the OAuth2 access token downstream automatically.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Define routes in YAML for visibility. Use lb colon slash slash for service discovery, and TokenRelay to pass identity context downstream. This keeps your edge logic clean and maintainable.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "WebFlux vs. MVC Gateway",
+          "top": {
+            "label": "WebFlux (Netty)",
+            "badge": "Reactive",
+            "tone": "neutral",
+            "code": "// No blocking calls allowed!",
+            "points": [
+              "Low memory footprint",
+              "High concurrency"
+            ]
+          },
+          "bottom": {
+            "label": "Spring MVC",
+            "badge": "Virtual Threads",
+            "tone": "good",
+            "code": "// Blocking is fine!",
+            "points": [
+              "Java 21 Virtual Threads",
+              "Easier to debug"
+            ]
+          },
+          "narration": "Choose WebFlux if you need raw performance with non-blocking code. Choose MVC with Java 21 Virtual Threads if you want high concurrency while keeping your code simple and imperative.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Edge Logic Locked",
+          "takeaways": [
+            "Keep business logic out of the gateway",
+            "Use lb:// for dynamic service resolution",
+            "MVC + Virtual Threads = high concurrency"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Distributed rate limiting with Redis →",
+          "narration": "That is the edge. In Part 2, we tackle distributed rate limiting. If you run multiple gateway pods, in-memory limits will fail you. We fix that with Redis.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-rate-limiting",
+      "partTitle": "Distributed Rate Limiting",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Reliability • Part 2 of 4",
+          "headline": "Your rate limiter is lying to you.",
+          "highlightWord": "lying",
+          "subline": "In-memory counters fail in a cluster. Here is the atomic fix.",
+          "narration": "If you have four gateway pods and set a limit of ten requests per second, a client can hit you with forty. In-memory counters are local to the pod. You need a global state.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Token Bucket Algorithm",
+          "nodes": [
+            {
+              "label": "Request",
+              "detail": "Incoming API call",
+              "tag": "Input",
+              "accent": "sky"
+            },
+            {
+              "label": "Redis",
+              "detail": "Atomic Lua Script",
+              "tag": "State",
+              "accent": "amber"
+            },
+            {
+              "label": "Decision",
+              "detail": "Allow or 429",
+              "tag": "Logic",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use Redis to store the bucket state. An atomic Lua script checks if a token exists, decrements it, and returns the result. This ensures a consistent limit across all your gateway instances.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-resolver",
+          "kind": "code-spotlight",
+          "title": "Custom KeyResolver",
+          "filename": "RateLimiterConfig.java",
+          "code": "@Bean\npublic KeyResolver userOrIpKeyResolver() {\n    return exchange -> exchange.getPrincipal()\n        .cast(Authentication.class)\n        .map(Authentication::getName)\n        .switchIfEmpty(resolveIp(exchange));\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Principal",
+              "explanation": "Rate limit by authenticated user ID first.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Fallback",
+              "explanation": "Fall back to IP address if anonymous.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always resolve the rate limit key by user ID if authenticated. Only fall back to IP address for anonymous traffic. This prevents attackers from rotating IPs to bypass your limits.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Security Header Hygiene",
+          "caption": "Prevent identity spoofing",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Remove untrusted headers from clients"
+            },
+            {
+              "kind": "command",
+              "text": "filters: - RemoveRequestHeader=X-User-Id"
+            },
+            {
+              "kind": "success",
+              "text": "Identity injected by Gateway only!"
+            }
+          ],
+          "narration": "Never trust headers sent by external clients. If you use X-User-Id, strip it at the gateway before your security filter adds the verified one. Otherwise, anyone can impersonate an admin.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Rate Limits Secured",
+          "takeaways": [
+            "Use Redis for global state",
+            "Resolve keys by Auth, not just IP",
+            "Strip untrusted headers at the edge"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Eureka vs. Kubernetes DNS →",
+          "narration": "Rate limiting is now global. In Part 3, we look at service discovery. Do you really need Eureka, or is Kubernetes DNS enough? Let's compare.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-discovery-models",
+      "partTitle": "Client vs. Server Discovery",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Discovery • Part 3 of 4",
+          "headline": "Why are you still running Eureka in K8s?",
+          "highlightWord": "Eureka",
+          "subline": "Kubernetes already manages your service registry. Stop duplicating state.",
+          "narration": "Running Eureka inside Kubernetes is often a mistake. It adds a stateful component you have to manage, while Kubernetes already provides DNS and load balancing for free.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Discovery Architecture",
+          "top": {
+            "label": "Client-Side (Eureka)",
+            "badge": "App-Aware",
+            "tone": "neutral",
+            "code": "Service -> Registry -> IP",
+            "points": [
+              "Good for hybrid clouds",
+              "Language specific"
+            ]
+          },
+          "bottom": {
+            "label": "Server-Side (K8s)",
+            "badge": "Platform-Native",
+            "tone": "good",
+            "code": "Service -> DNS -> Pod",
+            "points": [
+              "Language agnostic",
+              "Zero app-side config"
+            ]
+          },
+          "narration": "Client-side discovery puts the load balancer inside your app. Server-side discovery puts it in the infrastructure. Kubernetes handles this via CoreDNS and ClusterIP, making it the standard for containerized apps.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-k8s",
+          "kind": "code-spotlight",
+          "title": "K8s Service Definition",
+          "filename": "service.yaml",
+          "code": "apiVersion: v1\nkind: Service\nmetadata:\n  name: order-service\nspec:\n  selector:\n    app: order-service\n  ports:\n    - port: 8080",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "DNS Name",
+              "explanation": "This becomes your internal hostname.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Selector",
+              "explanation": "Automatically routes to healthy pods.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Just define a service. Kubernetes handles the health checks and load balancing. Your gateway just calls http colon slash slash order-service colon 8080. Simple, robust, and no extra registry to maintain.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-terminal",
+          "kind": "terminal",
+          "title": "When to use Consul?",
+          "caption": "Strong consistency matters",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Consul uses Raft consensus"
+            },
+            {
+              "kind": "success",
+              "text": "Strongly consistent registry"
+            },
+            {
+              "kind": "comment",
+              "text": "# Eureka uses AP (Availability)"
+            },
+            {
+              "kind": "success",
+              "text": "Fast, but eventually consistent"
+            }
+          ],
+          "narration": "Use Consul if you need a strongly consistent registry across hybrid environments. Use Eureka only if you are already in a legacy Spring Cloud setup. Otherwise, let Kubernetes handle it.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Discovery Simplified",
+          "takeaways": [
+            "Prefer K8s DNS over Eureka",
+            "Client-side = App-managed",
+            "Server-side = Platform-managed"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): The correlation ID bug →",
+          "narration": "Discovery is solved. In Part 4, we look at the most common bug in gateway filters: losing trace context. Don't let your logs become a black hole.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-tracing-and-pitfalls",
+      "partTitle": "Tracing and Production Pitfalls",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Debugging • Part 4 of 4",
+          "headline": "Your gateway is killing your traces.",
+          "highlightWord": "killing",
+          "subline": "One wrong line of code drops your correlation IDs.",
+          "narration": "If you write a custom gateway filter, you are likely dropping your W3C trace headers. A 500 error at the gateway and a timeout downstream become impossible to link.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-filter",
+          "kind": "code-spotlight",
+          "title": "Correct Request Mutation",
+          "filename": "GatewayFilter.java",
+          "code": "return chain.filter(exchange.mutate()\n    .request(exchange.getRequest().mutate()\n        .header(\"X-Correlation-Id\", id)\n        .build())\n    .build());",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Mutate",
+              "explanation": "Always mutate the existing request.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Preserve",
+              "explanation": "This keeps existing trace headers intact.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Never create a fresh request object. Always mutate the existing one. This ensures that traceparent and other headers survive the hop. If you don't, your observability stack goes dark.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "The BFF Pattern",
+          "top": {
+            "label": "Shared Gateway",
+            "badge": "Coupled",
+            "tone": "bad",
+            "code": "All clients hit one service",
+            "points": [
+              "Fragile deployments",
+              "Bloated config"
+            ]
+          },
+          "bottom": {
+            "label": "BFF Pattern",
+            "badge": "Decoupled",
+            "tone": "good",
+            "code": "Web-BFF + Mobile-BFF",
+            "points": [
+              "Team autonomy",
+              "Client-specific logic"
+            ]
+          },
+          "narration": "Stop forcing one gateway to serve everyone. Use the Backend-for-Frontend pattern. Give mobile and web their own dedicated edge services. It prevents team coupling and simplifies your routing rules.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Level 11 Mastery",
+          "caption": "Ready for production",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-11/api-gateways-and-service-discovery"
+            },
+            {
+              "kind": "success",
+              "text": "Lab environment ready!"
+            },
+            {
+              "kind": "comment",
+              "text": "See roadmap for full guide:"
+            },
+            {
+              "kind": "command",
+              "text": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/api-gateways-and-service-discovery"
+            }
+          ],
+          "narration": "You have the blueprint. Checkout the code to run the lab. The roadmap link has the full deep dive on reactive filters and load balancing. Go build something resilient.",
+          "durationSec": 12,
+          "sfx": "success"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Mutate requests, never recreate",
+            "Use BFF for team autonomy",
+            "Check the lab for trace propagation"
+          ],
+          "nextPartTeaser": "Next: Level 12 - Distributed Transactions →",
+          "narration": "That is the gateway chapter. You are now ready to handle traffic at scale. Check the link in the description for the full roadmap.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
