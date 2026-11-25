@@ -1,0 +1,417 @@
+{
+  "chapterId": "level-15/zero-allocation-java-and-garbage-free-patterns",
+  "level": "level-15",
+  "levelLabel": "Level 15",
+  "slug": "zero-allocation-java-and-garbage-free-patterns",
+  "chapterTitle": "Zero-Allocation Java and Garbage-Free Patterns",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-15/zero-allocation-java-and-garbage-free-patterns",
+  "branchName": "topic/level-15/zero-allocation-java-and-garbage-free-patterns",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-cost-of-allocation",
+      "partTitle": "Why Heap Allocations Kill p99 Latency",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Zero-Allocation • Part 1 of 4",
+          "headline": "Why does a 200-microsecond GC pause ruin your trade?",
+          "highlightWord": "200-microsecond",
+          "subline": "In high-frequency systems, even a tiny allocation burst skews p99.9 latency.",
+          "narration": "In high-frequency trading, a 200-microsecond GC pause is an eternity. If you want to hit microsecond targets, you stop tweaking GC flags and start starving the collector entirely.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Standard vs. Zero-Alloc Path",
+          "nodes": [
+            {
+              "label": "New Object",
+              "detail": "Allocates in TLAB/Eden",
+              "tag": "Standard",
+              "accent": "amber"
+            },
+            {
+              "label": "Eden Full",
+              "detail": "Triggers GC Pause",
+              "tag": "Latency",
+              "accent": "red"
+            },
+            {
+              "label": "Pre-Alloc",
+              "detail": "Reuse existing memory",
+              "tag": "Zero-Alloc",
+              "accent": "emerald"
+            },
+            {
+              "label": "Steady Loop",
+              "detail": "Zero bytes allocated",
+              "tag": "Performance",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Standard Java allocates objects per event, filling Eden and triggering pauses. Zero-allocation patterns pre-allocate pools at startup, keeping the steady-state loop completely garbage-free.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-ea",
+          "kind": "code-spotlight",
+          "title": "Escape Analysis: The Compiler's Secret",
+          "filename": "Optimized.java",
+          "code": "public long midPrice(long bid, long ask) {\n    // C2 scalar-replaces this into registers!\n    PriceWindow window = new PriceWindow(bid, ask);\n    return (window.bid() + window.ask()) >>> 1;\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Scalar Replacement",
+              "explanation": "C2 proves the object never escapes, so it splits the fields into registers.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "HotSpot's C2 compiler uses Escape Analysis to prove an object never leaves a method. If it succeeds, it performs scalar replacement, splitting the object into CPU registers.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare-ea",
+          "kind": "compare",
+          "title": "When Escape Analysis Fails",
+          "top": {
+            "label": "Optimized",
+            "badge": "Scalar Replaced",
+            "tone": "good",
+            "code": "PriceWindow w = new PriceWindow(a, b);\nreturn w.bid();"
+          },
+          "bottom": {
+            "label": "Heap Allocated",
+            "badge": "Global Escape",
+            "tone": "bad",
+            "code": "PriceWindow w = new PriceWindow(a, b);\nlist.add(w); // Escapes!"
+          },
+          "narration": "Don't bet your SLA on it. If an object escapes to a list or a megamorphic method call, scalar replacement breaks and you're back to heap allocation.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "GC pauses kill p99.9 latency",
+            "Escape Analysis is a bonus, not a guarantee",
+            "Treat every 'new' in a hot loop as a bug"
+          ],
+          "nextPartTeaser": "Up Next: Using Flyweights to avoid object creation →",
+          "narration": "That's the foundation. In Part 2, we use the Flyweight pattern to wrap network buffers without allocating a single object.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-flyweights-and-primitives",
+      "partTitle": "Flyweights and Primitive Collections",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Zero-Allocation • Part 2 of 4",
+          "headline": "Stop creating DTOs for every incoming packet.",
+          "highlightWord": "Stop creating",
+          "subline": "Mutable flyweights let you read raw buffers without copying data.",
+          "narration": "Stop creating DTOs for every incoming packet. Mutable flyweights let you read raw network buffers directly, avoiding object overhead entirely.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-fly",
+          "kind": "code-spotlight",
+          "title": "The Flyweight Pattern",
+          "filename": "MarketTick.java",
+          "code": "public final class MarketTickFlyweight {\n    private DirectBuffer buffer;\n    private int offset;\n\n    public void wrap(DirectBuffer b, int o) {\n        this.buffer = b; this.offset = o;\n    }\n    public long orderId() { return buffer.getLong(offset); }\n}",
+          "steps": [
+            {
+              "lines": [
+                5,
+                6,
+                7
+              ],
+              "badge": "Re-wrap",
+              "explanation": "One object instance reused for every incoming packet.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Instead of a new object per message, create one flyweight at startup. Call wrap on every packet to point it at the new buffer offset. Zero allocation, zero copying.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-compare-maps",
+          "kind": "compare",
+          "title": "Standard vs. Primitive Collections",
+          "top": {
+            "label": "HashMap<Long, Long>",
+            "badge": "80 bytes/entry",
+            "tone": "bad",
+            "code": "map.put(id, price); // Boxes Longs!"
+          },
+          "bottom": {
+            "label": "Long2LongHashMap",
+            "badge": "16 bytes/entry",
+            "tone": "good",
+            "code": "map.put(id, price); // No boxing!"
+          },
+          "narration": "Standard maps box primitives into objects, wasting 80 bytes per entry. Primitive collections like Agrona store data in flat arrays, eliminating boxing and pointer chasing.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b4-code-agrona",
+          "kind": "code-spotlight",
+          "title": "Agrona Primitive Map",
+          "filename": "OrderTable.java",
+          "code": "private final Long2LongHashMap orderPrices =\n    new Long2LongHashMap(1_000_000, 0.55f, -1L);\n\npublic void record(long id, long price) {\n    orderPrices.put(id, price); // Zero boxing!\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Pre-size",
+              "explanation": "Avoid resizing during trading hours to keep latency flat.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Pre-size your primitive maps at startup. This prevents rehashing during your hot loop, ensuring consistent performance when it matters most.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Use flyweights for buffer access",
+            "Primitive collections eliminate boxing",
+            "Pre-size collections to avoid rehashing"
+          ],
+          "nextPartTeaser": "Up Next: CPU Core Pinning and Thread Affinity →",
+          "narration": "Flyweights and primitive maps are your best friends. In Part 3, we pin threads to CPU cores to stop OS scheduling jitter.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-cpu-affinity",
+      "partTitle": "CPU Affinity and Kernel Isolation",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Zero-Allocation • Part 3 of 4",
+          "headline": "Why is your Java thread jumping between CPU cores?",
+          "highlightWord": "jumping",
+          "subline": "Cache misses and migration cost you precious microseconds.",
+          "narration": "Even without allocations, your thread can suffer jitter if the OS migrates it between cores. Cold caches will destroy your performance.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-affinity",
+          "kind": "code-spotlight",
+          "title": "Pinning Threads with Affinity",
+          "filename": "Affinity.java",
+          "code": "try (AffinityLock lock = AffinityLock.acquireLock(cpuId)) {\n    // Thread is now pinned to a specific core\n    runHotLoop();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "AffinityLock",
+              "explanation": "Uses JNA to call sched_setaffinity on Linux.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use OpenHFT's Affinity library to pin your worker thread to a specific physical core. This keeps your L1 and L2 caches warm and avoids NUMA cross-socket latency.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-term-grub",
+          "kind": "terminal",
+          "title": "Kernel-Level Isolation",
+          "caption": "Isolate cores from the Linux scheduler",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# /etc/default/grub"
+            },
+            {
+              "kind": "command",
+              "text": "isolcpus=2,3,4,5 nohz_full=2,3,4,5"
+            },
+            {
+              "kind": "comment",
+              "text": "# Disable C-states to prevent sleep"
+            },
+            {
+              "kind": "command",
+              "text": "intel_idle.max_cstate=0"
+            }
+          ],
+          "narration": "Pinning isn't enough. You must isolate cores via kernel boot parameters so the OS scheduler doesn't place background tasks on your hot cores.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow-jitter",
+          "kind": "flow-diagram",
+          "title": "Sources of Jitter",
+          "nodes": [
+            {
+              "label": "Context Switch",
+              "detail": "OS preempts thread",
+              "tag": "Latency",
+              "accent": "red"
+            },
+            {
+              "label": "Cache Migration",
+              "detail": "Moving to new core",
+              "tag": "Performance",
+              "accent": "amber"
+            },
+            {
+              "label": "C-State Wakeup",
+              "detail": "CPU waking from sleep",
+              "tag": "Delay",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Context switches, cache migrations, and CPU power-saving states all introduce jitter. Isolation and pinning remove these variables.",
+          "durationSec": 9,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Use AffinityLock for thread pinning",
+            "Isolate cores with isolcpus",
+            "Disable C-states to prevent sleep"
+          ],
+          "nextPartTeaser": "Up Next: Garbage-Free Logging →",
+          "narration": "Pin your threads and isolate your cores. In Part 4, we finish by making logging garbage-free.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-garbage-free-logging",
+      "partTitle": "Garbage-Free Logging",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Zero-Allocation • Part 4 of 4",
+          "headline": "Your logger is secretly filling your heap.",
+          "highlightWord": "secretly filling",
+          "subline": "Standard logging creates arrays and boxed objects for every single line.",
+          "narration": "Your logger is secretly filling your heap. Every log line creates boxed objects and arrays, triggering GC cycles when you least expect it.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-log",
+          "kind": "code-spotlight",
+          "title": "Garbage-Free Log4j2",
+          "filename": "Audit.java",
+          "code": "LOGGER.info(\"Fill: id={}, price={}\", \n    box(orderId), \n    box(price));",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Unbox.box",
+              "explanation": "Formats primitives into reusable thread-local buffers.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use Log4j2's garbage-free mode. The Unbox helper formats primitives into pre-allocated thread-local buffers, avoiding the heap entirely.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-term-flags",
+          "kind": "terminal",
+          "title": "Log4j2 JVM Flags",
+          "caption": "Enable async ring buffers",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "-Dlog4j2.contextSelector=AsyncLoggerContextSelector"
+            },
+            {
+              "kind": "command",
+              "text": "-Dlog4j2.enableThreadlocals=true"
+            },
+            {
+              "kind": "command",
+              "text": "-Dlog4j2.enableDirectEncoders=true"
+            }
+          ],
+          "narration": "Set these flags to enable the async ring buffer and direct encoders. This ensures log events are processed without allocating temporary objects.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare-log",
+          "kind": "compare",
+          "title": "Logging Performance",
+          "top": {
+            "label": "Standard Logging",
+            "badge": "High GC Churn",
+            "tone": "bad",
+            "code": "logger.info(\"id={}\", id); // Allocates!"
+          },
+          "bottom": {
+            "label": "Log4j2 Async",
+            "badge": "Zero-Alloc",
+            "tone": "good",
+            "code": "logger.info(\"id={}\", box(id)); // Reuses!"
+          },
+          "narration": "Standard logging creates a new LogEvent and object array for every call. Log4j2's async mode uses a pre-allocated ring buffer for total garbage-free operation.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Zero-Allocation Mastery",
+          "takeaways": [
+            "Use Unbox.box for primitives",
+            "Enable AsyncLoggerContextSelector",
+            "Avoid regex in log patterns"
+          ],
+          "command": "git checkout topic/level-15/zero-allocation-java-and-garbage-free-patterns",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered zero-allocation Java. Check the branch for the full implementation and run the lab yourself. Stay fast.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
