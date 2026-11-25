@@ -1,0 +1,448 @@
+{
+  "chapterId": "level-8/custom-spring-boot-starters-auto-configurations",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "custom-spring-boot-starters-auto-configurations",
+  "chapterTitle": "Custom Spring Boot Starters & Auto-Configurations",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/custom-spring-boot-starters-auto-configurations",
+  "branchName": "topic/level-8/custom-spring-boot-starters-auto-configurations",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-starter-anatomy",
+      "partTitle": "The 2-Module Starter Architecture",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Boot Internals • Part 1 of 4",
+          "headline": "Stop copy-pasting boilerplate across 40 services.",
+          "highlightWord": "copy-pasting",
+          "subline": "Build versioned starters instead. Here is the industry-standard two-module layout.",
+          "narration": "Copying filters and security configs into forty services creates massive drift. You need a custom starter. But don't just dump code into one JAR—split it into two modules to keep your dependency graph clean.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Two-Module Split",
+          "subtitle": "Decoupling logic from dependencies",
+          "nodes": [
+            {
+              "label": "Starter Module",
+              "detail": "Empty aggregator JAR; defines transitive dependencies only.",
+              "tag": "Aggregator",
+              "accent": "sky"
+            },
+            {
+              "label": "Autoconfigure Module",
+              "detail": "Contains the actual Java code, beans, and imports file.",
+              "tag": "Logic",
+              "accent": "amber"
+            },
+            {
+              "label": "Consumer App",
+              "detail": "Depends on the Starter; gets defaults automatically.",
+              "tag": "Client",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The starter module is just an empty aggregator that pulls in dependencies. The autoconfigure module holds the actual logic. This lets advanced users swap out transitive dependencies without breaking your entire library.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-optional",
+          "kind": "code-spotlight",
+          "title": "Marking Dependencies as Optional",
+          "filename": "autoconfigure/pom.xml",
+          "code": "<dependency>\n    <groupId>org.springframework.boot</groupId>\n    <artifactId>spring-boot-starter-web</artifactId>\n    <optional>true</optional>\n</dependency>",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "optional=true",
+              "explanation": "Critical! Prevents your starter from forcing web dependencies on non-web services.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always mark optional dependencies as true. This ensures your library doesn't pollute the classpath of services that don't need those specific features, like web or validation.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Registration: Then vs. Now",
+          "top": {
+            "label": "Spring Boot 2 (Legacy)",
+            "badge": "spring.factories",
+            "tone": "bad",
+            "code": "org.springframework.boot.autoconfigure.EnableAutoConfiguration=\\\n  com.acme.AcmeAutoConfiguration",
+            "points": [
+              "Slow to parse",
+              "Not AOT friendly"
+            ]
+          },
+          "bottom": {
+            "label": "Spring Boot 3 (Standard)",
+            "badge": "AutoConfiguration.imports",
+            "tone": "good",
+            "code": "com.acme.AcmeAutoConfiguration",
+            "points": [
+              "Faster startup",
+              "GraalVM native ready"
+            ]
+          },
+          "narration": "Forget spring dot factories. In Boot 3, use the imports file. It's a simple text file that loads faster and plays nice with GraalVM native images.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Split into Starter and Autoconfigure modules",
+            "Use <optional>true</optional> for dependencies",
+            "Register via AutoConfiguration.imports"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Mastering @Conditional annotations to make your starter bulletproof →",
+          "narration": "That is the foundation. In Part 2, we tackle conditional logic so your starter only activates when it's actually needed.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-conditional-logic",
+      "partTitle": "Bulletproof Starters with @Conditional",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Boot Internals • Part 2 of 4",
+          "headline": "Your starter is crashing other teams' apps.",
+          "highlightWord": "crashing",
+          "subline": "Use @Conditional annotations to stay out of the way when prerequisites are missing.",
+          "narration": "A good starter stays invisible until it's needed. If you don't use the right conditional annotations, your beans will conflict with user code or crash on missing dependencies.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Conditional Pipeline",
+          "subtitle": "Evaluation order matters",
+          "nodes": [
+            {
+              "label": "1. @ConditionalOnClass",
+              "detail": "Check if required types exist on classpath.",
+              "tag": "Safety",
+              "accent": "sky"
+            },
+            {
+              "label": "2. @ConditionalOnProperty",
+              "detail": "Check if the feature is enabled in YAML.",
+              "tag": "Config",
+              "accent": "amber"
+            },
+            {
+              "label": "3. @ConditionalOnMissingBean",
+              "detail": "Let the user override your default bean.",
+              "tag": "Override",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Spring evaluates these in order. Check for classes first, then properties, and finally, use MissingBean so users can easily override your defaults with their own implementations.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-asm",
+          "kind": "code-spotlight",
+          "title": "Safe Class Checking",
+          "filename": "AcmeAutoConfiguration.java",
+          "code": "@AutoConfiguration\n@ConditionalOnClass(Filter.class)\npublic class AcmeAutoConfiguration {\n    // Safe to use Filter here\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "ASM Metadata",
+              "explanation": "Spring uses ASM to read bytecode. No ClassNotFound errors at runtime!",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Don't worry about ClassNotFound errors. Spring uses ASM to inspect bytecode metadata. It evaluates to false cleanly if the class is missing from the consumer's classpath.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-missing",
+          "kind": "code-spotlight",
+          "title": "The User Override Pattern",
+          "filename": "AcmeAutoConfiguration.java",
+          "code": "@Bean\n@ConditionalOnMissingBean\npublic MyService myService() {\n    return new DefaultMyService();\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "User wins",
+              "explanation": "If the user defines their own MyService, this bean is skipped automatically.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This is the secret sauce. By using ConditionalOnMissingBean, you provide a sensible default that automatically steps aside the moment a developer defines their own version.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Use @ConditionalOnClass for safety",
+            "Use @ConditionalOnProperty for toggles",
+            "Use @ConditionalOnMissingBean for overrides"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Type-safe configuration with Records and Validation →",
+          "narration": "Conditionals make your starter robust. In Part 3, we look at ConfigurationProperties and how to fail fast if a user provides bad config.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-type-safe-config",
+      "partTitle": "Validated Configuration with Records",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Boot Internals • Part 3 of 4",
+          "headline": "Stop reading properties as raw strings.",
+          "highlightWord": "raw strings",
+          "subline": "Use @ConfigurationProperties with Java Records for instant validation and type safety.",
+          "narration": "Hardcoding @Value strings is a maintenance nightmare. In Boot 3, we use Java Records bound to configuration properties. It's immutable, type-safe, and validates at startup.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-record",
+          "kind": "code-spotlight",
+          "title": "Immutable Configuration Records",
+          "filename": "AcmeProperties.java",
+          "code": "@Validated\n@ConfigurationProperties(\"acme.tracing\")\npublic record AcmeProperties(\n    @NotBlank String headerName,\n    @Min(50) int threshold\n) {}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@Validated",
+              "explanation": "Triggers Jakarta Bean Validation on startup.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Constraints",
+              "explanation": "Fails fast if config is missing or invalid.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Using a record makes your config immutable. Add @Validated, and Spring will abort the application startup if a user provides a negative threshold or an empty header name.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-term-metadata",
+          "kind": "terminal",
+          "title": "IDE Autocomplete",
+          "caption": "Generate meta-data for developers",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Add to pom.xml"
+            },
+            {
+              "kind": "command",
+              "text": "mvn dependency:add-plugin -DartifactId=spring-boot-configuration-processor"
+            },
+            {
+              "kind": "success",
+              "text": "Generated: META-INF/spring-configuration-metadata.json"
+            }
+          ],
+          "narration": "Don't forget the configuration processor. It generates a JSON file that gives developers autocomplete and Javadoc right inside their application dot YAML files.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Startup Experience",
+          "top": {
+            "label": "Manual @Value",
+            "badge": "Runtime Error",
+            "tone": "bad",
+            "code": "log.info(val); // NullPointerException later",
+            "points": [
+              "Fails on live traffic",
+              "No type checking"
+            ]
+          },
+          "bottom": {
+            "label": "ConfigurationProperties",
+            "badge": "Fail-Fast",
+            "tone": "good",
+            "code": "throw new BindValidationException();",
+            "points": [
+              "Fails at boot time",
+              "Clear error message"
+            ]
+          },
+          "narration": "You want your app to fail during boot, not during a live request. ConfigurationProperties forces the error early, saving you from debugging production incidents.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Use Java Records for immutable config",
+            "Add @Validated for instant feedback",
+            "Use configuration-processor for IDE support"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Testing your starter with ApplicationContextRunner →",
+          "narration": "That's how you build safe config. In Part 4, we wrap up by testing your entire starter in milliseconds using ContextRunners.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-testing-starters",
+      "partTitle": "Testing Starters with ContextRunner",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Boot Internals • Part 4 of 4",
+          "headline": "Stop smoke-testing your starter manually.",
+          "highlightWord": "manually",
+          "subline": "Use ApplicationContextRunner to verify every conditional branch in milliseconds.",
+          "narration": "Stop creating demo apps to test your library. Spring Boot provides ContextRunners that build a mini-context in memory, letting you verify your starter's behavior in milliseconds.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-test",
+          "kind": "code-spotlight",
+          "title": "Testing Conditional Logic",
+          "filename": "AcmeAutoConfigurationTest.java",
+          "code": "new WebApplicationContextRunner()\n    .withPropertyValues(\"acme.enabled=false\")\n    .run(context -> {\n        assertThat(context).doesNotHaveBean(MyBean.class);\n    });",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Runner",
+              "explanation": "Creates a real, lightweight Spring context.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Properties",
+              "explanation": "Simulate user settings easily.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The runner lets you simulate any environment. You can toggle properties, filter the classpath, or provide custom user beans to ensure your starter behaves exactly as expected.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-term-debug",
+          "kind": "terminal",
+          "title": "Debugging Conditions",
+          "caption": "Why did my bean not register?",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java -jar app.jar --debug"
+            },
+            {
+              "kind": "output",
+              "text": "Positive matches: AcmeAutoConfiguration"
+            },
+            {
+              "kind": "output",
+              "text": "Negative matches: @ConditionalOnMissingBean found user bean"
+            }
+          ],
+          "narration": "If things go wrong, run with --debug. Spring will print a full conditions report, showing you exactly which condition matched and which one blocked your bean from registering.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Starter Lifecycle",
+          "subtitle": "From build to deployment",
+          "nodes": [
+            {
+              "label": "Compile",
+              "detail": "Processor generates metadata.",
+              "tag": "Build",
+              "accent": "sky"
+            },
+            {
+              "label": "Boot",
+              "detail": "Conditions evaluated.",
+              "tag": "Startup",
+              "accent": "amber"
+            },
+            {
+              "label": "Run",
+              "detail": "Beans injected.",
+              "tag": "Runtime",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "You've mastered the lifecycle: compile-time metadata, boot-time evaluation, and runtime injection. Your starters are now production-grade, versioned, and fully testable.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use ContextRunner for unit tests",
+            "Use --debug to see condition reports",
+            "Build for the platform, not just the app"
+          ],
+          "command": "git checkout topic/level-8/custom-spring-boot-starters-auto-configurations",
+          "nextPartTeaser": "Explore the full lab at https://ravishankar2463.github.io/java_hub/roadmap/level-8/custom-spring-boot-starters-auto-configurations",
+          "narration": "You're ready to build platform-grade starters. Checkout the branch below for the full source code and test suite. Go build something great.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
