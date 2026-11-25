@@ -1,0 +1,507 @@
+{
+  "chapterId": "level-7/entity-relationships",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "entity-relationships",
+  "chapterTitle": "Entity Relationships",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/entity-relationships",
+  "branchName": "topic/level-7/entity-relationships",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-owning-side-and-mappedby",
+      "partTitle": "The Owning Side & Silent NULL Foreign Keys",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Entity Relationships • Part 1 of 4",
+          "headline": "Why is your database foreign key saving as NULL?",
+          "highlightWord": "saving as NULL",
+          "subline": "Updating only the Java list does nothing to the underlying database foreign key.",
+          "narration": "In Java, object references look symmetrical. In SQL, only one table holds the foreign key. Mutate only the inverse list, and Hibernate quietly writes NULL straight into your database foreign key column.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Java Object Graph vs SQL Foreign Key",
+          "top": {
+            "label": "Inverse Side Only",
+            "badge": "mappedBy = author",
+            "tone": "bad",
+            "code": "author.getBooks().add(book);\nem.persist(author);\nem.persist(book);",
+            "points": [
+              "Hibernate completely ignores inverse collection writes",
+              "Foreign key author_id written as NULL in database"
+            ]
+          },
+          "bottom": {
+            "label": "Owning Side Updated",
+            "badge": "@ManyToOne Owner",
+            "tone": "good",
+            "code": "book.setAuthor(author);\nauthor.getBooks().add(book);\nem.persist(author);\nem.persist(book);",
+            "points": [
+              "Physical foreign key owner reference set",
+              "Clean INSERT statement with valid foreign key ID"
+            ]
+          },
+          "narration": "Hibernate checks only the owning side when writing foreign keys. Calling author dot getBooks dot add book leaves book dot author null, so Hibernate writes NULL to the author id foreign key.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Encapsulating Synchronized Helper Methods",
+          "filename": "Author.java",
+          "code": "@Entity\npublic class Author {\n    @OneToMany(mappedBy = \"author\",\n               cascade = CascadeType.ALL,\n               orphanRemoval = true)\n    private List<Book> books = new ArrayList<>();\n\n    public void addBook(Book book) {\n        books.add(book);\n        book.setAuthor(this);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4,
+                5,
+                6
+              ],
+              "badge": "mappedBy = author",
+              "explanation": "Declares inverse side; Book entity field manages physical foreign key column.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "badge": "addBook Helper",
+              "explanation": "Keeps both Java list and owning reference synced in a single call.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Fix this with synchronized helper methods on the parent entity. Inside addBook, add the item to the internal collection and call book dot setAuthor passing this, keeping both sides perfectly in sync.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-terminal",
+          "kind": "terminal",
+          "title": "Hibernate SQL Generation Check",
+          "caption": "Comparing raw collection mutation against helper method",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Mutating inverse list directly without book.setAuthor(author):"
+            },
+            {
+              "kind": "error",
+              "text": "INSERT INTO books (id, title, author_id) VALUES (101, '1984', NULL);"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Using helper method author.addBook(book):"
+            },
+            {
+              "kind": "success",
+              "text": "INSERT INTO books (id, title, author_id) VALUES (101, '1984', 1);"
+            }
+          ],
+          "narration": "Check the SQL output. Mutating the list alone produces an insert statement with a null author id. Using the helper method sets the foreign key cleanly on the initial insert statement.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Owning Side Rules Locked In",
+          "takeaways": [
+            "Owning side controls foreign key SQL writes",
+            "mappedBy marks inverse side for queries & traversal",
+            "Encapsulate collection changes with helper methods"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Unidirectional SQL traps & lazy @OneToOne with @MapsId →",
+          "narration": "That is the owning side rule. Up next in Part 2, see why unidirectional OneToMany fires extra update statements and how MapsId rescues lazy loading on OneToOne.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-unidirectional-traps-and-mapsid",
+      "partTitle": "Unidirectional SQL Traps & @OneToOne MapsId",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Entity Relationships • Part 2 of 4",
+          "headline": "Unidirectional @OneToMany executes extra UPDATE statements.",
+          "highlightWord": "extra UPDATE",
+          "subline": "Omitting @ManyToOne on child entities degrades database write performance.",
+          "narration": "Unidirectional OneToMany looks clean in code, but behind the scenes Hibernate executes extra SQL updates for every single child row. Here is why skipping ManyToOne destroys your query efficiency.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Unidirectional @OneToMany Execution Overhead",
+          "subtitle": "Why inserting 2 items requires 4 database queries",
+          "nodes": [
+            {
+              "label": "INSERT Order",
+              "detail": "Parent row persisted with generated ID 1",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "INSERT Child Items",
+              "detail": "Child rows persisted with NULL order_id column",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "UPDATE Foreign Keys",
+              "detail": "Extra UPDATE statements executed per child row to set order_id",
+              "tag": "Penalty",
+              "accent": "purple"
+            }
+          ],
+          "narration": "When the child entity has no parent reference, Hibernate inserts child rows with a null foreign key first. Then it fires a second update statement per child row to attach the parent ID.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Preserving Lazy Loading with @MapsId",
+          "filename": "UserProfile.java",
+          "code": "@Entity\npublic class UserProfile {\n    @Id\n    private Long id;\n\n    @OneToOne(fetch = FetchType.LAZY, optional = false)\n    @MapsId\n    @JoinColumn(name = \"user_id\")\n    private User user;\n\n    private String bio;\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "Shared Primary Key",
+              "explanation": "UserProfile shares the exact primary key value of User.id.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7,
+                8,
+                9
+              ],
+              "badge": "@MapsId Mapping",
+              "explanation": "Maps primary key directly to foreign key, keeping lazy fetch intact.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For OneToOne, bidirectional mapping breaks lazy loading because Hibernate checks if the target exists. Using MapsId on the child shares the parent primary key, eliminating inverse fields while guaranteeing lazy loading.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Bidirectional @OneToOne vs @MapsId",
+          "top": {
+            "label": "Bidirectional Foreign Key",
+            "badge": "Lazy Loading Broken",
+            "tone": "bad",
+            "code": "@OneToOne(mappedBy = \"profile\", fetch = FetchType.LAZY)\nprivate User user;",
+            "points": [
+              "Fires immediate SELECT to check non-null target",
+              "Requires separate foreign key column & unique index"
+            ]
+          },
+          "bottom": {
+            "label": "@MapsId Shared Primary Key",
+            "badge": "Lazy Loading Preserved",
+            "tone": "good",
+            "code": "@MapsId\n@JoinColumn(name = \"user_id\")\nprivate User user;",
+            "points": [
+              "Reuses parent primary key directly",
+              "Zero extra queries when loading parent entity"
+            ]
+          },
+          "narration": "Standard bidirectional OneToOne executes an immediate select query to check nullability even with lazy fetch. Using MapsId reuses the parent primary key, eliminating that extra select query completely.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Mapping Optimization Complete",
+          "takeaways": [
+            "Avoid unidirectional @OneToMany without @ManyToOne",
+            "Explicitly override default EAGER fetch to LAZY",
+            "Use @MapsId on @OneToOne for safe lazy loading"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): The @ManyToMany List penalty & explicit join entities →",
+          "narration": "Now you understand table mappings. In Part 3, discover why using List on ManyToMany triggers a full table wipe and how explicit join entities save performance.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-manytomany-set-vs-list-and-join-entities",
+      "partTitle": "@ManyToMany List Penalty & Explicit Join Entities",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Entity Relationships • Part 3 of 4",
+          "headline": "Using List on @ManyToMany wipes out entire join tables.",
+          "highlightWord": "wipes out",
+          "subline": "Removing one element forces Hibernate to execute full table deletes and re-inserts.",
+          "narration": "Removing a single tag from a ManyToMany List causes Hibernate to wipe out every single join row for that post and re-insert them all. Let's fix that bag penalty.",
+          "durationSec": 11,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-terminal",
+          "kind": "terminal",
+          "title": "List vs Set SQL Deletion Penalty",
+          "caption": "Removing 1 tag from a post with 5 tags",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Using List<Tag>: Hibernate deletes ALL join rows and re-inserts"
+            },
+            {
+              "kind": "error",
+              "text": "DELETE FROM post_tags WHERE post_id = 10;"
+            },
+            {
+              "kind": "error",
+              "text": "INSERT INTO post_tags (post_id, tag_id) VALUES (10, 1), (10, 2)..."
+            },
+            {
+              "kind": "comment",
+              "text": "# Using Set<Tag>: Single targeted DELETE statement executed"
+            },
+            {
+              "kind": "success",
+              "text": "DELETE FROM post_tags WHERE post_id = 10 AND tag_id = 5;"
+            }
+          ],
+          "narration": "Look at the generated SQL. With List, Hibernate executes a total delete of all post tags followed by re-inserts. Switching to Set lets Hibernate issue one targeted delete for that single row.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Promoting Join Table to First-Class Entity",
+          "filename": "Enrollment.java",
+          "code": "@Entity\npublic class Enrollment {\n    @EmbeddedId\n    private EnrollmentId id;\n    @ManyToOne(fetch = FetchType.LAZY)\n    @MapsId(\"studentId\")\n    private Student student;\n    @ManyToOne(fetch = FetchType.LAZY)\n    @MapsId(\"courseId\")\n    private Course course;\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4
+              ],
+              "badge": "@EmbeddedId",
+              "explanation": "Composite primary key containing studentId and courseId fields.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "badge": "Two @ManyToOne",
+              "explanation": "Promotes join table to entity supporting grade & enrollment date.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When join tables store attributes like grade or date, promote ManyToMany to an explicit join entity. Connect it using EmbeddedId for the composite primary key and MapsId on two ManyToOne fields.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Explicit Join Entity Architecture",
+          "subtitle": "Adding custom fields to join tables safely",
+          "nodes": [
+            {
+              "label": "Student Entity",
+              "detail": "Parent entity 1 (@OneToMany to Enrollment)",
+              "tag": "Parent 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Enrollment Entity",
+              "detail": "Join entity with grade, date & composite PK",
+              "tag": "Join Entity",
+              "accent": "emerald"
+            },
+            {
+              "label": "Course Entity",
+              "detail": "Parent entity 2 (@OneToMany to Enrollment)",
+              "tag": "Parent 2",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Instead of hidden join tables, explicit join entities convert multi-table links into clean domain objects with full auditing attributes, backed by precise foreign key constraints.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Join Table Best Practices",
+          "takeaways": [
+            "Always map @ManyToMany with Set, never List",
+            "Promote join tables with extra fields to entities",
+            "Combine @EmbeddedId with @MapsId for join entities"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Cascade rules & avoiding catastrophic data loss →",
+          "narration": "That fixes join tables. Up next in Part 4, learn the crucial difference between CascadeType REMOVE and orphan removal, and how misconfigured cascades destroy shared data.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-cascades-and-orphan-removal",
+      "partTitle": "Cascades, Orphan Removal & Preventing Data Loss",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Entity Relationships • Part 4 of 4",
+          "headline": "CascadeType.REMOVE on @ManyToOne can destroy your database.",
+          "highlightWord": "destroy your database",
+          "subline": "Deleting one user record can delete shared system application roles.",
+          "narration": "Putting CascadeType REMOVE on a ManyToOne association can quietly wipe out shared application roles across your entire database. Here is how to configure cascades safely without risking data loss.",
+          "durationSec": 12,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-compare",
+          "kind": "compare",
+          "title": "CascadeType.REMOVE vs orphanRemoval",
+          "top": {
+            "label": "CascadeType.REMOVE",
+            "badge": "Parent Entity Removal",
+            "tone": "neutral",
+            "code": "@OneToMany(cascade = CascadeType.REMOVE)\nprivate List<OrderItem> items;",
+            "points": [
+              "Deletes child rows ONLY when parent entity is deleted",
+              "Removing item from list leaves orphan in database"
+            ]
+          },
+          "bottom": {
+            "label": "orphanRemoval = true",
+            "badge": "Collection Dereference",
+            "tone": "good",
+            "code": "@OneToMany(orphanRemoval = true)\nprivate List<OrderItem> items;",
+            "points": [
+              "Deletes child row when removed from Java collection",
+              "Also deletes child rows when parent is deleted"
+            ]
+          },
+          "narration": "Cascade REMOVE deletes child records only when the parent entity itself is removed. Orphan removal goes further, deleting child rows whenever you remove them from the parent collection.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Safe Aggregate Root Cascading",
+          "filename": "Order.java",
+          "code": "@Entity\npublic class Order {\n    @Id\n    private Long id;\n\n    @OneToMany(mappedBy = \"order\",\n               cascade = CascadeType.ALL,\n               orphanRemoval = true)\n    private List<OrderItem> items = new ArrayList<>();\n}",
+          "steps": [
+            {
+              "lines": [
+                6,
+                7,
+                8
+              ],
+              "badge": "cascade = ALL",
+              "explanation": "Propagates lifecycle actions down to exclusively owned children.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "orphanRemoval",
+              "explanation": "Cleans up orphaned records when removed from items list.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Combine CascadeType ALL and orphanRemoval only on true parent-child aggregates like Order and OrderItem. Never put REMOVE cascades on shared lookup entities like User roles or system tags.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Entity Relationship Rules Checklist",
+          "caption": "Rules for safe entity relationship mapping",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Rule 1: Always set fetch = LAZY on @ManyToOne & @OneToOne"
+            },
+            {
+              "kind": "success",
+              "text": "@ManyToOne(fetch = FetchType.LAZY)"
+            },
+            {
+              "kind": "comment",
+              "text": "# Rule 2: Cascade downwards inside aggregate boundaries only"
+            },
+            {
+              "kind": "success",
+              "text": "Order -> OrderItem (CascadeType.ALL, orphanRemoval = true)"
+            },
+            {
+              "kind": "comment",
+              "text": "# Rule 3: NEVER cascade REMOVE upward or across shared entities"
+            },
+            {
+              "kind": "error",
+              "text": "User -> Role (CascadeType.REMOVE) // Dangerous!"
+            }
+          ],
+          "narration": "Follow three golden rules: set fetch to LAZY on all ManyToOne and OneToOne fields, cascade downward strictly inside aggregate roots, and never cascade REMOVE to shared entities.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Master Entity Relationships",
+          "takeaways": [
+            "Default all associations to FetchType.LAZY",
+            "Cascade ONLY down owned parent-child aggregates",
+            "Never put CascadeType.REMOVE on shared lookups"
+          ],
+          "command": "git checkout topic/level-7/entity-relationships",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered JPA entity relationships. Run git checkout topic level 7 entity relationships to test the verified lab and inspect full entity mappings on JavaHub.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
