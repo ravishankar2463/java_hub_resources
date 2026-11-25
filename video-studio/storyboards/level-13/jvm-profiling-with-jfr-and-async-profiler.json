@@ -1,0 +1,473 @@
+{
+  "chapterId": "level-13/jvm-profiling-with-jfr-and-async-profiler",
+  "level": "level-13",
+  "levelLabel": "Level 13",
+  "slug": "jvm-profiling-with-jfr-and-async-profiler",
+  "chapterTitle": "JVM Profiling with JFR and Async-Profiler",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-13/jvm-profiling-with-jfr-and-async-profiler",
+  "branchName": "topic/level-13/jvm-profiling-with-jfr-and-async-profiler",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-safepoint-bias",
+      "partTitle": "Why Legacy Profilers Lie",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Profiling • Part 1 of 4",
+          "headline": "Why do your profilers blame the wrong method?",
+          "highlightWord": "wrong method",
+          "subline": "It is called safepoint bias. Your legacy tools are lying to you.",
+          "narration": "If your profiler shows high CPU in a method that does nothing, you are a victim of safepoint bias. Legacy tools wait for the JVM to pause before checking the stack.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Safepoint Trap",
+          "subtitle": "How legacy samplers miss the action",
+          "nodes": [
+            {
+              "label": "Tight Loop",
+              "detail": "Hot CPU work, no safepoint polls",
+              "tag": "Hidden",
+              "accent": "amber"
+            },
+            {
+              "label": "Safepoint Poll",
+              "detail": "Where the JVM finally pauses",
+              "tag": "Boundary",
+              "accent": "purple"
+            },
+            {
+              "label": "Innocent Method",
+              "detail": "Gets blamed for the previous loop",
+              "tag": "False Positive",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The JVM only allows stack inspection at specific safepoint polls. If your code is burning CPU in a tight loop, the sampler waits for the next poll and incorrectly attributes the cost to whatever method happens to be running there.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Legacy vs. Async-Profiler",
+          "top": {
+            "label": "Legacy (JVMTI)",
+            "badge": "Safepoint Bound",
+            "tone": "bad",
+            "code": "Thread.getAllStackTraces();",
+            "points": [
+              "High overhead",
+              "Misses native frames",
+              "Safepoint bias"
+            ]
+          },
+          "bottom": {
+            "label": "Async-Profiler",
+            "badge": "Async Signal",
+            "tone": "good",
+            "code": "perf_events / SIGPROF",
+            "points": [
+              "Low overhead (<1%)",
+              "Includes C++ frames",
+              "Bias-free sampling"
+            ]
+          },
+          "narration": "Async-profiler fixes this by using OS signals to interrupt threads at the exact instruction they are executing. It bypasses JVM safepoints entirely, giving you a crystal-clear view of Java, native, and kernel frames.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-terminal",
+          "kind": "terminal",
+          "title": "Running a CPU Profile",
+          "caption": "Attach to a live PID with zero restarts",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Capture 30 seconds of CPU activity"
+            },
+            {
+              "kind": "command",
+              "text": "./asprof -d 30 -e cpu -f cpu.html <PID>"
+            },
+            {
+              "kind": "success",
+              "text": "Flame graph generated: cpu.html"
+            }
+          ],
+          "narration": "Point the profiler at your PID. It attaches dynamically, collects data for your specified duration, and outputs an interactive HTML flame graph that reveals exactly where your CPU cycles are disappearing.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Safepoint bias misattributes CPU cost",
+            "Async-profiler uses OS signals for precision",
+            "Attach dynamically to any running PID"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Wall-clock profiling vs. CPU profiling →",
+          "narration": "That is the foundation. In Part 2, we tackle the mystery of low CPU usage but high latency using wall-clock profiling.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-wall-clock-and-alloc",
+      "partTitle": "Beyond CPU: Memory & Latency",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Profiling • Part 2 of 4",
+          "headline": "Why is your app slow when CPU is low?",
+          "highlightWord": "low CPU",
+          "subline": "Your threads aren't running—they are waiting. Here is how to find the bottleneck.",
+          "narration": "If your app is slow but CPU utilization is low, you are likely blocked on I/O or locks. A CPU profile will show nothing, but a wall-clock profile will show everything.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-terminal",
+          "kind": "terminal",
+          "title": "Wall-Clock vs. Allocation",
+          "caption": "Find waits and memory churn",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Profile all threads (runnable + sleeping)"
+            },
+            {
+              "kind": "command",
+              "text": "./asprof -e wall -t -f wall.html <PID>"
+            },
+            {
+              "kind": "comment",
+              "text": "# Profile heap churn (TLAB allocations)"
+            },
+            {
+              "kind": "command",
+              "text": "./asprof -e alloc -f alloc.html <PID>"
+            }
+          ],
+          "narration": "Use dash e wall to capture every thread state, including blocked or sleeping ones. Use dash e alloc to track TLAB refills, which is the secret to finding code that floods the Young Generation with short-lived objects.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "The Hidden Allocation Bug",
+          "filename": "Filter.java",
+          "code": "public void doFilter(Request req) {\n    // DANGEROUS: Always serializes!\n    String body = mapper.writeValueAsString(req);\n    if (log.isDebugEnabled()) {\n        log.debug(body);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Allocation Hotspot",
+              "explanation": "Creates a massive byte array every request, even if logging is disabled.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4,
+                6
+              ],
+              "badge": "The Fix",
+              "explanation": "Guard the serialization with the check to stop the memory churn.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "This is a classic production killer. Serializing objects to strings before checking log levels churns gigabytes of memory. Allocation profiling highlights this path immediately, even if the objects die milliseconds later.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Flame Graph Anatomy",
+          "subtitle": "Reading the heatmap",
+          "nodes": [
+            {
+              "label": "Width",
+              "detail": "Percentage of total samples",
+              "tag": "Cost",
+              "accent": "sky"
+            },
+            {
+              "label": "Height",
+              "detail": "Call stack depth",
+              "tag": "Context",
+              "accent": "purple"
+            },
+            {
+              "label": "Plateau",
+              "detail": "The actual bottleneck",
+              "tag": "Target",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Width represents cost, height represents depth. Look for wide, flat plateaus at the top edge—that is where the execution time is actually being spent. Everything below is just the call stack leading to the bottleneck.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Use -e wall for latency bottlenecks",
+            "Use -e alloc for GC churn issues",
+            "Guard serialization with log checks"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): JFR and JDK Mission Control →",
+          "narration": "You can now spot memory and latency issues. In Part 3, we dive into JDK Flight Recorder for a full-stack view of JVM health.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-jfr-and-jmc",
+      "partTitle": "JFR: The JVM Flight Data Recorder",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Profiling • Part 3 of 4",
+          "headline": "What if you need to see everything at once?",
+          "highlightWord": "everything",
+          "subline": "JFR is the black box for your JVM. It records GC, I/O, and locks with 1% overhead.",
+          "narration": "Async-profiler is a scalpel, but JFR is the black box. It records everything from GC pauses to file I/O and thread states, making it the ultimate tool for production incident analysis.",
+          "durationSec": 10,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-terminal",
+          "kind": "terminal",
+          "title": "Operating JFR with jcmd",
+          "caption": "Production-ready recording commands",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "jcmd <PID> JFR.start name=prod settings=profile"
+            },
+            {
+              "kind": "command",
+              "text": "jcmd <PID> JFR.dump name=prod filename=dump.jfr"
+            },
+            {
+              "kind": "command",
+              "text": "jcmd <PID> JFR.stop name=prod"
+            }
+          ],
+          "narration": "Use jcmd to control JFR. The profile setting is perfect for incident capture, while the default setting is light enough for continuous, always-on flight recording. Just dump the file when you need to investigate a spike.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-code-spotlight",
+          "kind": "code-spotlight",
+          "title": "Custom JFR Events",
+          "filename": "CheckoutEvent.java",
+          "code": "@Name(\"com.example.Checkout\")\n@Label(\"Checkout\")\npublic class CheckoutEvent extends Event {\n    @Label(\"Order ID\")\n    public String orderId;\n}\n\n// Usage:\nCheckoutEvent e = new CheckoutEvent();\ne.begin();\n// ... work ...\ne.commit();",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Metadata",
+              "explanation": "Define your custom event with annotations.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                10,
+                12
+              ],
+              "badge": "Lifecycle",
+              "explanation": "Begin and commit the event around your critical business logic.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "You can even emit your own JFR events. They are incredibly lightweight and appear right alongside JVM events in Mission Control, allowing you to correlate business logic with system health.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "JFR Streaming Architecture",
+          "subtitle": "Real-time monitoring",
+          "nodes": [
+            {
+              "label": "JFR Events",
+              "detail": "JVM + Custom App events",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "RecordingStream",
+              "detail": "In-process event consumer",
+              "tag": "Pipeline",
+              "accent": "amber"
+            },
+            {
+              "label": "Dashboard",
+              "detail": "Real-time alerts",
+              "tag": "Sink",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "With RecordingStream, you don't even need to dump files. You can consume JFR events in real-time, enabling custom monitoring dashboards that alert you the moment a GC pause or slow checkout occurs.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "JFR is a low-overhead black box",
+            "Use jcmd for production control",
+            "Custom events bridge business and system"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Continuous Profiling at Scale →",
+          "narration": "JFR gives you the full picture. In Part 4, we wrap up by looking at continuous profiling to catch issues before they become outages.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-continuous-profiling",
+      "partTitle": "Continuous Profiling Strategy",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Profiling • Part 4 of 4",
+          "headline": "What if the bug happens at 3 AM?",
+          "highlightWord": "3 AM",
+          "subline": "Continuous profiling catches regressions before your users do.",
+          "narration": "Manual profiling is great for known issues, but what about the bugs that happen at 3 AM and disappear by morning? Continuous profiling is your only defense.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Continuous Profiling Loop",
+          "subtitle": "Always-on observability",
+          "nodes": [
+            {
+              "label": "Agent",
+              "detail": "Runs on every pod",
+              "tag": "Collector",
+              "accent": "sky"
+            },
+            {
+              "label": "Backend",
+              "detail": "Aggregates profile chunks",
+              "tag": "Storage",
+              "accent": "amber"
+            },
+            {
+              "label": "UI",
+              "detail": "Diffs and flame graphs",
+              "tag": "Analysis",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Agents run continuously, uploading small profile snapshots to a central backend. This allows you to perform retrospective debugging and release verification by comparing flame graphs across different versions.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-terminal",
+          "kind": "terminal",
+          "title": "The Power of Diffing",
+          "caption": "Spotting regressions instantly",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Compare v2.13 vs v2.14"
+            },
+            {
+              "kind": "command",
+              "text": "diff-flame --base v2.13.html --new v2.14.html"
+            },
+            {
+              "kind": "success",
+              "text": "Regression found in Serialization path!"
+            }
+          ],
+          "narration": "Diff flame graphs are the gold standard for release verification. They highlight exactly which methods grew in cost, pointing you to the regression before it ever reaches your users.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Manual vs. Continuous",
+          "top": {
+            "label": "Manual Profiling",
+            "badge": "Reactive",
+            "tone": "neutral",
+            "code": "jcmd <PID> JFR.dump ...",
+            "points": [
+              "Requires live incident",
+              "Hard to reproduce",
+              "High effort"
+            ]
+          },
+          "bottom": {
+            "label": "Continuous Profiling",
+            "badge": "Proactive",
+            "tone": "good",
+            "code": "Pyroscope / Parca",
+            "points": [
+              "Retrospective debugging",
+              "Release diffing",
+              "Always-on data"
+            ]
+          },
+          "narration": "Manual profiling is reactive. Continuous profiling is proactive. By keeping overhead under 1 percent, you gain the ability to travel back in time and see exactly what your JVM was doing during that last spike.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Continuous profiling for 3 AM bugs",
+            "Use diff flame graphs for regressions",
+            "Keep overhead under 1% for production"
+          ],
+          "command": "git checkout topic/level-13/jvm-profiling-with-jfr-and-async-profiler",
+          "nextPartTeaser": "Master the full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You are now a JVM performance expert. Checkout the branch below to experiment with these tools and secure your production services. See you in the next level.",
+          "durationSec": 10,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
