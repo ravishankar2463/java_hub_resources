@@ -1,0 +1,480 @@
+{
+  "chapterId": "level-9/real-time-messaging-websockets-sse",
+  "level": "level-9",
+  "levelLabel": "Level 9",
+  "slug": "real-time-messaging-websockets-sse",
+  "chapterTitle": "Real-Time Messaging: WebSockets & SSE",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-9/real-time-messaging-websockets-sse",
+  "branchName": "topic/level-9/real-time-messaging-websockets-sse",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-websockets-vs-sse",
+      "partTitle": "Choosing Your Real-Time Protocol",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Real-Time Messaging • Part 1 of 4",
+          "headline": "Stop polling your database every two seconds!",
+          "highlightWord": "Stop polling",
+          "subline": "Short polling burns CPU and kills your latency. Here is how to push data efficiently.",
+          "narration": "If fifty thousand users poll your API for updates, you are burning CPU on TLS and auth for empty responses. Stop the polling. Use WebSockets or SSE to push data only when it changes.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "SSE vs. WebSockets",
+          "top": {
+            "label": "SSE (Server-Sent Events)",
+            "badge": "Unidirectional",
+            "tone": "good",
+            "code": "Content-Type: text/event-stream\n\ndata: {\"status\": \"SHIPPED\"}\n\n",
+            "points": [
+              "Standard HTTP/2 streaming",
+              "Auto-reconnects with Last-Event-ID"
+            ]
+          },
+          "bottom": {
+            "label": "WebSockets",
+            "badge": "Bidirectional",
+            "tone": "neutral",
+            "code": "GET /ws HTTP/1.1\nUpgrade: websocket\nConnection: Upgrade",
+            "points": [
+              "Full-duplex TCP pipe",
+              "Requires 101 Handshake"
+            ]
+          },
+          "narration": "SSE is simple, unidirectional, and runs over standard HTTP. Use it for dashboards or notifications. WebSockets provide a full-duplex pipe for interactive apps like chat or multiplayer games.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The 101 Handshake",
+          "subtitle": "Upgrading HTTP to a persistent socket",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Sends Upgrade: websocket header",
+              "tag": "Request",
+              "accent": "sky"
+            },
+            {
+              "label": "Server",
+              "detail": "Validates Sec-WebSocket-Key",
+              "tag": "Challenge",
+              "accent": "amber"
+            },
+            {
+              "label": "101 Protocol",
+              "detail": "Connection switches to binary frames",
+              "tag": "Upgrade",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "WebSockets start as an HTTP GET request. The server validates the handshake key and returns a 101 Switching Protocols status. From that point, the connection is no longer HTTP—it is a binary frame stream.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-sse",
+          "kind": "code-spotlight",
+          "title": "Spring SseEmitter",
+          "filename": "OrderController.java",
+          "code": "@GetMapping(\"/orders\")\npublic SseEmitter stream() {\n    SseEmitter emitter = new SseEmitter(30000L);\n    emitter.send(SseEmitter.event()\n        .name(\"update\")\n        .data(\"Order #99 Shipped\"));\n    return emitter;\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Async",
+              "explanation": "Releases the Servlet thread back to the pool immediately.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                5,
+                6
+              ],
+              "badge": "Push",
+              "explanation": "Flushes UTF-8 text chunks directly to the client.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "SseEmitter is your best friend for server-to-client streams. It releases the request thread, keeping your memory footprint low while maintaining thousands of open connections.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "SSE = Unidirectional HTTP/2",
+            "WebSockets = Bidirectional TCP",
+            "101 Handshake = Protocol Upgrade"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Scaling WebSockets with STOMP & RabbitMQ →",
+          "narration": "SSE is the default for simple feeds. In Part 2, we tackle the complexity of STOMP and scaling WebSockets across a multi-pod cluster.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-stomp-and-scaling",
+      "partTitle": "Scaling WebSockets with STOMP",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "STOMP & Scaling • Part 2 of 4",
+          "headline": "Why your WebSocket app breaks in production.",
+          "highlightWord": "breaks",
+          "subline": "In-memory brokers fail as soon as you add a second pod. Here is the fix.",
+          "narration": "If you use an in-memory broker, your app will fail in Kubernetes. Alice connects to Pod A, Bob to Pod B, and they never see each other's messages. Let's fix that.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Scaling Problem",
+          "subtitle": "Why SimpleBroker is not enough",
+          "nodes": [
+            {
+              "label": "Pod 1",
+              "detail": "Holds Alice's session",
+              "tag": "Isolated",
+              "accent": "amber"
+            },
+            {
+              "label": "Pod 2",
+              "detail": "Holds Bob's session",
+              "tag": "Isolated",
+              "accent": "amber"
+            },
+            {
+              "label": "RabbitMQ",
+              "detail": "The shared state broker",
+              "tag": "Required",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "SimpleBroker keeps subscriptions in local JVM memory. In a cluster, pods can't talk. You need a STOMP broker relay like RabbitMQ to act as the shared message bus for all pods.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-config",
+          "kind": "code-spotlight",
+          "title": "StompBrokerRelay Config",
+          "filename": "WebSocketConfig.java",
+          "code": "registry.enableStompBrokerRelay(\"/topic\", \"/queue\")\n    .setRelayHost(\"rabbitmq\")\n    .setRelayPort(61613)\n    .setClientLogin(\"user\")\n    .setClientPasscode(\"pass\");",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Relay",
+              "explanation": "Swaps local memory for a persistent TCP connection to RabbitMQ.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Broker",
+              "explanation": "Points to the STOMP plugin port on your broker cluster.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Enable the STOMP plugin in RabbitMQ and configure your Spring app to relay frames. Now, when Alice sends a message, it hits the broker and fans out to every pod in your cluster.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-term-cmd",
+          "kind": "terminal",
+          "title": "RabbitMQ Setup",
+          "caption": "Enable the STOMP plugin",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "rabbitmq-plugins enable rabbitmq_stomp"
+            },
+            {
+              "kind": "success",
+              "text": "Plugin enabled: rabbitmq_stomp"
+            },
+            {
+              "kind": "comment",
+              "text": "# Listen on port 61613"
+            },
+            {
+              "kind": "output",
+              "text": "STOMP protocol listening on 0.0.0.0:61613"
+            }
+          ],
+          "narration": "Don't forget to enable the STOMP plugin. It listens on port 61613 by default. Without this, your Spring relay will have nowhere to send its frames.",
+          "durationSec": 8,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "SimpleBroker is for dev only",
+            "Relay to RabbitMQ for horizontal scale",
+            "Use dot-separated topics for RabbitMQ"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Security pitfalls and Auth Interceptors →",
+          "narration": "You now have a scalable architecture. In Part 3, we secure these connections without leaking tokens in URL parameters.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-security-and-auth",
+      "partTitle": "Securing WebSocket Connections",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Security • Part 3 of 4",
+          "headline": "Never put JWTs in your WebSocket URL.",
+          "highlightWord": "Never",
+          "subline": "They end up in logs, browser history, and APM traces. Here is the secure way.",
+          "narration": "Putting tokens in the URL is a security nightmare. They end up in Nginx logs and browser history. Use a ChannelInterceptor to validate tokens in the STOMP CONNECT frame instead.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-code-interceptor",
+          "kind": "code-spotlight",
+          "title": "Channel Interceptor Auth",
+          "filename": "AuthInterceptor.java",
+          "code": "public Message<?> preSend(Message<?> msg, MessageChannel ch) {\n    StompHeaderAccessor acc = getAccessor(msg, StompHeaderAccessor.class);\n    if (StompCommand.CONNECT.equals(acc.getCommand())) {\n        String token = acc.getFirstNativeHeader(\"Authorization\");\n        // Decode and set user principal here\n    }\n    return msg;\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Accessor",
+              "explanation": "Extracts STOMP headers from the incoming frame.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Header",
+              "explanation": "Reads the Bearer token from the secure STOMP header.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The ChannelInterceptor intercepts the CONNECT frame. You extract the Authorization header, validate the JWT, and set the user principal. This keeps your tokens out of the URL.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-compare",
+          "kind": "compare",
+          "title": "Auth Patterns",
+          "top": {
+            "label": "Insecure",
+            "badge": "❌ URL Param",
+            "tone": "bad",
+            "code": "wss://api.com/ws?token=eyJ...",
+            "points": [
+              "Visible in Nginx logs",
+              "Stored in browser history"
+            ]
+          },
+          "bottom": {
+            "label": "Secure",
+            "badge": "✅ STOMP Header",
+            "tone": "good",
+            "code": "CONNECT\nAuthorization: Bearer eyJ...\n",
+            "points": [
+              "Hidden from logs",
+              "Validated at connection"
+            ]
+          },
+          "narration": "Always prefer headers over query params. Headers are encrypted inside the WebSocket tunnel, keeping your sensitive identity data away from prying eyes in your infrastructure logs.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "The Auth Flow",
+          "subtitle": "Securing the handshake",
+          "nodes": [
+            {
+              "label": "Client",
+              "detail": "Sends CONNECT frame with header",
+              "tag": "Auth",
+              "accent": "sky"
+            },
+            {
+              "label": "Interceptor",
+              "detail": "Validates JWT against provider",
+              "tag": "Verify",
+              "accent": "amber"
+            },
+            {
+              "label": "Session",
+              "detail": "Principal bound to socket",
+              "tag": "Authorized",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The interceptor acts as a gatekeeper. If the JWT is invalid, the connection is rejected before any subscription or message frames are processed. This is your first line of defense.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Never leak tokens in URLs",
+            "Use ChannelInterceptor for Auth",
+            "Validate JWTs in CONNECT frames"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Nginx pitfalls & OSIV leaks →",
+          "narration": "Security is now handled. In Part 4, we cover the Nginx buffering bugs and memory leaks that crash SSE in production.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-production-pitfalls",
+      "partTitle": "Production Pitfalls & Cleanup",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Production • Part 4 of 4",
+          "headline": "Why your SSE events arrive in a burst.",
+          "highlightWord": "in a burst",
+          "subline": "Nginx buffering is likely the culprit. Here is how to disable it.",
+          "narration": "If your SSE events seem frozen and then arrive all at once, Nginx is buffering your response. You must disable this to get real-time delivery.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-term-nginx",
+          "kind": "terminal",
+          "title": "Nginx SSE Config",
+          "caption": "Disable buffering for real-time",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Inside your location block"
+            },
+            {
+              "kind": "command",
+              "text": "proxy_buffering off;"
+            },
+            {
+              "kind": "command",
+              "text": "proxy_cache off;"
+            },
+            {
+              "kind": "command",
+              "text": "gzip off;"
+            },
+            {
+              "kind": "success",
+              "text": "Events now stream immediately"
+            }
+          ],
+          "narration": "Nginx buffers by default. Set proxy buffering off and disable gzip for your SSE location. This forces Nginx to flush every event chunk to the client immediately.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-cleanup",
+          "kind": "code-spotlight",
+          "title": "Preventing Memory Leaks",
+          "filename": "SseController.java",
+          "code": "emitter.onCompletion(() -> remove(id));\nemitter.onTimeout(() -> remove(id));\nemitter.onError(ex -> remove(id));",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Cleanup",
+              "explanation": "Crucial: remove dead emitters to prevent heap exhaustion.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "If you don't remove dead emitters, your memory will grow until the JVM crashes. Always attach cleanup callbacks to handle completion, timeout, and errors.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "OSIV Danger",
+          "top": {
+            "label": "OSIV Enabled",
+            "badge": "❌ Memory Leak",
+            "tone": "bad",
+            "code": "spring.jpa.open-in-view=true",
+            "points": [
+              "Holds DB connection open",
+              "Starves HikariCP pool"
+            ]
+          },
+          "bottom": {
+            "label": "OSIV Disabled",
+            "badge": "✅ Production Ready",
+            "tone": "good",
+            "code": "spring.jpa.open-in-view=false",
+            "points": [
+              "Releases connection fast",
+              "Prevents pool starvation"
+            ]
+          },
+          "narration": "Disable Open-Session-in-View. If enabled, your DB connection stays open for the entire lifetime of the SSE stream, which could be hours. That will starve your connection pool instantly.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Disable Nginx proxy buffering",
+            "Always cleanup SseEmitter instances",
+            "Set OSIV to false"
+          ],
+          "command": "git checkout topic/level-9/real-time-messaging-websockets-sse",
+          "nextPartTeaser": "Full lab and docs at ravishankar2463.github.io/java_hub",
+          "narration": "You are ready for production. Checkout the branch in the roadmap to run the lab and test your WebSocket cluster configuration.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
