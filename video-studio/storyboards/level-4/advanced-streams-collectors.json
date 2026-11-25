@@ -1,0 +1,527 @@
+{
+  "chapterId": "level-4/advanced-streams-collectors",
+  "level": "level-4",
+  "levelLabel": "Level 4",
+  "slug": "advanced-streams-collectors",
+  "chapterTitle": "Advanced Streams & Collectors",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-4/advanced-streams-collectors",
+  "branchName": "topic/level-4/advanced-streams-collectors",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-reduce-vs-collect-and-map-collectors",
+      "partTitle": "reduce vs collect & Map Collector Pitfalls",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Streams & Collectors • Part 1 of 4",
+          "headline": "Using reduce to build a List makes your code O(n²).",
+          "highlightWord": "O(n²)",
+          "subline": "Immutable folding creates a brand new list copy on every single element.",
+          "narration": "Using stream dot reduce to build a list creates a fresh array copy on every element, turning linear work into quadratic garbage collector torture. Let's see why collect is built completely differently.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Immutable Fold vs. Mutable Accumulation",
+          "top": {
+            "label": "reduce(): Immutable Copy",
+            "badge": "❌ O(n²) Slow",
+            "tone": "bad",
+            "code": "List<String> list = stream.reduce(\n    new ArrayList<>(),\n    (acc, item) -> {\n        var copy = new ArrayList<>(acc);\n        copy.add(item);\n        return copy;\n    },\n    (l, r) -> { ... }\n);",
+            "points": [
+              "Copies accumulated list every step",
+              "Heavy GC pressure and slow execution"
+            ]
+          },
+          "bottom": {
+            "label": "collect(): Mutable Container",
+            "badge": "✅ O(n) Fast",
+            "tone": "good",
+            "code": "List<String> list = stream\n        .collect(Collectors.toList());\n\n// Or Java 16+ unmodifiable list:\nList<String> clean = stream.toList();",
+            "points": [
+              "Mutates a single container in place",
+              "Amortized O(1) append per element"
+            ]
+          },
+          "narration": "Reduce folds immutable values like numbers. Passing a mutable list into reduce forces you to copy the entire collection on every element. Stream dot collect creates one container up front and mutates it in place.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-list",
+          "kind": "code-spotlight",
+          "title": "Collectors.toList vs Stream.toList()",
+          "filename": "ListCollectors.java",
+          "code": "// Classic Java 8 collector (returns mutable ArrayList)\nList<String> mutable = names.stream()\n        .collect(Collectors.toList());\n\n// Java 16+ direct terminal method (unmodifiable)\nList<String> modern = names.stream()\n        .toList();\n\n// Java 10+ unmodifiable and rejects null elements\nList<String> strict = names.stream()\n        .collect(Collectors.toUnmodifiableList());",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Collectors.toList()",
+              "explanation": "Returns a mutable list in OpenJDK, but has no strict mutability guarantee in specs. Permits null elements.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "Stream.toList()",
+              "explanation": "Java 16+ direct terminal operation. Returns an unmodifiable list and allows null elements.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                10,
+                11
+              ],
+              "badge": "toUnmodifiableList()",
+              "explanation": "Strictly unmodifiable and throws NullPointerException immediately if any element is null.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Collectors dot toList returns a mutable list and permits nulls. Java 16 introduced stream dot toList directly on the stream interface, returning an unmodifiable list while still allowing nulls. Use toUnmodifiableList to strictly forbid nulls.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-map",
+          "kind": "code-spotlight",
+          "title": "Collectors.toMap Duplicate Key Bug",
+          "filename": "MapCollectors.java",
+          "code": "record Employee(String id, String dept, String name) {}\n\n// ❌ Throws IllegalStateException on duplicate dept!\nMap<String, String> broken = employees.stream()\n        .collect(Collectors.toMap(Employee::dept, Employee::name));\n\n// ✅ Provide a merge function for non-unique keys\nMap<String, String> safe = employees.stream()\n        .collect(Collectors.toMap(\n                Employee::dept,\n                Employee::name,\n                (existing, incoming) -> existing + \", \" + incoming\n        ));",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "2-Arg Trap",
+              "explanation": "Throws IllegalStateException: Duplicate key if two stream items produce the exact same key value.",
+              "accent": "rose"
+            },
+            {
+              "lines": [
+                8,
+                12
+              ],
+              "badge": "3-Arg Merge Function",
+              "explanation": "Resolves key collisions explicitly by merging existing and incoming values together.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The two-argument Collectors dot toMap throws an IllegalStateException the instant two elements share a key. Always pass a third argument merge function to handle collisions safely by keeping the existing, replacing with new, or combining values.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "collect() is O(n) mutable accumulation; reduce() is immutable fold",
+            "Stream.toList() returns unmodifiable list; Collectors.toList() is mutable",
+            "Collectors.toMap requires a merge function to handle duplicate keys"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Multi-level groupingBy, filtering & teeing() →",
+          "narration": "That's the foundation of stream collection. In Part 2, we explore multi-level groupingBy, downstream collectors, and computing two aggregations in a single pass with teeing.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-grouping-partitioning-and-teeing",
+      "partTitle": "Grouping, Partitioning & Single-Pass Aggregations",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Grouping & Aggregations • Part 2 of 4",
+          "headline": "Filtering before groupingBy deletes empty groups completely.",
+          "highlightWord": "deletes empty groups",
+          "subline": "Learn how downstream collectors preserve empty buckets and compute twin metrics in one pass.",
+          "narration": "Filtering your stream before calling groupingBy removes unmatched elements entirely, wiping out empty categories from your final map. Downstream collectors fix this problem and unleash powerful single-pass reports.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "How Downstream Collectors Work",
+          "subtitle": "Aggregating groups in a single pass without intermediate lists",
+          "nodes": [
+            {
+              "label": "Stream Elements",
+              "detail": "Incoming record stream processed element by element",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "groupingBy Classifier",
+              "detail": "Routes each element to a map bucket key",
+              "tag": "Router",
+              "accent": "amber"
+            },
+            {
+              "label": "Downstream Collector",
+              "detail": "Applies filtering, mapping, or summing inside the bucket",
+              "tag": "Aggregator",
+              "accent": "purple"
+            },
+            {
+              "label": "Final Map Result",
+              "detail": "Map of domain keys to aggregated bucket results",
+              "tag": "Output",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "GroupingBy routes incoming stream items to map keys based on a classifier function. Instead of producing intermediate lists, a downstream collector aggregates each bucket directly in place during the stream traversal.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-grouping",
+          "kind": "code-spotlight",
+          "title": "Multi-Level Grouping & Downstream Filtering",
+          "filename": "GroupingReports.java",
+          "code": "record Tx(String customerId, String category, long amount) {}\n\n// Downstream filtering keeps empty buckets in map!\nMap<String, List<Tx>> highValueByCustomer = txs.stream()\n        .collect(Collectors.groupingBy(\n                Tx::customerId,\n                Collectors.filtering(\n                        tx -> tx.amount() >= 10_000,\n                        Collectors.toList()\n                )\n        ));",
+          "steps": [
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "groupingBy Key",
+              "explanation": "Groups elements by customerId key. Classifier function must never return null.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                7,
+                10
+              ],
+              "badge": "Collectors.filtering",
+              "explanation": "Downstream filter preserves the key in the result map with an empty list if no transactions match.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Using Collectors dot filtering as a downstream collector keeps every customer key in the map, returning an empty list if no transactions match. Filtering before groupingBy would drop missing keys entirely from your final map.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code-teeing",
+          "kind": "code-spotlight",
+          "title": "Twin Aggregations with Collectors.teeing",
+          "filename": "TeeingExample.java",
+          "code": "record Stats(double sum, double avg, long count) {}\n\nStats result = scores.stream()\n        .collect(Collectors.teeing(\n                Collectors.summingDouble(Double::doubleValue),\n                Collectors.counting(),\n                (sum, count) -> new Stats(\n                        sum,\n                        count == 0 ? 0.0 : sum / count,\n                        count\n                )\n        ));",
+          "steps": [
+            {
+              "lines": [
+                4,
+                5
+              ],
+              "badge": "Downstream 1 & 2",
+              "explanation": "Feeds every stream element into two independent collectors simultaneously.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                10
+              ],
+              "badge": "Merger BiFunction",
+              "explanation": "Combines both partial results into a clean domain record when stream terminates.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Java 12 introduced Collectors dot teeing. It sends every stream element to two independent downstream collectors simultaneously, then merges their results into a domain record without traversing the stream twice.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Complete",
+          "takeaways": [
+            "Collectors.filtering preserves empty keys in grouped maps",
+            "partitioningBy always guarantees true and false keys",
+            "Collectors.teeing computes two distinct metrics in a single pass"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Writing custom Collectors & IDENTITY_FINISH traps →",
+          "narration": "Now you can write complex single-pass groupings and twin aggregations. In Part 3, we build custom collectors with Collector dot of and avoid silent cast bugs.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-custom-collectors-and-collector-of",
+      "partTitle": "Custom Collectors & The IDENTITY_FINISH Trap",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Custom Collectors • Part 3 of 4",
+          "headline": "Setting IDENTITY_FINISH on a custom collector can throw ClassCastException.",
+          "highlightWord": "IDENTITY_FINISH",
+          "subline": "This optimization flag completely skips your finisher function!",
+          "narration": "Setting IDENTITY_FINISH on a custom collector tells the stream engine to bypass your finisher function entirely. If your finisher transforms or wraps your container, your app breaks with class cast exceptions.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The 4 Contract Functions of Collector<T, A, R>",
+          "subtitle": "How stream engines build custom result containers",
+          "nodes": [
+            {
+              "label": "1. supplier()",
+              "detail": "Creates fresh mutable container A for each worker thread",
+              "tag": "Init",
+              "accent": "sky"
+            },
+            {
+              "label": "2. accumulator()",
+              "detail": "Folds input item T into mutable container A",
+              "tag": "Accumulate",
+              "accent": "amber"
+            },
+            {
+              "label": "3. combiner()",
+              "detail": "Merges two partial containers during parallel execution",
+              "tag": "Parallel",
+              "accent": "purple"
+            },
+            {
+              "label": "4. finisher()",
+              "detail": "Transforms intermediate container A into final result R",
+              "tag": "Finish",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Every collector relies on four functions: supplier creates the mutable container, accumulator adds elements, combiner merges parallel chunks, and finisher transforms the container into your final result.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-batch",
+          "kind": "code-spotlight",
+          "title": "Building a Batching Collector with Collector.of",
+          "filename": "BatchCollectors.java",
+          "code": "public static <T> Collector<T, List<List<T>>, List<List<T>>> intoBatches(int size) {\n    return Collector.of(\n            ArrayList::new, // supplier\n            (batches, item) -> { // accumulator\n                if (batches.isEmpty() || batches.get(batches.size()-1).size() == size)\n                    batches.add(new ArrayList<>(size));\n                batches.get(batches.size()-1).add(item);\n            },\n            (l, r) -> { /* combiner omitted */ return l; },\n            b -> b.stream().map(Collections::unmodifiableList).toList()\n            // NO IDENTITY_FINISH flag here!\n    );\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                8
+              ],
+              "badge": "Supplier & Accumulator",
+              "explanation": "Creates a batch list and appends items into fixed-size inner chunk lists.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                10,
+                11
+              ],
+              "badge": "Finisher Transformation",
+              "explanation": "Wraps inner batches into unmodifiable lists. Skipped if IDENTITY_FINISH is set!",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Here is a custom batching collector built with Collector dot of. It groups stream elements into fixed-size chunks. Because finisher wraps each batch into an unmodifiable list, we must omit the IDENTITY_FINISH characteristic.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare-finish",
+          "kind": "compare",
+          "title": "IDENTITY_FINISH Flag Behavior",
+          "top": {
+            "label": "IDENTITY_FINISH Included",
+            "badge": "❌ ClassCastException",
+            "tone": "bad",
+            "code": "// ACCUMULATOR = List<List<T>>, RESULT = BatchResult\nCollector.of(\n    ArrayList::new,\n    accumulator,\n    combiner,\n    finisher, // Skipped by stream engine!\n    Collector.Characteristics.IDENTITY_FINISH\n);",
+            "points": [
+              "Tells runtime intermediate A equals result R",
+              "Finisher is bypassed completely"
+            ]
+          },
+          "bottom": {
+            "label": "Finisher Executes",
+            "badge": "✅ Correct Transformation",
+            "tone": "good",
+            "code": "Collector.of(\n    ArrayList::new,\n    accumulator,\n    combiner,\n    finisher // Finisher transforms List<List<T>> -> BatchResult\n);",
+            "points": [
+              "Runs finisher function on final container",
+              "Safe for container wrappers and custom types"
+            ]
+          },
+          "narration": "IDENTITY_FINISH promises that your intermediate container type and final result type are identical. If your finisher transforms the container to another type or wraps it, the engine skips finisher and causes runtime class cast errors.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Complete",
+          "takeaways": [
+            "Custom collectors need supplier, accumulator, combiner, and finisher",
+            "Collector.of creates concise reusable collectors without custom classes",
+            "Never add IDENTITY_FINISH if finisher performs a transformation"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Parallel streams, Fork/Join work stealing & thread traps →",
+          "narration": "Now you can author custom collectors safely. In Part 4, we examine parallel stream mechanics, Fork Join pool work stealing, and why blocking network calls stall your app.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-parallel-streams-and-fork-join-pool",
+      "partTitle": "Parallel Streams, Fork/Join Pool & Production Traps",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Parallel Streams • Part 4 of 4",
+          "headline": "Adding parallelStream to HTTP calls can stall your whole JVM.",
+          "highlightWord": "stall your whole JVM",
+          "subline": "The shared ForkJoinPool.commonPool has very few worker threads.",
+          "narration": "Calling parallelStream on blocking HTTP or database queries is a dangerous production trap. It runs on the JVM shared Fork Join common pool, parking all worker threads and stalling unrelated tasks across your service.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Fork/Join Work-Stealing Pool Mechanics",
+          "subtitle": "How parallel streams split spliterators across CPU cores",
+          "nodes": [
+            {
+              "label": "Spliterator Split",
+              "detail": "Splits source data array into balanced work chunks",
+              "tag": "Decompose",
+              "accent": "sky"
+            },
+            {
+              "label": "Worker Thread Deques",
+              "detail": "Each pool thread processes tasks from its local queue",
+              "tag": "Execution",
+              "accent": "amber"
+            },
+            {
+              "label": "Work Stealing",
+              "detail": "Idle threads steal tasks from busy thread deque tails",
+              "tag": "Efficiency",
+              "accent": "purple"
+            },
+            {
+              "label": "Combiner Merge",
+              "detail": "Combines thread partial results into single final output",
+              "tag": "Merge",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Parallel streams use Spliterators to decompose data. Workers store subtasks in local deques and steal work from busy threads when idle. Finally, combiner functions merge partial accumulators into the final output.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-term-bench",
+          "kind": "terminal",
+          "title": "Benchmarking Parallel Stream Sources",
+          "caption": "Spliterator performance varies wildly by data structure",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Array & IntStream split in O(1) time - High Speed"
+            },
+            {
+              "kind": "command",
+              "text": "jmh BenchmarkRunner --include ParallelArrayBenchmark"
+            },
+            {
+              "kind": "output",
+              "text": "Benchmark                        Mode  Cnt   Score   Error  Units"
+            },
+            {
+              "kind": "success",
+              "text": "ParallelArrayBenchmark.sum        avgt    5   0.412 ± 0.010  ms/op"
+            },
+            {
+              "kind": "comment",
+              "text": "# LinkedList & iterate split in O(n) - Slow & Overhead"
+            },
+            {
+              "kind": "error",
+              "text": "ParallelLinkedListBenchmark.sum   avgt    5   4.891 ± 0.120  ms/op"
+            }
+          ],
+          "narration": "Data structures with fixed indexed layout like arrays and IntStream split in O(1) time, giving massive parallel speedups. LinkedList and stream dot iterate split in linear time, adding thread coordination overhead that makes code slower.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-code-concurrent",
+          "kind": "code-spotlight",
+          "title": "groupingByConcurrent for Unordered Parallel Streams",
+          "filename": "ParallelGrouping.java",
+          "code": "// Standard groupingBy merges separate HashMaps in combiner()\nMap<String, List<Tx>> slow = txs.parallelStream()\n        .collect(Collectors.groupingBy(Tx::category));\n\n// ✅ Concurrent grouping mutates a shared ConcurrentHashMap\nMap<String, List<Tx>> fast = txs.parallelStream()\n        .collect(Collectors.groupingByConcurrent(Tx::category));",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Standard groupingBy",
+              "explanation": "Creates partial HashMaps on each thread, then merges them sequentially in combiner().",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6,
+                7
+              ],
+              "badge": "groupingByConcurrent",
+              "explanation": "Uses a single ConcurrentHashMap directly, skipping costly map merge operations entirely.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When grouping unordered data on parallel streams, standard groupingBy creates separate maps per thread and merges them. Switching to groupingByConcurrent uses a single shared ConcurrentHashMap, bypassing combiner merge overhead completely.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete! Run the Lab",
+          "takeaways": [
+            "Parallel streams run on the shared JVM ForkJoinPool.commonPool",
+            "Avoid parallel streams for blocking I/O; use for heavy CPU tasks",
+            "Use groupingByConcurrent to avoid map merge costs on parallel streams"
+          ],
+          "command": "git checkout topic/level-4/advanced-streams-collectors",
+          "nextPartTeaser": "Full guide + JUnit 5 tests at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered advanced streams and collectors. Checkout the companion branch in java hub to run the parallel performance benchmarks and verified JUnit 5 test suites yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
