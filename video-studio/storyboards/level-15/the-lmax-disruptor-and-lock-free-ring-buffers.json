@@ -1,0 +1,482 @@
+{
+  "chapterId": "level-15/the-lmax-disruptor-and-lock-free-ring-buffers",
+  "level": "level-15",
+  "levelLabel": "Level 15",
+  "slug": "the-lmax-disruptor-and-lock-free-ring-buffers",
+  "chapterTitle": "The LMAX Disruptor and Lock-Free Ring Buffers",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-15/the-lmax-disruptor-and-lock-free-ring-buffers",
+  "branchName": "topic/level-15/the-lmax-disruptor-and-lock-free-ring-buffers",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-why-standard-queues-fail",
+      "partTitle": "The Hardware Bottlenecks of BlockingQueues",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Disruptor • Part 1 of 4",
+          "headline": "Why do standard queues choke at high throughput?",
+          "highlightWord": "choke",
+          "subline": "It isn't just code—it's hardware contention killing your performance.",
+          "narration": "ArrayBlockingQueue is reliable, but it hits a wall at millions of messages per second. If you want microsecond-level latency, you need to understand why standard queues fail.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Locking vs. Lock-Free",
+          "top": {
+            "label": "BlockingQueue",
+            "badge": "Lock-based",
+            "tone": "bad",
+            "code": "lock.lock();\ntry { /* ... */ }\nfinally { lock.unlock(); }",
+            "points": [
+              "Kernel-level context switching",
+              "L1/L2 cache flushing"
+            ]
+          },
+          "bottom": {
+            "label": "Disruptor",
+            "badge": "Lock-free",
+            "tone": "good",
+            "code": "long seq = sequencer.next();\n// write to pre-allocated slot\nsequencer.publish(seq);",
+            "points": [
+              "Zero locks, zero context switches",
+              "Pre-allocated memory"
+            ]
+          },
+          "narration": "Blocking queues use ReentrantLocks, which park threads and trigger expensive kernel context switches. The Disruptor uses sequence numbers and memory barriers to coordinate without ever blocking.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The False Sharing Problem",
+          "subtitle": "Why adjacent fields destroy performance",
+          "nodes": [
+            {
+              "label": "Cache Line (64 bytes)",
+              "detail": "Head, Tail, and Count fields sit here",
+              "tag": "Shared",
+              "accent": "amber"
+            },
+            {
+              "label": "Core 1 (Producer)",
+              "detail": "Invalidates Core 2's cache",
+              "tag": "Write",
+              "accent": "sky"
+            },
+            {
+              "label": "Core 2 (Consumer)",
+              "detail": "Invalidates Core 1's cache",
+              "tag": "Read",
+              "accent": "purple"
+            }
+          ],
+          "narration": "False sharing happens when head and tail indices sit on the same cache line. Updating one invalidates the other across cores, forcing constant, silent hardware synchronization.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code",
+          "kind": "code-spotlight",
+          "title": "The Power-of-Two Trick",
+          "filename": "RingBuffer.java",
+          "code": "// Instead of modulo (slow division)\nint slowIndex = (int) (sequence % bufferSize);\n\n// Use bitwise AND (single cycle!)\nint indexMask = bufferSize - 1;\nint fastIndex = (int) (sequence & indexMask);",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Slow",
+              "explanation": "Integer division is a multi-cycle instruction.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Fast",
+              "explanation": "Bitwise AND is one cycle. Requires power-of-two size.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Modulo arithmetic is slow. By enforcing a power-of-two buffer size, we replace division with a bitwise AND, turning a multi-cycle instruction into a single-cycle operation.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Locks force kernel context switches",
+            "False sharing kills cache performance",
+            "Power-of-two masking beats modulo"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Single vs Multi-Producer Sequencers →",
+          "narration": "That's the foundation. In Part 2, we compare the Single-Producer and Multi-Producer sequencers to see how we avoid CAS loops entirely.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-sequencer-logic",
+      "partTitle": "Single vs Multi-Producer Sequencers",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Disruptor • Part 2 of 4",
+          "headline": "Do you really need a CAS loop?",
+          "highlightWord": "CAS loop",
+          "subline": "Most developers over-engineer their concurrency. Here is how to avoid atomic overhead.",
+          "narration": "Atomic Compare-And-Swap is expensive. If you have a single producer, you don't need it. Let's look at how the Disruptor optimizes for your specific topology.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-compare",
+          "kind": "compare",
+          "title": "Producer Types",
+          "top": {
+            "label": "Single Producer",
+            "badge": "Fastest",
+            "tone": "good",
+            "code": "this.nextValue = nextSequence;\nreturn nextSequence;",
+            "points": [
+              "No CAS instructions",
+              "No volatile writes on claim"
+            ]
+          },
+          "bottom": {
+            "label": "Multi-Producer",
+            "badge": "Atomic",
+            "tone": "neutral",
+            "code": "while (!cursor.compareAndSet(curr, next)) {\n    // retry\n}",
+            "points": [
+              "CAS loop required",
+              "Requires availableBuffer"
+            ]
+          },
+          "narration": "Single-producer mode is lightning fast because it avoids CAS entirely. Multi-producer mode uses CAS to claim slots, but introduces a hazard: consumers might see a claimed slot before the data is written.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Available Buffer",
+          "subtitle": "Preventing garbage reads in multi-producer",
+          "nodes": [
+            {
+              "label": "Producer A",
+              "detail": "Claims slot 10, still writing",
+              "tag": "Slow",
+              "accent": "amber"
+            },
+            {
+              "label": "Producer B",
+              "detail": "Claims slot 11, publishes",
+              "tag": "Fast",
+              "accent": "sky"
+            },
+            {
+              "label": "Consumer",
+              "detail": "Stops at 9 until 10 is ready",
+              "tag": "Gate",
+              "accent": "purple"
+            }
+          ],
+          "narration": "To prevent reading partial data, we use an availableBuffer. Each slot tracks a 'lap' flag. Consumers scan this buffer and stop at the first slot that hasn't been published yet.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-code",
+          "kind": "code-spotlight",
+          "title": "Single-Producer Logic",
+          "filename": "SingleProducerSequencer.java",
+          "code": "long nextSequence = this.nextValue + n;\nlong wrapPoint = nextSequence - bufferSize;\n\nif (wrapPoint > cachedGatingSequence) {\n    // Only check consumers if buffer is full\n    while (wrapPoint > getMinSequence()) {\n        LockSupport.parkNanos(1L);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Claim",
+              "explanation": "Simple arithmetic, no atomic operations.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4,
+                7
+              ],
+              "badge": "Backpressure",
+              "explanation": "Only check gating sequences when necessary.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The single-producer sequencer is brilliant. It only checks the slowest consumer's position when the buffer is actually full. Most of the time, the producer just increments its counter.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Single-producer = no CAS",
+            "Multi-producer = CAS + availableBuffer",
+            "Only check backpressure when full"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Wait Strategies & CPU Pinning →",
+          "narration": "That's the sequencer architecture. In Part 3, we explore Wait Strategies—the difference between 100% CPU usage and microsecond latency.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-wait-strategies",
+      "partTitle": "Wait Strategies & CPU Pinning",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Disruptor • Part 3 of 4",
+          "headline": "Busy spinning vs. yielding: which is faster?",
+          "highlightWord": "faster",
+          "subline": "Your choice of wait strategy determines if your app is a racecar or a battery hog.",
+          "narration": "When a consumer catches up to the producer, it must wait. Do you spin, yield, or sleep? The wrong choice can destroy your latency or starve your OS.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Wait Strategy Trade-offs",
+          "top": {
+            "label": "BusySpin",
+            "badge": "100% CPU",
+            "tone": "neutral",
+            "code": "while (seq < target) {\n    Thread.onSpinWait();\n}",
+            "points": [
+              "Lowest latency",
+              "Requires isolated cores"
+            ]
+          },
+          "bottom": {
+            "label": "Yielding",
+            "badge": "Balanced",
+            "tone": "good",
+            "code": "if (counter == 0) Thread.yield();\nelse counter--;",
+            "points": [
+              "Good for shared hosts",
+              "Low latency, less heat"
+            ]
+          },
+          "narration": "BusySpin is the fastest but pegs your CPU at 100%. Only use it if you have isolated cores. If you're on a shared container, YieldingWaitStrategy is the safer bet.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "The Spin-Wait Hint",
+          "filename": "BusySpinWaitStrategy.java",
+          "code": "while (dependentSequence.get() < sequence) {\n    barrier.checkAlert();\n    // Emits PAUSE instruction\n    Thread.onSpinWait();\n}",
+          "steps": [
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Thread.onSpinWait()",
+              "explanation": "Crucial for ARM/x86 performance. Throttles the loop and frees resources.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Always use Thread dot onSpinWait inside your loops. It emits the PAUSE instruction, which throttles the spin, reduces heat, and lets hyper-threaded siblings actually do work.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Wait Strategy Hierarchy",
+          "subtitle": "Latency vs. CPU Utilization",
+          "nodes": [
+            {
+              "label": "BusySpin",
+              "detail": "Nanoseconds, 100% CPU",
+              "tag": "HFT",
+              "accent": "sky"
+            },
+            {
+              "label": "Yielding",
+              "detail": "Microseconds, High CPU",
+              "tag": "Mid",
+              "accent": "amber"
+            },
+            {
+              "label": "Blocking",
+              "detail": "Milliseconds, Low CPU",
+              "tag": "Standard",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Choose your strategy based on your environment. HFT engines use BusySpin on pinned cores. General enterprise apps should stick to Blocking or Sleeping strategies to save power.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "BusySpin requires isolated cores",
+            "Thread.onSpinWait is mandatory",
+            "Match strategy to your CPU budget"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Diamond Topology & Implementation →",
+          "narration": "That's the wait strategy trade-off. In Part 4, we wrap up with the diamond topology and show you how to wire it all together in production.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-diamond-topology",
+      "partTitle": "Diamond Topology & Implementation",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Disruptor • Part 4 of 4",
+          "headline": "How to wire complex pipelines without copying data?",
+          "highlightWord": "without copying",
+          "subline": "The Disruptor's diamond topology allows parallel processing on the same event.",
+          "narration": "Need to journal an order and replicate it simultaneously? Don't copy the object. Use the diamond topology to share the same ring buffer across multiple handlers.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Diamond Pipeline",
+          "subtitle": "Parallel fan-out, serialized fan-in",
+          "nodes": [
+            {
+              "label": "RingBuffer",
+              "detail": "Shared mutable slots",
+              "tag": "Source",
+              "accent": "sky"
+            },
+            {
+              "label": "Journal & Replicate",
+              "detail": "Parallel consumers",
+              "tag": "Stage 1",
+              "accent": "amber"
+            },
+            {
+              "label": "Matching Engine",
+              "detail": "Gated on Stage 1",
+              "tag": "Stage 2",
+              "accent": "purple"
+            }
+          ],
+          "narration": "The diamond topology lets you run parallel tasks like journaling and replication. The final stage only runs once both parallel tasks are complete, ensuring total consistency.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code",
+          "kind": "code-spotlight",
+          "title": "Wiring the Pipeline",
+          "filename": "Pipeline.java",
+          "code": "disruptor\n    .handleEventsWith(new Journal(), new Replicate())\n    .then(new MatchingEngine());\n\n// Publish with finally block\ntry { /* ... */ } finally {\n    ringBuffer.publish(sequence);\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Parallel",
+              "explanation": "Journal and Replicate run at the same time.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Sequential",
+              "explanation": "MatchingEngine waits for both to finish.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Safety",
+              "explanation": "Always publish in finally to avoid hangs.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Wiring is simple. Use handleEventsWith for parallel tasks and dot then for sequential dependencies. And always publish in a finally block—if you miss this, your consumers will hang forever.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term",
+          "kind": "terminal",
+          "title": "Final Checklist",
+          "caption": "Production best practices",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# 1. Pre-allocate event objects"
+            },
+            {
+              "kind": "comment",
+              "text": "# 2. Power-of-two buffer size"
+            },
+            {
+              "kind": "comment",
+              "text": "# 3. Pin threads to isolated cores"
+            },
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-15/the-lmax-disruptor-and-lock-free-ring-buffers"
+            }
+          ],
+          "narration": "Pre-allocate your objects to avoid GC churn. Use power-of-two sizes. And if you're serious, pin your threads. Check out the branch below for the full implementation.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use diamond topology for parallel tasks",
+            "Always publish in finally blocks",
+            "Pre-allocate objects to stop GC churn"
+          ],
+          "command": "git checkout topic/level-15/the-lmax-disruptor-and-lock-free-ring-buffers",
+          "nextPartTeaser": "Roadmap: ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered the Disruptor. Grab the code, run the benchmarks, and see the difference yourself. See you in the next level.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
