@@ -1,0 +1,624 @@
+{
+  "chapterId": "level-11/distributed-transactions",
+  "level": "level-11",
+  "levelLabel": "Level 11",
+  "slug": "distributed-transactions",
+  "chapterTitle": "Distributed Transactions",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/distributed-transactions",
+  "branchName": "topic/level-11/distributed-transactions",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-2pc-trap",
+      "partTitle": "Why Two-Phase Commit Fails Microservices",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Distributed Systems • Part 1 of 5",
+          "headline": "Why does Two-Phase Commit break in microservices?",
+          "highlightWord": "break",
+          "subline": "It isn't just slow—it's a recipe for deadlocks and cascading failures.",
+          "narration": "In a monolith, ACID is easy. Across microservices, it's a nightmare. If you're still trying to use XA transactions to link your PostgreSQL and MongoDB, you're building a distributed deadlock machine.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The 2PC Bottleneck",
+          "subtitle": "Blocking locks across the network",
+          "nodes": [
+            {
+              "label": "Coordinator",
+              "detail": "Holds locks open",
+              "tag": "Manager",
+              "accent": "amber"
+            },
+            {
+              "label": "Order DB",
+              "detail": "Waiting for commit",
+              "tag": "Locked",
+              "accent": "purple"
+            },
+            {
+              "label": "Inventory DB",
+              "detail": "Waiting for commit",
+              "tag": "Locked",
+              "accent": "purple"
+            },
+            {
+              "label": "Stripe API",
+              "detail": "No XA support!",
+              "tag": "Failed",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "2PC requires every participant to hold locks until the coordinator says go. If one service stalls or an API like Stripe doesn't support XA, your entire database connection pool saturates. It's a synchronous trap.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Monolith vs. Distributed",
+          "top": {
+            "label": "Monolith",
+            "badge": "ACID",
+            "tone": "good",
+            "code": "@Transactional\nvoid checkout() { ... }",
+            "points": [
+              "Single DB",
+              "Instant rollback"
+            ]
+          },
+          "bottom": {
+            "label": "Microservices",
+            "badge": "BASE",
+            "tone": "bad",
+            "code": "Order -> Inventory -> Payment",
+            "points": [
+              "Partial failures",
+              "No global rollback"
+            ]
+          },
+          "narration": "In the monolith, the database engine handles the undo log. In microservices, the database doesn't know about the other services. You need a higher-level pattern to manage partial failures.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-terminal",
+          "kind": "terminal",
+          "title": "The In-Doubt Risk",
+          "caption": "Coordinator crash = permanent locks",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Coordinator crashes after Prepare"
+            },
+            {
+              "kind": "error",
+              "text": "DB1: Waiting for Commit/Abort..."
+            },
+            {
+              "kind": "error",
+              "text": "DB2: Waiting for Commit/Abort..."
+            },
+            {
+              "kind": "command",
+              "text": "manual_intervention_required()"
+            }
+          ],
+          "narration": "If the coordinator dies after the prepare phase, your databases stay locked in-doubt. You're left manually cleaning up rows until the coordinator recovers. This is why we move to Sagas.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Ditch 2PC",
+          "takeaways": [
+            "2PC creates blocking locks",
+            "No XA support for REST APIs",
+            "Availability = Product of all services"
+          ],
+          "nextPartTeaser": "Up Next: Choreographed Sagas vs. Orchestration →",
+          "narration": "2PC is a legacy relic. Next, we look at the Saga pattern—how to use local transactions and compensations to keep your system consistent without the blocking locks.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-choreographed-sagas",
+      "partTitle": "Choreographed Sagas in Spring Boot",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Saga Pattern • Part 2 of 5",
+          "headline": "How do you rollback a distributed transaction?",
+          "highlightWord": "rollback",
+          "subline": "You don't. You move forward with semantic compensations.",
+          "narration": "You can't roll back a finished payment. Instead, you run a compensating transaction to undo the business effect. Let's build a choreographed saga using Kafka and Spring Boot.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Choreography Flow",
+          "subtitle": "Decentralized event-driven logic",
+          "nodes": [
+            {
+              "label": "Order Service",
+              "detail": "Emits OrderCreated",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Inventory",
+              "detail": "Consumes & Reserves",
+              "tag": "Step 1",
+              "accent": "amber"
+            },
+            {
+              "label": "Payment",
+              "detail": "Consumes & Charges",
+              "tag": "Step 2",
+              "accent": "emerald"
+            },
+            {
+              "label": "Compensation",
+              "detail": "Releases stock on fail",
+              "tag": "Undo",
+              "accent": "purple"
+            }
+          ],
+          "narration": "In choreography, services talk via events. Order emits, Inventory reserves, Payment charges. If Payment fails, it emits a failure event, and Inventory consumes that to release the stock.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code",
+          "kind": "code-spotlight",
+          "title": "Inventory Saga Listener",
+          "filename": "InventorySagaListener.java",
+          "code": "@KafkaListener(topics = \"orders.created\")\npublic void onOrderCreated(OrderCreatedEvent event) {\n    inventoryService.reserveStock(...);\n    kafkaTemplate.send(\"inventory.reserved\", ...);\n}\n\n@KafkaListener(topics = \"payments.failed\")\npublic void onPaymentFailed(PaymentFailedEvent event) {\n    inventoryService.releaseStock(event.orderId());\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Forward Path",
+              "explanation": "Reserve local stock and emit success event.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                7,
+                8
+              ],
+              "badge": "Compensation",
+              "explanation": "Listen for payment failure and undo the reservation.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This listener handles both paths. It reserves stock on creation, and if payment fails, it triggers the release. It's clean, but watch out for the dual-write hazard between the DB and Kafka.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "The Dual-Write Hazard",
+          "caption": "Why you need the Outbox Pattern",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "1. Database Commit Succeeds"
+            },
+            {
+              "kind": "error",
+              "text": "2. Process Crashes!"
+            },
+            {
+              "kind": "error",
+              "text": "3. Kafka message NEVER sent"
+            },
+            {
+              "kind": "comment",
+              "text": "# Fix: Use an outbox table + CDC"
+            }
+          ],
+          "narration": "If you commit to the DB but crash before sending the Kafka message, your saga hangs forever. Always use the Transactional Outbox pattern to ensure the event is eventually sent.",
+          "durationSec": 10,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Choreography vs. Complexity",
+          "takeaways": [
+            "Decoupled services",
+            "Event-driven rollbacks",
+            "Use Outbox to avoid stalls"
+          ],
+          "nextPartTeaser": "Up Next: Centralized Orchestration →",
+          "narration": "Choreography is great for small flows. But what happens when you hit five steps? It becomes a mess. Part 3 covers Orchestration—the 'God Service' approach.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-orchestrated-sagas",
+      "partTitle": "Centralized Saga Orchestration",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Saga Pattern • Part 3 of 5",
+          "headline": "Is your Saga logic scattered across 10 repos?",
+          "highlightWord": "scattered",
+          "subline": "Centralize the state machine before your architecture becomes untraceable.",
+          "narration": "Choreography is hard to debug. When an order gets stuck, you're digging through five different log streams. Orchestration puts the control flow in one place.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Orchestrator Logic",
+          "subtitle": "Centralized command-driven flow",
+          "nodes": [
+            {
+              "label": "Orchestrator",
+              "detail": "Owns state machine",
+              "tag": "Brain",
+              "accent": "amber"
+            },
+            {
+              "label": "Order",
+              "detail": "Executes command",
+              "tag": "Participant",
+              "accent": "sky"
+            },
+            {
+              "label": "Inventory",
+              "detail": "Executes command",
+              "tag": "Participant",
+              "accent": "sky"
+            },
+            {
+              "label": "Payment",
+              "detail": "Executes command",
+              "tag": "Participant",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The orchestrator sends commands and waits for replies. It records every step, making it easy to see exactly where a saga failed and which compensations need to run.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code",
+          "kind": "code-spotlight",
+          "title": "Saga Orchestrator",
+          "filename": "OrderSagaOrchestrator.java",
+          "code": "try {\n    orderClient.createPending(id);\n    inventoryClient.reserve(id);\n    paymentClient.charge(id);\n    orderClient.confirm(id);\n} catch (Exception e) {\n    compensate(id, completedSteps);\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "badge": "Forward Path",
+              "explanation": "Sequential commands to participants.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Error Handling",
+              "explanation": "Catch and trigger LIFO compensation stack.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The orchestrator is just a state machine. It pushes successful steps onto a stack, and if anything fails, it pops them off to run the compensations in reverse order.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Choreography vs. Orchestration",
+          "top": {
+            "label": "Choreography",
+            "badge": "Reactive",
+            "tone": "neutral",
+            "code": "Event -> Listener",
+            "points": [
+              "Minimal coupling",
+              "Hard to trace"
+            ]
+          },
+          "bottom": {
+            "label": "Orchestration",
+            "badge": "Command",
+            "tone": "good",
+            "code": "Orchestrator -> Command",
+            "points": [
+              "Centralized flow",
+              "Easy audit"
+            ]
+          },
+          "narration": "Choreography is better for simple flows. Orchestration is better for complex workflows with timeouts and branching. Don't let the orchestrator become a bloated god-service, though.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Orchestrate Your Flow",
+          "takeaways": [
+            "Centralized state machine",
+            "LIFO compensation stack",
+            "Use for 5+ step flows"
+          ],
+          "nextPartTeaser": "Up Next: Idempotency & Semantic Locks →",
+          "narration": "Orchestration makes your system auditable. But wait—what if your compensation triggers twice? Part 4 covers idempotency and semantic locking to keep your data clean.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-idempotency-and-locks",
+      "partTitle": "Idempotent Compensations & Semantic Locks",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Saga Pattern • Part 4 of 5",
+          "headline": "What happens when your compensation runs twice?",
+          "highlightWord": "twice",
+          "subline": "Network retries will cause duplicate messages. Your code must be idempotent.",
+          "narration": "In a saga, retries are mandatory. If your compensation logic isn't idempotent, you'll double-refund payments or inflate stock counts. Let's fix that with semantic locking.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code",
+          "kind": "code-spotlight",
+          "title": "Atomic State Transition",
+          "filename": "InventoryService.java",
+          "code": "@Transactional\npublic void releaseStock(UUID orderId) {\n    int updated = repo.transitionStatus(\n        orderId, \n        ReservationStatus.RESERVED, \n        ReservationStatus.RELEASED\n    );\n    if (updated == 1) {\n        itemRepo.incrementAvailable(...);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                4,
+                5,
+                6
+              ],
+              "badge": "Conditional Update",
+              "explanation": "Only update if status is currently RESERVED.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                7,
+                8
+              ],
+              "badge": "Atomic Guard",
+              "explanation": "Only one thread succeeds; others are no-ops.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "This is the golden rule: use a conditional update. Only transition from RESERVED to RELEASED. If the thread sees zero rows updated, it knows it was already processed. No double-counting.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Semantic Locking",
+          "subtitle": "Protecting in-flight data",
+          "nodes": [
+            {
+              "label": "DRAFT",
+              "detail": "Initial state",
+              "tag": "Open",
+              "accent": "sky"
+            },
+            {
+              "label": "PENDING_PAYMENT",
+              "detail": "Semantic Lock",
+              "tag": "Locked",
+              "accent": "amber"
+            },
+            {
+              "label": "CONFIRMED",
+              "detail": "Final state",
+              "tag": "Closed",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use semantic locks to mark rows as PENDING. Other services see this status and know not to modify the record. It prevents dirty reads while the saga is still in progress.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "The Tombstone Pattern",
+          "caption": "Handling out-of-order messages",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Compensation arrived before Reserve"
+            },
+            {
+              "kind": "command",
+              "text": "INSERT INTO reservations (id, status) VALUES (?, 'CANCELLED_BEFORE_RESERVE')"
+            },
+            {
+              "kind": "comment",
+              "text": "# Later, Reserve arrives..."
+            },
+            {
+              "kind": "error",
+              "text": "Abort: Tombstone detected!"
+            }
+          ],
+          "narration": "Sometimes the compensation arrives before the reserve. Store a tombstone record so the late reserve command knows the order is already dead. It's a simple fix for async chaos.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Lock Your Data",
+          "takeaways": [
+            "Use conditional updates",
+            "Semantic locks prevent dirty reads",
+            "Tombstones handle out-of-order events"
+          ],
+          "nextPartTeaser": "Up Next: Final Thoughts & Lab →",
+          "narration": "Idempotency is non-negotiable. Next, we wrap up with the final checklist for your Saga implementation and where to find the full lab code.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-summary-and-lab",
+      "partTitle": "Distributed Transactions Roadmap",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Saga Pattern • Part 5 of 5",
+          "headline": "Ready to build resilient sagas?",
+          "highlightWord": "resilient",
+          "subline": "Consistency is a spectrum. Here is your final checklist.",
+          "narration": "Distributed transactions are hard. You're trading ACID for BASE and eventual consistency. If you follow these patterns, you'll build systems that don't just work—they survive failure.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-compare",
+          "kind": "compare",
+          "title": "The Saga Checklist",
+          "top": {
+            "label": "Must Haves",
+            "badge": "Mandatory",
+            "tone": "good",
+            "code": "Idempotency + Outbox",
+            "points": [
+              "Atomic state transitions",
+              "Durable retries"
+            ]
+          },
+          "bottom": {
+            "label": "Avoid",
+            "badge": "Anti-Patterns",
+            "tone": "bad",
+            "code": "2PC + Cyclic Events",
+            "points": [
+              "Blocking locks",
+              "God-service orchestrators"
+            ]
+          },
+          "narration": "Keep it simple. Use choreography for small flows, orchestration for complex ones. Always ensure your compensations are idempotent and use an outbox to guarantee event delivery.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Saga Lifecycle",
+          "subtitle": "From start to eventual consistency",
+          "nodes": [
+            {
+              "label": "Local Tx",
+              "detail": "Commit locally",
+              "tag": "ACID",
+              "accent": "sky"
+            },
+            {
+              "label": "Event/Command",
+              "detail": "Propagate",
+              "tag": "Async",
+              "accent": "amber"
+            },
+            {
+              "label": "Compensation",
+              "detail": "Undo if fail",
+              "tag": "Semantic",
+              "accent": "purple"
+            },
+            {
+              "label": "Consistency",
+              "detail": "Eventually",
+              "tag": "BASE",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "It's a cycle of local commits and async propagation. If you get the state machine right, eventual consistency is perfectly safe for almost any business domain.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p5-b4-terminal",
+          "kind": "terminal",
+          "title": "Get the Lab",
+          "caption": "Run the code yourself",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-11/distributed-transactions"
+            },
+            {
+              "kind": "comment",
+              "text": "# Check out the full roadmap below"
+            },
+            {
+              "kind": "success",
+              "text": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/distributed-transactions"
+            }
+          ],
+          "narration": "The full code for these sagas is in the branch. Run the tests, break the saga, and see how the compensations handle it. Everything you need is in the roadmap link.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Go Build It",
+          "takeaways": [
+            "Sagas over 2PC",
+            "Choreography vs Orchestration",
+            "Idempotency is key"
+          ],
+          "nextPartTeaser": "See you in the next level →",
+          "narration": "You've mastered distributed transactions. Go build something resilient. Check the link for the full roadmap and the next level of the Java Hub.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
