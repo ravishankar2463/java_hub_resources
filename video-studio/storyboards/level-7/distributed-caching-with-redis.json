@@ -1,0 +1,523 @@
+{
+  "chapterId": "level-7/distributed-caching-with-redis",
+  "level": "level-7",
+  "levelLabel": "Level 7",
+  "slug": "distributed-caching-with-redis",
+  "chapterTitle": "Distributed Caching with Redis",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-7/distributed-caching-with-redis",
+  "branchName": "topic/level-7/distributed-caching-with-redis",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-architecture-and-data-structures",
+      "partTitle": "Single-Threaded Speed & Core Data Structures",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Redis Architecture • Part 1 of 4",
+          "headline": "How does a single thread serve 100K ops/sec?",
+          "highlightWord": "100K ops/sec",
+          "subline": "Redis bypasses disk locks and thread context switches entirely.",
+          "narration": "Your SQL database stalls on disk I/O and locks. Redis handles hundreds of thousands of operations per second on a single command thread. Let's look inside its event loop.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Redis Single-Threaded Event Loop",
+          "subtitle": "Non-blocking socket I/O feeds sequential RAM operations",
+          "nodes": [
+            {
+              "label": "Client Sockets",
+              "detail": "Thousands of concurrent TCP connections",
+              "tag": "I/O",
+              "accent": "sky"
+            },
+            {
+              "label": "epoll / kqueue",
+              "detail": "OS Multiplexing reads buffers into memory",
+              "tag": "Non-blocking",
+              "accent": "amber"
+            },
+            {
+              "label": "Single Event Loop",
+              "detail": "Executes commands sequentially with zero locks",
+              "tag": "Atomic",
+              "accent": "purple"
+            },
+            {
+              "label": "RAM Data Structures",
+              "detail": "Listpacks, skip lists & dicts in RAM",
+              "tag": "Nanoseconds",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Linux epoll monitors thousands of client sockets simultaneously. Socket buffers read concurrently, but command execution stays single-threaded. By running strictly in RAM, Redis updates data in nanoseconds without lock contention.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-term",
+          "kind": "terminal",
+          "title": "The Lethal O(N) KEYS Command Trap",
+          "caption": "Never run KEYS * in production environments!",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "127.0.0.1:6379> KEYS product:*"
+            },
+            {
+              "kind": "error",
+              "text": "--> Blocks event loop for 4.2 seconds! All clients timeout."
+            },
+            {
+              "kind": "command",
+              "text": "127.0.0.1:6379> SCAN 0 MATCH product:* COUNT 100"
+            },
+            {
+              "kind": "success",
+              "text": "1) \"14\"  2) 1) \"product:1001\" 2) \"product:1002\""
+            }
+          ],
+          "narration": "Because command execution is single-threaded, running KEYS star scans millions of items and freezes the event loop. Every other service timing out waiting for simple reads. Always use non-blocking cursor SCAN in production.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "String JSON vs Redis Hashes",
+          "top": {
+            "label": "Full JSON Serialized String",
+            "badge": "High Bandwidth",
+            "tone": "bad",
+            "code": "SET user:1001 '{\"name\":\"Maya\",\"tier\":\"GOLD\",\"logins\":14}'",
+            "points": [
+              "Must rewrite entire 1KB JSON for 1 field change",
+              "Heavy serialization overhead on Java app"
+            ]
+          },
+          "bottom": {
+            "label": "Native Redis Hash",
+            "badge": "Field-Level Updates",
+            "tone": "good",
+            "code": "HSET user:1001 tier \"GOLD\"\nHINCRBY user:1001 logins 1",
+            "points": [
+              "Updates fields atomically on the server",
+              "Uses compact listpack memory optimization"
+            ]
+          },
+          "narration": "Storing full JSON strings requires downloading and reserializing the entire blob just to bump a counter. Redis hashes let you update individual fields directly on the server with compact listpack memory efficiency.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "epoll I/O multiplexing handles high socket concurrency",
+            "O(N) commands like KEYS block single-threaded event loop",
+            "Hashes enable field updates without full JSON rewrite"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Persistence models & the Copy-On-Write OOM trap →",
+          "narration": "That's the RAM event loop. In Part 2, we dive into RDB snapshotting, AOF logs, and why background forks can crash your host with out-of-memory errors.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-persistence-and-memory-management",
+      "partTitle": "RDB, AOF & Copy-On-Write OOM Safety",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Persistence & Memory • Part 2 of 4",
+          "headline": "Snapshotting can trigger Linux OOM kills!",
+          "highlightWord": "OOM kills",
+          "subline": "Setting maxmemory to 80% RAM leaves zero room for Copy-On-Write forks.",
+          "narration": "Your Redis memory usage looks completely safe until a background persistence rewrite fires during peak traffic. Suddenly the Linux kernel kills your primary process.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Copy-On-Write (COW) Memory Fork",
+          "subtitle": "Parent serves writes while child serializes memory snapshot",
+          "nodes": [
+            {
+              "label": "Parent Redis Process",
+              "detail": "Serves live client traffic during snapshot",
+              "tag": "Active",
+              "accent": "sky"
+            },
+            {
+              "label": "fork() System Call",
+              "detail": "Spawns child sharing identical RAM page table",
+              "tag": "OS Fork",
+              "accent": "amber"
+            },
+            {
+              "label": "Child Snapshot Writer",
+              "detail": "Writes RDB binary file from static page table",
+              "tag": "Disk Write",
+              "accent": "purple"
+            },
+            {
+              "label": "Copy-On-Write Split",
+              "detail": "Parent writes duplicate modified 4KB pages",
+              "tag": "Extra RAM",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "When saving snapshots, Redis calls fork to create a child process sharing memory pages. But when client writes arrive, Linux duplicates modified pages using Copy-On-Write. Heavy writes can double your memory consumption instantly.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-term",
+          "kind": "terminal",
+          "title": "Production redis.conf Persistence Guardrails",
+          "caption": "Hybrid RDB preamble with safe memory limits",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Keep RAM cap at 65-70% total memory for COW headroom"
+            },
+            {
+              "kind": "command",
+              "text": "maxmemory 8gb"
+            },
+            {
+              "kind": "command",
+              "text": "maxmemory-policy allkeys-lfu"
+            },
+            {
+              "kind": "comment",
+              "text": "# Hybrid persistence: fast RDB header + 1s AOF log"
+            },
+            {
+              "kind": "command",
+              "text": "appendonly yes"
+            },
+            {
+              "kind": "command",
+              "text": "appendfsync everysec"
+            },
+            {
+              "kind": "command",
+              "text": "aof-use-rdb-preamble yes"
+            }
+          ],
+          "narration": "Configure maxmemory to roughly seventy percent of physical system RAM. Combine appendfsync everysec with aof-use-rdb-preamble yes to get lightning fast restarts with a strict one second durability window.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Eviction Policies: LRU vs LFU",
+          "top": {
+            "label": "allkeys-lru (Least Recently Used)",
+            "badge": "Recency Only",
+            "tone": "neutral",
+            "code": "maxmemory-policy allkeys-lru",
+            "points": [
+              "Evicts keys not accessed recently",
+              "A sudden SCAN burst can wipe out popular keys"
+            ]
+          },
+          "bottom": {
+            "label": "allkeys-lfu (Least Frequently Used)",
+            "badge": "Access Frequency",
+            "tone": "good",
+            "code": "maxmemory-policy allkeys-lfu",
+            "points": [
+              "Tracks access frequency counters over time",
+              "Protects hot catalog items during bulk scans"
+            ]
+          },
+          "narration": "Least Recently Used evicts items based solely on timestamp, meaning batch scans can evict your hottest cache items. Least Frequently Used tracks access frequency, keeping popular products in RAM regardless of batch reads.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Complete",
+          "takeaways": [
+            "Reserve 30% RAM headroom for Copy-On-Write background forks",
+            "aof-use-rdb-preamble combines fast startup with AOF durability",
+            "LFU policy prevents cache pollution from sudden scan bursts"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Redis Cluster, 16,384 Hash Slots & Hash Tags →",
+          "narration": "Now you understand persistence limits. In Part 3, we scale out horizontally with Redis Cluster and fix multi-key CROSSSLOT errors using Hash Tags.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-sentinel-vs-cluster-and-hash-tags",
+      "partTitle": "Sentinel, Cluster & The Hash Tag Trick",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Clustering & Topology • Part 3 of 4",
+          "headline": "Multi-key commands fail in Redis Cluster!",
+          "highlightWord": "CROSSSLOT error",
+          "subline": "Keys on different primary nodes cannot execute together without Hash Tags.",
+          "narration": "You move from single-instance Redis to a distributed Cluster, and suddenly your multi-key batch reads start throwing CROSSSLOT errors. Here is why it happens and how curly braces fix it.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "16,384 Hash Slot Distribution",
+          "subtitle": "Keys map to primary nodes via CRC16 modulo 16384",
+          "nodes": [
+            {
+              "label": "Client Key Request",
+              "detail": "Evaluates CRC16(key) mod 16384",
+              "tag": "Routing",
+              "accent": "sky"
+            },
+            {
+              "label": "Primary Node A",
+              "detail": "Owns slots 0 through 5460",
+              "tag": "Shard 1",
+              "accent": "amber"
+            },
+            {
+              "label": "Primary Node B",
+              "detail": "Owns slots 5461 through 10922",
+              "tag": "Shard 2",
+              "accent": "purple"
+            },
+            {
+              "label": "Primary Node C",
+              "detail": "Owns slots 10923 through 16383",
+              "tag": "Shard 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Redis Cluster splits data into 16,384 logical hash slots distributed across primary nodes. Smart Java clients compute the CRC16 hash of the key to talk directly to the correct primary node without proxy hops.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-term",
+          "kind": "terminal",
+          "title": "Fixing CROSSSLOT Errors with Hash Tags",
+          "caption": "Curly braces force related keys into the same hash slot",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "127.0.0.1:7000> MGET user:1001:profile user:1001:cart"
+            },
+            {
+              "kind": "error",
+              "text": "(error) CROSSSLOT Keys in request don't hash to the same slot"
+            },
+            {
+              "kind": "command",
+              "text": "127.0.0.1:7000> MGET user:{1001}:profile user:{1001}:cart"
+            },
+            {
+              "kind": "success",
+              "text": "1) \"{\\\"name\\\":\\\"Maya\\\"}\"  2) \"{\\\"items\\\":3}\""
+            }
+          ],
+          "narration": "Multi-key operations like MGET or Lua scripts require all target keys to sit inside the same hash slot. By wrapping user ID 1001 in curly braces, Redis hashes only that tag, forcing both keys onto the exact same shard.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Sentinel HA vs Redis Cluster Sharding",
+          "top": {
+            "label": "Redis Sentinel",
+            "badge": "Single Dataset",
+            "tone": "neutral",
+            "code": "Master-Replica + 3 Sentinels",
+            "points": [
+              "Automatic failover for single primary instance",
+              "Dataset size bounded by single machine RAM"
+            ]
+          },
+          "bottom": {
+            "label": "Redis Cluster",
+            "badge": "Horizontal Scaling",
+            "tone": "good",
+            "code": "3+ Primaries across 16,384 slots",
+            "points": [
+              "Scales RAM and write throughput across nodes",
+              "Uses Hash Slots & smart client redirection"
+            ]
+          },
+          "narration": "Sentinel provides failover for a single primary, but your dataset cannot exceed one machine's RAM. Redis Cluster shards data horizontally across multiple nodes, giving you practically unlimited memory and write capacity.",
+          "durationSec": 14,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Complete",
+          "takeaways": [
+            "Redis Cluster divides keyspace into 16,384 hash slots",
+            "Curly braces {tag} force keys onto same cluster shard",
+            "Sentinel provides HA failover; Cluster provides scaling"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Spring Data Redis, Lettuce & Production Services →",
+          "narration": "You have mastered cluster topology. In Part 4, we integrate Redis into Spring Boot using Lettuce, custom Jackson JSON serializers, and StringRedisTemplate.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-spring-boot-integration-and-lettuce",
+      "partTitle": "Spring Data Redis & Service Integration",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Integration • Part 4 of 4",
+          "headline": "Default Spring Redis serialization corrupts inspection!",
+          "highlightWord": "corrupts inspection",
+          "subline": "JDK serialization writes binary junk that ruins redis-cli and causes class bugs.",
+          "narration": "If you use default Spring Data Redis configuration, your keys and values become unreadable binary blobs in CLI, creating security vulnerabilities and deployment failures. Here is the enterprise bean setup.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p4-b2-code-config",
+          "kind": "code-spotlight",
+          "title": "Configuring RedisCacheManager JSON Serialization",
+          "filename": "RedisCacheConfig.java",
+          "code": "@Configuration\n@EnableCaching\npublic class RedisCacheConfig {\n    @Bean\n    public RedisCacheManager cacheManager(RedisConnectionFactory factory) {\n        var config = RedisCacheConfiguration.defaultCacheConfig()\n            .entryTtl(Duration.ofMinutes(15))\n            .serializeKeysWith(fromSerializer(new StringRedisSerializer()))\n            .serializeValuesWith(fromSerializer(new GenericJackson2JsonRedisSerializer()));\n        return RedisCacheManager.builder(factory).cacheDefaults(config).build();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                8
+              ],
+              "badge": "String Keys",
+              "explanation": "Uses UTF-8 strings for clean key naming and redis-cli visibility.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                9
+              ],
+              "badge": "Jackson JSON",
+              "explanation": "Replaces unsafe JDK binary serialization with clean human-readable JSON payloads.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                7
+              ],
+              "badge": "Default TTL",
+              "explanation": "Prevents infinite cache accumulation by forcing strict 15-minute expirations.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Always configure explicit String key serializers and Jackson JSON value serializers. This makes key data readable in terminal commands, avoids class versioning issues, and enforces a fallback fifteen minute expiration.",
+          "durationSec": 15,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-template",
+          "kind": "code-spotlight",
+          "title": "Atomic Rate Limiter with StringRedisTemplate",
+          "filename": "RateLimitService.java",
+          "code": "@Service\npublic class RateLimitService {\n    private final StringRedisTemplate redis;\n    public RateLimitService(StringRedisTemplate redis) { this.redis = redis; }\n\n    public boolean allowRequest(String key, long max) {\n        Long count = redis.opsForValue().increment(key);\n        if (count != null && count == 1L) redis.expire(key, Duration.ofMinutes(1));\n        return count != null && count <= max;\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                7
+              ],
+              "badge": "opsForValue().increment",
+              "explanation": "Atomic server-side INCR command prevents race conditions across instances.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "First Request TTL",
+              "explanation": "Sets 60-second expiration window only when counter key is created.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "For custom logic like rate limiting, inject StringRedisTemplate. Atomic increment operations execute directly on the Redis server without client locks, and we set a sliding one-minute expiration on key creation.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-term-bigkeys",
+          "kind": "terminal",
+          "title": "Deleting Big Keys Without Blocking",
+          "caption": "UNLINK frees memory asynchronously on background threads",
+          "lines": [
+            {
+              "kind": "error",
+              "text": "127.0.0.1:6379> DEL large:set:key  # Blocks event loop!"
+            },
+            {
+              "kind": "command",
+              "text": "127.0.0.1:6379> UNLINK large:set:key  # Asynchronous non-blocking free"
+            },
+            {
+              "kind": "success",
+              "text": "(integer) 1"
+            },
+            {
+              "kind": "command",
+              "text": "redis-cli --bigkeys"
+            },
+            {
+              "kind": "output",
+              "text": "# Scanning whole keyspace for big keys..."
+            },
+            {
+              "kind": "output",
+              "text": "Biggest string found 'product:1001' (1024 bytes)"
+            }
+          ],
+          "narration": "Never call DEL on a key containing millions of elements because memory deallocation blocks the single thread. Use UNLINK instead to reclaim RAM asynchronously in a background thread.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Level 7 Redis Mastered!",
+          "takeaways": [
+            "Configure Jackson JSON & String serializers for Redis",
+            "Use StringRedisTemplate for atomic INCR & ZSET operations",
+            "Use UNLINK instead of DEL to remove big keys asynchronously"
+          ],
+          "command": "git checkout topic/level-7/distributed-caching-with-redis",
+          "nextPartTeaser": "Full roadmap + hands-on labs at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered distributed caching with Redis. Switch to the Level 7 branch in the JavaHub repo to run the Lettuce labs and verified Spring Boot integration tests yourself.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
