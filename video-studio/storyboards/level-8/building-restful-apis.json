@@ -1,0 +1,485 @@
+{
+  "chapterId": "level-8/building-restful-apis",
+  "level": "level-8",
+  "levelLabel": "Level 8",
+  "slug": "building-restful-apis",
+  "chapterTitle": "Building RESTful APIs",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-8/building-restful-apis",
+  "branchName": "topic/level-8/building-restful-apis",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-rest-maturity",
+      "partTitle": "Stop Treating HTTP as a Dumb Pipe",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "REST API Design • Part 1 of 4",
+          "headline": "Is your API returning 200 OK for errors?",
+          "highlightWord": "200 OK",
+          "subline": "Treating HTTP like a dumb pipe kills observability and breaks your cache.",
+          "narration": "If your API returns 200 OK for a NullPointerException, your monitoring dashboards stay green while your service is actually burning. Let's fix your API semantics.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Richardson Maturity Model",
+          "subtitle": "From RPC tunnels to true REST",
+          "nodes": [
+            {
+              "label": "Level 0",
+              "detail": "RPC Tunneling: Single URI, POST only",
+              "tag": "Legacy",
+              "accent": "sky"
+            },
+            {
+              "label": "Level 1",
+              "detail": "Resources: Unique URIs per entity",
+              "tag": "Organized",
+              "accent": "amber"
+            },
+            {
+              "label": "Level 2",
+              "detail": "Verbs/Codes: GET, POST, PUT, 2xx/4xx",
+              "tag": "Standard",
+              "accent": "emerald"
+            },
+            {
+              "label": "Level 3",
+              "detail": "HATEOAS: Hypermedia links in response",
+              "tag": "Advanced",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Most production APIs land at Level 2. We use HTTP verbs to signal intent and status codes to signal outcomes. Level 3 adds hypermedia links, but for most teams, Level 2 plus OpenAPI is the sweet spot.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-compare",
+          "kind": "compare",
+          "title": "Bad vs. Good API Design",
+          "top": {
+            "label": "RPC Style",
+            "badge": "Bad",
+            "tone": "bad",
+            "code": "POST /api/service\n{\"action\": \"cancelOrder\"}",
+            "points": [
+              "Hides intent",
+              "Breaks caching"
+            ]
+          },
+          "bottom": {
+            "label": "RESTful",
+            "badge": "Good",
+            "tone": "good",
+            "code": "DELETE /api/v1/orders/123",
+            "points": [
+              "Clear intent",
+              "Standard status"
+            ]
+          },
+          "narration": "Stop tunneling actions through a single POST endpoint. Use the HTTP method that matches the operation. DELETE for removal, GET for reads, and POST for creation. It makes your API predictable for everyone.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-code-verbs",
+          "kind": "code-spotlight",
+          "title": "Mapping HTTP Semantics",
+          "filename": "OrderController.java",
+          "code": "@PostMapping\npublic ResponseEntity<Order> create(...) { ... }\n\n@DeleteMapping(\"/{id}\")\npublic ResponseEntity<Void> cancel(...) { ... }",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "201 Created",
+              "explanation": "Always return the location header for new resources.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "204 No Content",
+              "explanation": "Signals successful deletion without sending an empty body.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Return 201 Created with a Location header when creating resources. For deletions, 204 No Content is the standard. It keeps your response payloads clean and your clients happy.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Use HTTP verbs correctly",
+            "Target Level 2 maturity",
+            "201 for POST, 204 for DELETE"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How DispatcherServlet actually routes your traffic →",
+          "narration": "Level 2 is your baseline. In Part 2, we trace the request pipeline through the DispatcherServlet to see how Spring finds your controller methods.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-spring-pipeline",
+      "partTitle": "Inside the Spring Web MVC Pipeline",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Spring Internals • Part 2 of 4",
+          "headline": "How does Spring find your controller?",
+          "highlightWord": "find your controller",
+          "subline": "It isn't magic. It's a highly orchestrated pipeline starting at the DispatcherServlet.",
+          "narration": "Every request hits the DispatcherServlet. But how does it map that URL to your specific Java method? It's a multi-step journey through handlers and adapters.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Request Lifecycle",
+          "subtitle": "From Servlet Container to Controller",
+          "nodes": [
+            {
+              "label": "DispatcherServlet",
+              "detail": "The central Front Controller",
+              "tag": "Entry",
+              "accent": "sky"
+            },
+            {
+              "label": "HandlerMapping",
+              "detail": "Matches URL to @RequestMapping",
+              "tag": "Lookup",
+              "accent": "amber"
+            },
+            {
+              "label": "HandlerAdapter",
+              "detail": "Invokes the controller method",
+              "tag": "Execution",
+              "accent": "purple"
+            },
+            {
+              "label": "MessageConverter",
+              "detail": "Serializes JSON via Jackson",
+              "tag": "Response",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The DispatcherServlet hands off to a HandlerMapping to find your method. Then, the HandlerAdapter resolves your arguments and invokes your code. Finally, a MessageConverter turns your object into JSON.",
+          "durationSec": 15,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-mapping",
+          "kind": "code-spotlight",
+          "title": "The Mapping Engine",
+          "filename": "OrderController.java",
+          "code": "@RestController\n@RequestMapping(\"/api/v1/orders\")\npublic class OrderController {\n    @GetMapping(\"/{id}\")\n    public Order get(@PathVariable UUID id) {\n        return service.get(id);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@RestController",
+              "explanation": "Combines @Controller and @ResponseBody.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "@GetMapping",
+              "explanation": "Registered by RequestMappingHandlerMapping at startup.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "At startup, Spring scans your controllers and builds a registry of paths. When a request hits, the HandlerMapping finds the exact method to run, ensuring your path variables and query params are correctly injected.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Tracing the Pipeline",
+          "caption": "What happens when things go wrong?",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Spring MVC logs the resolution chain"
+            },
+            {
+              "kind": "output",
+              "text": "Mapped to OrderController#get(UUID)"
+            },
+            {
+              "kind": "output",
+              "text": "Resolving @PathVariable 'id'"
+            },
+            {
+              "kind": "success",
+              "text": "Writing response via MappingJackson2HttpMessageConverter"
+            }
+          ],
+          "narration": "If you ever get stuck, set your logging to DEBUG. You'll see exactly which HandlerMapping matched your request and which converter was used to serialize your response body.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "DispatcherServlet is the front controller",
+            "HandlerMapping builds the registry",
+            "MessageConverters handle JSON"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Why exposing JPA entities is a security nightmare →",
+          "narration": "You know the pipeline. In Part 3, we stop exposing JPA entities in our controllers and build immutable DTO records to prevent mass-assignment bugs.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-dtos-and-validation",
+      "partTitle": "Stop Exposing JPA Entities",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Security & DTOs • Part 3 of 4",
+          "headline": "Are you leaking your database schema?",
+          "highlightWord": "leaking schema",
+          "subline": "Exposing JPA entities directly in your API is a massive security and stability risk.",
+          "narration": "Exposing JPA entities directly in your controller is a recipe for disaster. Mass assignment, serialization loops, and tight coupling—let's fix this with immutable records.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Entity vs. DTO Pattern",
+          "top": {
+            "label": "Direct Entity",
+            "badge": "Unsafe",
+            "tone": "bad",
+            "code": "public User get(@PathVariable Long id) {\n    return repo.findById(id);\n}",
+            "points": [
+              "Leaks internal fields",
+              "Risk of mass assignment"
+            ]
+          },
+          "bottom": {
+            "label": "Record DTO",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "public record UserDTO(String name) {}\npublic UserDTO get(...) { ... }",
+            "points": [
+              "Explicit allowlist",
+              "Immutable"
+            ]
+          },
+          "narration": "Never return your JPA entity. Use a Java Record as a DTO. It acts as an allowlist, protecting your internal fields like password hashes or audit columns from being serialized to the client.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-validation",
+          "kind": "code-spotlight",
+          "title": "Jakarta Validation",
+          "filename": "CreateOrderRequest.java",
+          "code": "public record CreateOrderRequest(\n    @NotBlank String customerId,\n    @Positive int quantity\n) {}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "@NotBlank",
+              "explanation": "Ensures string is not null or empty.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "@Positive",
+              "explanation": "Ensures quantity is greater than zero.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use Jakarta Validation annotations on your records. Spring automatically triggers these when you add @Valid to your controller method. It's the cleanest way to enforce input constraints.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-term-validation",
+          "kind": "terminal",
+          "title": "Validation in Action",
+          "caption": "Catching invalid input early",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "POST /api/v1/orders"
+            },
+            {
+              "kind": "output",
+              "text": "{\"customerId\": \"\", \"quantity\": -5}"
+            },
+            {
+              "kind": "error",
+              "text": "400 Bad Request"
+            },
+            {
+              "kind": "output",
+              "text": "Field 'quantity' must be positive"
+            }
+          ],
+          "narration": "When validation fails, Spring throws a MethodArgumentNotValidException. We catch this globally to return a clean, structured error message to the client, keeping our controller logic thin.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Use Records for DTOs",
+            "Never expose JPA entities",
+            "Use @Valid for input safety"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Standardizing errors with RFC 9457 ProblemDetail →",
+          "narration": "DTOs and validation are non-negotiable. In Part 4, we master global exception handling using RFC 9457 to standardize error responses across your entire microservice architecture.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-global-exceptions",
+      "partTitle": "Standardizing Errors with ProblemDetail",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Global Exceptions • Part 4 of 4",
+          "headline": "Stop inventing custom error formats.",
+          "highlightWord": "custom error",
+          "subline": "RFC 9457 is the industry standard for HTTP error payloads.",
+          "narration": "Stop inventing your own error JSON. Use ProblemDetail. It's the RFC 9457 standard, built into Spring, and it makes your API errors machine-readable for every client.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-advice",
+          "kind": "code-spotlight",
+          "title": "GlobalExceptionHandler",
+          "filename": "GlobalExceptionHandler.java",
+          "code": "@RestControllerAdvice\npublic class GlobalExceptionHandler {\n    @ExceptionHandler(OrderNotFound.class)\n    public ProblemDetail handle(OrderNotFound ex) {\n        return ProblemDetail.forStatusAndDetail(404, ex.getMessage());\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@RestControllerAdvice",
+              "explanation": "Intercepts exceptions from all controllers.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "ProblemDetail",
+              "explanation": "Standardized RFC 9457 error response.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Use @RestControllerAdvice to centralize your error handling. It keeps your controllers clean and ensures every exception returns the same structured ProblemDetail format.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-compare",
+          "kind": "compare",
+          "title": "Legacy vs. RFC 9457",
+          "top": {
+            "label": "Custom Error",
+            "badge": "Fragile",
+            "tone": "bad",
+            "code": "{\"error\": \"Not found\"}",
+            "points": [
+              "Ad-hoc format",
+              "Hard to parse"
+            ]
+          },
+          "bottom": {
+            "label": "ProblemDetail",
+            "badge": "Standard",
+            "tone": "good",
+            "code": "{\"type\": \"...\", \"title\": \"Not Found\", \"status\": 404}",
+            "points": [
+              "RFC 9457 compliant",
+              "Machine readable"
+            ]
+          },
+          "narration": "ProblemDetail is the standard. It includes status, title, and detail fields by default. It's what modern clients expect and what your infrastructure needs to correctly route and log errors.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-term-config",
+          "kind": "terminal",
+          "title": "Enable ProblemDetail",
+          "caption": "One line in application.properties",
+          "lines": [
+            {
+              "kind": "comment",
+              "text": "# Enable RFC 9457 for all MVC exceptions"
+            },
+            {
+              "kind": "command",
+              "text": "spring.mvc.problemdetails.enabled=true"
+            },
+            {
+              "kind": "success",
+              "text": "Standardized errors active!"
+            }
+          ],
+          "narration": "Enable it in your properties file, and Spring will automatically convert built-in exceptions like 404s and 400s into RFC 9457 format. It's the easiest win for API quality.",
+          "durationSec": 9,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use @RestControllerAdvice",
+            "Adopt ProblemDetail (RFC 9457)",
+            "Standardize error payloads"
+          ],
+          "command": "git checkout topic/level-8/building-restful-apis",
+          "nextPartTeaser": "Master the full REST roadmap at the link below.",
+          "narration": "You've mastered RESTful API design in Java. Check out the lab on the roadmap URL and run the code to see these patterns in action. Keep building.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
