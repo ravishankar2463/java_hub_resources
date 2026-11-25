@@ -1,0 +1,480 @@
+{
+  "chapterId": "level-1/the-static-keyword",
+  "level": "level-1",
+  "levelLabel": "Level 1",
+  "slug": "the-static-keyword",
+  "chapterTitle": "The Static Keyword",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-1/the-static-keyword",
+  "branchName": "topic/level-1/the-static-keyword",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-memory-and-leaks",
+      "partTitle": "Static Memory: Heap vs Metaspace",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "The Static Keyword • Part 1 of 4",
+          "headline": "Static variables do not reside in Metaspace.",
+          "highlightWord": "do not reside",
+          "subline": "Stop repeating the myth. Here is where your static fields actually sit.",
+          "narration": "You have heard static variables sit in Metaspace. That is wrong. In modern HotSpot, class metadata lives in Metaspace, but the actual static field values reside on the Java Heap.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Where Static Data Resides",
+          "subtitle": "Metaspace vs. Heap",
+          "nodes": [
+            {
+              "label": "Metaspace",
+              "detail": "Stores InstanceKlass, bytecode, and method tables.",
+              "tag": "Native",
+              "accent": "sky"
+            },
+            {
+              "label": "Java Heap",
+              "detail": "Stores the java.lang.Class mirror object.",
+              "tag": "GC Managed",
+              "accent": "amber"
+            },
+            {
+              "label": "Static Fields",
+              "detail": "Stored inside the Class mirror object on the Heap.",
+              "tag": "Data",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Metaspace holds the class structure, but the static fields themselves reside inside the java dot lang dot Class mirror object on the Heap. This makes them permanent GC roots.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-leak",
+          "kind": "code-spotlight",
+          "title": "The Static Memory Leak",
+          "filename": "NaiveCache.java",
+          "code": "public class NaiveCache {\n    // Static fields are GC roots!\n    private static final Map<String, byte[]> CACHE = new HashMap<>();\n\n    public static void put(String key, byte[] val) {\n        CACHE.put(key, val);\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3
+              ],
+              "badge": "GC Root",
+              "explanation": "Because it is static, the ClassLoader keeps this map alive forever.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "Leak Risk",
+              "explanation": "Unbounded static collections will eventually trigger OutOfMemoryError.",
+              "accent": "red"
+            }
+          ],
+          "narration": "Because static fields are GC roots, they stay alive as long as the ClassLoader exists. An unbounded static map is a classic recipe for a memory leak.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Access Patterns",
+          "top": {
+            "label": "Bad Practice",
+            "badge": "Instance Access",
+            "tone": "bad",
+            "code": "ServerNode node = null;\nnode.getCreatedCount();",
+            "points": [
+              "Confusing to readers",
+              "Hides that it is a static call"
+            ]
+          },
+          "bottom": {
+            "label": "Best Practice",
+            "badge": "Class Access",
+            "tone": "good",
+            "code": "ServerNode.getCreatedCount();",
+            "points": [
+              "Explicit and clear",
+              "No object required"
+            ]
+          },
+          "narration": "Never access static members through an object instance. It compiles, but it is misleading. Always use the class name to signal that no instance is involved.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Summary",
+          "takeaways": [
+            "Static fields reside on the Heap",
+            "Static fields are GC roots",
+            "Always call via ClassName"
+          ],
+          "nextPartTeaser": "Up Next: Why static methods cannot override →",
+          "narration": "Static fields are powerful but dangerous. In Part 2, we look at why static methods do not support polymorphism and how to build clean utility classes.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-static-methods-and-hiding",
+      "partTitle": "Static Methods & Method Hiding",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "The Static Keyword • Part 2 of 4",
+          "headline": "You cannot override a static method.",
+          "highlightWord": "cannot override",
+          "subline": "Attempting to do so triggers Method Hiding—a silent logic trap.",
+          "narration": "If you try to override a static method, the compiler will not stop you, but you will be hiding it instead. This creates massive bugs in polymorphic code.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-hiding",
+          "kind": "code-spotlight",
+          "title": "Method Hiding vs Overriding",
+          "filename": "HidingDemo.java",
+          "code": "class Base { \n    public static void log() { System.out.println(\"Base\"); }\n}\nclass Child extends Base {\n    public static void log() { System.out.println(\"Child\"); }\n}\n// Usage:\nBase b = new Child();\nb.log(); // Prints: Base",
+          "steps": [
+            {
+              "lines": [
+                2,
+                5
+              ],
+              "badge": "Hiding",
+              "explanation": "Static methods use invokestatic, which binds at compile time.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                8
+              ],
+              "badge": "Result",
+              "explanation": "It prints Base because the reference type is Base.",
+              "accent": "red"
+            }
+          ],
+          "narration": "Because static methods use invokestatic, they bind to the declared reference type, not the runtime object. This is why you should never treat them like instance methods.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-code-utility",
+          "kind": "code-spotlight",
+          "title": "The Utility Class Pattern",
+          "filename": "NumberUtils.java",
+          "code": "public final class NumberUtils {\n    private NumberUtils() {\n        throw new AssertionError();\n    }\n    public static long clamp(long val) { ... }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "final",
+              "explanation": "Prevents inheritance entirely.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                2,
+                4
+              ],
+              "badge": "Private Ctor",
+              "explanation": "Prevents accidental instantiation.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For pure utility classes, make the class final and add a private constructor that throws an error. This enforces the static-only design pattern.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-terminal",
+          "kind": "terminal",
+          "title": "Bytecode Dispatch",
+          "caption": "Static vs Instance calls",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "javap -c MyClass"
+            },
+            {
+              "kind": "output",
+              "text": "invokestatic  #2 // Static method"
+            },
+            {
+              "kind": "output",
+              "text": "invokevirtual #3 // Instance method"
+            }
+          ],
+          "narration": "Check the bytecode. invokestatic is a direct jump to the class method. invokevirtual performs a lookup based on the object's runtime class.",
+          "durationSec": 8,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Summary",
+          "takeaways": [
+            "Static methods are hidden, not overridden",
+            "Binding happens at compile time",
+            "Use final + private ctor for utilities"
+          ],
+          "nextPartTeaser": "Up Next: The clinit deadlock trap →",
+          "narration": "Static methods are for pure logic, not polymorphism. In Part 3, we dive into static initialization blocks and how they can accidentally deadlock your JVM.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-static-init-deadlocks",
+      "partTitle": "Static Initializers & Deadlocks",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "The Static Keyword • Part 3 of 4",
+          "headline": "Your static block could deadlock your app.",
+          "highlightWord": "deadlock",
+          "subline": "The JVM locks classes during initialization. Here is the circular dependency trap.",
+          "narration": "Static blocks are thread-safe, but that safety comes with a price. If you have circular dependencies in your static initializers, you will deadlock the JVM.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Deadlock Sequence",
+          "subtitle": "Circular Dependency Trap",
+          "nodes": [
+            {
+              "label": "Thread 1",
+              "detail": "Initializing Class A",
+              "tag": "Locked A",
+              "accent": "amber"
+            },
+            {
+              "label": "Thread 2",
+              "detail": "Initializing Class B",
+              "tag": "Locked B",
+              "accent": "sky"
+            },
+            {
+              "label": "Deadlock",
+              "detail": "A needs B, B needs A",
+              "tag": "Blocked",
+              "accent": "red"
+            }
+          ],
+          "narration": "The JVM holds a lock while running the static initializer. If Class A waits for Class B, and B waits for A, you are stuck in a permanent deadlock.",
+          "durationSec": 11,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-init",
+          "kind": "code-spotlight",
+          "title": "Static Init Block",
+          "filename": "DbDefaults.java",
+          "code": "public class DbDefaults {\n    public static final Map<String, String> PROPS;\n    static {\n        // Runs once, thread-safe\n        PROPS = Map.of(\"port\", \"5432\");\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                3,
+                6
+              ],
+              "badge": "<clinit>",
+              "explanation": "The JVM compiles this into a special method called clinit.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Thread-Safe",
+              "explanation": "The JVM ensures this block runs at most once.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The JVM compiles static blocks into a clinit method. It is lazy and thread-safe, but keep the logic simple to avoid poisoning the class with errors.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-code-holder",
+          "kind": "code-spotlight",
+          "title": "Bill Pugh Singleton",
+          "filename": "Config.java",
+          "code": "public class Config {\n    private static class Holder {\n        static final Config INSTANCE = new Config();\n    }\n    public static Config get() { return Holder.INSTANCE; }\n}",
+          "steps": [
+            {
+              "lines": [
+                2,
+                4
+              ],
+              "badge": "Lazy",
+              "explanation": "Holder is only loaded when get() is called.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Use the Holder idiom for lazy singletons. It relies on the JVM's class initialization guarantees to provide thread safety without any explicit synchronization.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Summary",
+          "takeaways": [
+            "Static blocks are thread-safe",
+            "Avoid circular dependencies",
+            "Holder idiom for lazy singletons"
+          ],
+          "nextPartTeaser": "Up Next: Why main must be static →",
+          "narration": "Static blocks are powerful for one-time setup. In Part 4, we wrap up by explaining why the main method requires the static keyword.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-the-main-method",
+      "partTitle": "Why main() Must Be Static",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "The Static Keyword • Part 4 of 4",
+          "headline": "Why does main() have to be static?",
+          "highlightWord": "have to be",
+          "subline": "It is not just a convention. It solves a fundamental startup paradox.",
+          "narration": "Why is the main method static? Because when the JVM starts, no objects exist yet. If main were not static, the JVM would not know how to create your app.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Startup Paradox",
+          "subtitle": "Why static is mandatory",
+          "nodes": [
+            {
+              "label": "JVM Launch",
+              "detail": "Class is loaded, but no instances exist.",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Constructor?",
+              "detail": "Which one? What arguments?",
+              "tag": "Ambiguity",
+              "accent": "red"
+            },
+            {
+              "label": "Static Main",
+              "detail": "Invoked directly on the class.",
+              "tag": "Solution",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "If main were an instance method, the JVM would need to guess which constructor to call. Static main avoids this ambiguity entirely.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-main",
+          "kind": "code-spotlight",
+          "title": "The Signature Explained",
+          "filename": "App.java",
+          "code": "public static void main(String[] args) {\n    // Entry point\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "public",
+              "explanation": "Accessible by the JVM launcher.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "static",
+              "explanation": "No instance required to start.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                1
+              ],
+              "badge": "void",
+              "explanation": "JVM does not use the return value.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Public for access, static for startup, void because the JVM does not care about the return value. It is the perfect contract for an entry point.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Modern Entry Points",
+          "top": {
+            "label": "Classic Java",
+            "badge": "Standard",
+            "tone": "neutral",
+            "code": "public static void main(String[] args) { ... }",
+            "points": [
+              "Required for production",
+              "Explicit control"
+            ]
+          },
+          "bottom": {
+            "label": "Java 25 (JEP 512)",
+            "badge": "Compact",
+            "tone": "good",
+            "code": "void main() { ... }",
+            "points": [
+              "Great for scripts",
+              "Compiler wraps it"
+            ]
+          },
+          "narration": "Java 25 simplified this for scripts, but for production, the static main remains the standard. It is the backbone of every Java app.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Static main solves startup ambiguity",
+            "Static fields are Heap-based GC roots",
+            "Use static for pure utilities only"
+          ],
+          "command": "git checkout topic/level-1/the-static-keyword",
+          "nextPartTeaser": "Explore the full roadmap at the link below.",
+          "narration": "You have mastered the static keyword. Checkout the repo branch to run the labs and see these memory concepts in action. Stay sharp.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
