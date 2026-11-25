@@ -1,0 +1,468 @@
+{
+  "chapterId": "level-11/contract-testing-with-pact",
+  "level": "level-11",
+  "levelLabel": "Level 11",
+  "slug": "contract-testing-with-pact",
+  "chapterTitle": "Contract Testing with Pact",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-11/contract-testing-with-pact",
+  "branchName": "topic/level-11/contract-testing-with-pact",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-the-contract-gap",
+      "partTitle": "Why Unit Tests Fail Microservices",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Contract Testing • Part 1 of 4",
+          "headline": "Why do your unit tests pass while production breaks?",
+          "highlightWord": "production breaks",
+          "subline": "Handwritten mocks drift from reality. Here is why your microservice integration strategy is likely lying to you.",
+          "narration": "Your unit tests pass against a hardcoded mock. Then the provider team renames a field, and your production service crashes. This is mock drift. Let's fix it with Consumer-Driven Contract Testing.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-compare",
+          "kind": "compare",
+          "title": "Mocking vs. Contract Testing",
+          "top": {
+            "label": "Handwritten Mocks",
+            "badge": "Brittle",
+            "tone": "bad",
+            "code": "when(client.get()).thenReturn(mockResponse);",
+            "points": [
+              "Stale assumptions",
+              "Doesn't verify provider reality"
+            ]
+          },
+          "bottom": {
+            "label": "Pact Contract",
+            "badge": "Verified",
+            "tone": "good",
+            "code": "pact.uponReceiving(request)\n    .willRespondWith(response);",
+            "points": [
+              "Shared source of truth",
+              "Provider verifies against this"
+            ]
+          },
+          "narration": "Handwritten mocks are just guesses. Pact creates a shared contract file. The consumer records the expectation, and the provider replays that exact request against its live code to prove compatibility.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-flow",
+          "kind": "flow-diagram",
+          "title": "The Pact Lifecycle",
+          "subtitle": "Consumer defines, Provider verifies",
+          "nodes": [
+            {
+              "label": "Consumer Test",
+              "detail": "Writes JSON Pact file",
+              "tag": "Step 1",
+              "accent": "sky"
+            },
+            {
+              "label": "Pact Broker",
+              "detail": "Stores contract matrix",
+              "tag": "Step 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Provider Test",
+              "detail": "Replays against real API",
+              "tag": "Step 3",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The consumer generates a JSON pact file. It lands in the Pact Broker. The provider then downloads it and replays the request against its actual Spring Boot controller. If it fails, the build breaks.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b4-code-matchers",
+          "kind": "code-spotlight",
+          "title": "Using LambdaDsl for Flexibility",
+          "filename": "PactTest.java",
+          "code": "body -> body\n  .uuid(\"paymentId\", \"uuid-val\")\n  .stringMatcher(\"status\", \"AUTH|FAIL\", \"AUTH\")\n  .iso8601DateTime(\"processedAt\")",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Type matching",
+              "explanation": "Don't hardcode IDs. Match the format so the provider can return any valid UUID.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Enum safety",
+              "explanation": "Use regex to ensure the provider only returns allowed status strings.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Avoid hardcoding values. Use LambdaDsl matchers for UUIDs and dates. This keeps your contract flexible while still enforcing the exact structure your consumer code expects.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Pact eliminates mock drift",
+            "Contract = shared JSON artifact",
+            "Use matchers, not hardcoded values"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): How to verify the provider side →",
+          "narration": "That is the consumer side. In Part 2, we look at the provider's verification test and how it uses the @State annotation to manage database prerequisites.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-provider-verification",
+      "partTitle": "Provider Verification & State Management",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Provider Verification • Part 2 of 4",
+          "headline": "How do you test a provider that needs data?",
+          "highlightWord": "needs data",
+          "subline": "Pact's @State annotation is the secret sauce for seeding your database before verification.",
+          "narration": "Your provider API needs a database record to exist before it can return a 200. How do you handle that in a CI pipeline? Meet the @State annotation.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-state",
+          "kind": "code-spotlight",
+          "title": "Seeding State with @State",
+          "filename": "ProviderTest.java",
+          "code": "@State(value = \"Order exists\", action = SETUP)\nvoid setupOrder() {\n  repo.save(new Order(\"ord-101\"));\n}\n\n@State(value = \"Order exists\", action = TEARDOWN)\nvoid cleanup() {\n  repo.deleteAll();\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "SETUP",
+              "explanation": "Pact calls this before replaying the HTTP request. Seed your DB here.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                6
+              ],
+              "badge": "TEARDOWN",
+              "explanation": "Crucial! Clean up state so tests don't leak into each other.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The consumer defines the state name. The provider implements it. Use SETUP to seed your database via Testcontainers, and always use TEARDOWN to wipe it clean. No state leakage allowed.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "Publishing Results to Broker",
+          "caption": "Run this in your CI pipeline",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "mvn test -Dtest=PaymentProviderTest \\"
+            },
+            {
+              "kind": "command",
+              "text": "  -Dpact.verifier.publishResults=true \\"
+            },
+            {
+              "kind": "command",
+              "text": "  -Dpact.provider.version=$GIT_SHA"
+            }
+          ],
+          "narration": "Don't just run tests locally. Pass these JVM flags in your CI to publish verification results back to the Pact Broker. Now the Broker knows exactly which versions are compatible.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Pact vs. OpenAPI",
+          "top": {
+            "label": "OpenAPI",
+            "badge": "Provider-Driven",
+            "tone": "neutral",
+            "points": [
+              "Describes everything",
+              "Doesn't track consumer usage"
+            ]
+          },
+          "bottom": {
+            "label": "Pact",
+            "badge": "Consumer-Driven",
+            "tone": "good",
+            "points": [
+              "Tracks actual field usage",
+              "Safe to remove unused fields"
+            ]
+          },
+          "narration": "OpenAPI tells you what an API offers. Pact tells you what it actually needs. If a field isn't in a Pact contract, you can safely delete it without breaking anyone.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Provider Logic Locked",
+          "takeaways": [
+            "Use @State for DB seeding",
+            "Always implement TEARDOWN",
+            "Publish results via CI flags"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): Kafka and Async Contracts →",
+          "narration": "Provider verification is now automated. In Part 3, we move beyond HTTP and look at how to verify Kafka event schemas without a broker.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-async-contracts",
+      "partTitle": "Kafka & Message Contracts",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Async Contracts • Part 3 of 4",
+          "headline": "Can you contract test an event-driven system?",
+          "highlightWord": "event-driven",
+          "subline": "Kafka schemas break just as silently as REST APIs. Here is how to lock them down.",
+          "narration": "Kafka is just a pipe. If you rename a field in your JSON event, your downstream consumer dies. Pact handles this with Message Contracts, no Kafka broker required.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-code-provider",
+          "kind": "code-spotlight",
+          "title": "Verifying Kafka Producers",
+          "filename": "EventProvider.java",
+          "code": "@PactVerifyProvider(\"an OrderCreatedEvent\")\nMessageAndMetadata verifyEvent() {\n  var event = new OrderCreatedEvent(\"ord-1\");\n  String json = mapper.writeValueAsString(event);\n  return new MessageAndMetadata(json.getBytes(), headers);\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@PactVerifyProvider",
+              "explanation": "Pact calls this method to get the event payload for verification.",
+              "accent": "emerald"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Metadata",
+              "explanation": "Return bytes plus headers to simulate the real Kafka message structure.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "The provider uses @PactVerifyProvider. It returns the raw bytes and headers of your event. Pact validates this against the consumer's expected schema. No Kafka broker needed for the test.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Async Verification Flow",
+          "nodes": [
+            {
+              "label": "Consumer",
+              "detail": "Defines expected JSON schema",
+              "tag": "Expectation",
+              "accent": "sky"
+            },
+            {
+              "label": "Pact Broker",
+              "detail": "Stores message contract",
+              "tag": "Storage",
+              "accent": "amber"
+            },
+            {
+              "label": "Provider",
+              "detail": "Serializes actual POJO",
+              "tag": "Verification",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The consumer defines the schema. The provider serializes its real POJO. Pact compares the two. If your POJO changes and breaks the schema, the test fails before you even touch Kafka.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Sync vs. Async Contracts",
+          "top": {
+            "label": "HTTP (Sync)",
+            "badge": "Request/Response",
+            "tone": "neutral",
+            "points": [
+              "Status codes matter",
+              "Immediate feedback"
+            ]
+          },
+          "bottom": {
+            "label": "Kafka (Async)",
+            "badge": "Event Payload",
+            "tone": "good",
+            "points": [
+              "Focus on schema",
+              "Header validation"
+            ]
+          },
+          "narration": "HTTP contracts focus on status codes and paths. Message contracts focus purely on the payload schema and headers. Both prevent breaking changes in your distributed system.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Async Logic Locked",
+          "takeaways": [
+            "Use MessagePactBuilder for events",
+            "Verify POJOs, not brokers",
+            "Headers are part of the contract"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): CI/CD Gating with can-i-deploy →",
+          "narration": "Async testing is now part of your pipeline. In Part 4, we close the loop with the Pact Broker's can-i-deploy command to safely gate your production releases.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-ci-cd-gating",
+      "partTitle": "CI/CD Gating with Pact Broker",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "CI/CD Gating • Part 4 of 4",
+          "headline": "How do you prevent a bad deploy?",
+          "highlightWord": "bad deploy",
+          "subline": "The Pact Broker's compatibility matrix is the final gatekeeper for your microservices.",
+          "narration": "You have the contracts. Now, how do you stop a breaking change from hitting production? You need the Pact Broker's compatibility matrix.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-terminal",
+          "kind": "terminal",
+          "title": "The can-i-deploy Command",
+          "caption": "The most important command in your pipeline",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "pact-broker can-i-deploy \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --pacticipant payment-service \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --version $GIT_SHA \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --to-environment production"
+            }
+          ],
+          "narration": "Before you deploy, run this. It checks if your version is compatible with every consumer currently in production. If it fails, the pipeline stops. Zero breaking changes reach your users.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-flow",
+          "kind": "flow-diagram",
+          "title": "Deployment Gating",
+          "nodes": [
+            {
+              "label": "CI Pipeline",
+              "detail": "Runs can-i-deploy",
+              "tag": "Check",
+              "accent": "sky"
+            },
+            {
+              "label": "Pact Broker",
+              "detail": "Checks compatibility matrix",
+              "tag": "Decision",
+              "accent": "amber"
+            },
+            {
+              "label": "K8s Cluster",
+              "detail": "Deploys only on success",
+              "tag": "Deploy",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The Broker acts as a gatekeeper. It knows what is running in production. If your new version breaks a live consumer, the Broker returns exit code one, and your deploy is blocked.",
+          "durationSec": 13,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Recording Deployment",
+          "caption": "Update the Broker after rollout",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "pact-broker record-deployment \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --pacticipant payment-service \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --version $GIT_SHA \\"
+            },
+            {
+              "kind": "command",
+              "text": "  --environment production"
+            }
+          ],
+          "narration": "After a successful rollout, record the deployment. The Broker needs to know what is live to accurately gate future releases. This completes the feedback loop.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Pact Mastery Complete",
+          "takeaways": [
+            "can-i-deploy gates releases",
+            "record-deployment updates state",
+            "Broker is your source of truth"
+          ],
+          "command": "git checkout topic/level-11/contract-testing-with-pact",
+          "nextPartTeaser": "Full guide & lab at ravishankar2463.github.io/java_hub",
+          "narration": "You are now a contract testing expert. Checkout the branch below to run the lab and start protecting your services. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
