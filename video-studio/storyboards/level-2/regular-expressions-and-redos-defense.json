@@ -1,0 +1,545 @@
+{
+  "chapterId": "level-2/regular-expressions-and-redos-defense",
+  "level": "level-2",
+  "levelLabel": "Level 2",
+  "slug": "regular-expressions-and-redos-defense",
+  "chapterTitle": "Regular Expressions and ReDoS Defense",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-2/regular-expressions-and-redos-defense",
+  "branchName": "topic/level-2/regular-expressions-and-redos-defense",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-regex-engine-internals",
+      "partTitle": "How Java Regex Actually Works",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Regex Internals • Part 1 of 5",
+          "headline": "Why does a single regex line crash your server?",
+          "highlightWord": "crash your server",
+          "subline": "It isn't magic. It's the backtracking NFA engine hitting an exponential wall.",
+          "narration": "A single regex line can pin your CPU at 100 percent for hours. It isn't bad luck. It's the backtracking NFA engine hitting an exponential wall. Let's decode how Java handles patterns.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Backtracking NFA Engine",
+          "subtitle": "Depth-first search with checkpoints",
+          "nodes": [
+            {
+              "label": "Pattern Graph",
+              "detail": "Linked nodes of logic",
+              "tag": "Compiled",
+              "accent": "sky"
+            },
+            {
+              "label": "Backtrack Stack",
+              "detail": "Saves state for retries",
+              "tag": "Memory",
+              "accent": "amber"
+            },
+            {
+              "label": "Input Cursor",
+              "detail": "Matches character by character",
+              "tag": "Execution",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Java uses a backtracking NFA. It walks the pattern graph depth-first, pushing checkpoints onto a stack. If it hits a wall, it pops the stack, rewinds the cursor, and tries a different path.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-compile",
+          "kind": "code-spotlight",
+          "title": "Pattern vs. Matcher",
+          "filename": "RegexEngine.java",
+          "code": "private static final Pattern ID_PATTERN = \n    Pattern.compile(\"ORD-[0-9]{6}\");\n\npublic boolean isValid(String input) {\n    return ID_PATTERN.matcher(input).matches();\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2
+              ],
+              "badge": "Pattern (Immutable)",
+              "explanation": "Compiled once. Thread-safe. Keep as a static final constant.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "Matcher (Stateful)",
+              "explanation": "The cursor. Not thread-safe. Create one per request.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Pattern is your immutable, thread-safe blueprint. Compile it once. Matcher is the stateful cursor that actually does the work. Never share a Matcher across threads.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Matches vs. Find",
+          "top": {
+            "label": "matches()",
+            "badge": "Strict",
+            "tone": "neutral",
+            "code": "matcher.matches()",
+            "points": [
+              "Validates entire string",
+              "Implicitly anchored"
+            ]
+          },
+          "bottom": {
+            "label": "find()",
+            "badge": "Flexible",
+            "tone": "good",
+            "code": "while(matcher.find())",
+            "points": [
+              "Scans for substrings",
+              "Perfect for extraction"
+            ]
+          },
+          "narration": "Use matches for full validation, like an email check. Use find in a loop to extract multiple tokens. Picking the wrong one is a classic source of bugs.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Pattern = immutable blueprint",
+            "Matcher = stateful cursor",
+            "NFA engines backtrack to find matches"
+          ],
+          "nextPartTeaser": "Up Next: The ReDoS attack vector →",
+          "narration": "That is the foundation. In Part 2, we look at the catastrophic backtracking that knocks services offline.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-redos-catastrophic-backtracking",
+      "partTitle": "The ReDoS Attack Vector",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "ReDoS • Part 2 of 5",
+          "headline": "How 30 characters can hang your thread for hours.",
+          "highlightWord": "hang your thread",
+          "subline": "Nested quantifiers create exponential paths that kill performance.",
+          "narration": "How can 30 characters hang your thread for hours? It is called ReDoS. Nested quantifiers create exponential paths that force the engine to test every permutation before failing.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-vulnerable",
+          "kind": "code-spotlight",
+          "title": "The ReDoS Pattern",
+          "filename": "Vulnerable.java",
+          "code": "Pattern p = Pattern.compile(\"(x+x+)+y\");\n\n// Input: \"xxxxxxxxxxxxxxxxxxxxxxxxx!\"\n// The engine tries 2^N combinations!",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Nested Quantifiers",
+              "explanation": "The (x+x+)+ structure forces the engine to re-partition the same characters repeatedly.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "Look at this nested group. If the final character doesn't match, the engine tries every possible way to split those X's. With 50 characters, it would take years to finish.",
+          "durationSec": 12,
+          "sfx": "error"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "Complexity Growth",
+          "caption": "Input length vs. Backtracking paths",
+          "lines": [
+            {
+              "kind": "output",
+              "text": "Length 10: ~1,024 paths"
+            },
+            {
+              "kind": "output",
+              "text": "Length 30: ~1,000,000,000 paths"
+            },
+            {
+              "kind": "error",
+              "text": "Length 40: Thread Hangs"
+            }
+          ],
+          "narration": "The math is brutal. Every extra character doubles the runtime. This is why a simple validation regex can starve your entire application's thread pool.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-flow",
+          "kind": "flow-diagram",
+          "title": "Why it fails",
+          "subtitle": "Ambiguity causes explosion",
+          "nodes": [
+            {
+              "label": "Input",
+              "detail": "String with no match",
+              "tag": "Start",
+              "accent": "sky"
+            },
+            {
+              "label": "Backtrack",
+              "detail": "Tries all permutations",
+              "tag": "Explosion",
+              "accent": "amber"
+            },
+            {
+              "label": "Timeout",
+              "detail": "Service unavailable",
+              "tag": "Outage",
+              "accent": "red"
+            }
+          ],
+          "narration": "The engine is too smart for its own good. It tries to find a match by backtracking through every permutation, effectively performing a denial of service on itself.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Avoid nested quantifiers",
+            "Exponential growth kills threads",
+            "ReDoS is a real-world threat"
+          ],
+          "nextPartTeaser": "Up Next: Possessive quantifiers →",
+          "narration": "Now you see the danger. In Part 3, we stop the backtracking with possessive quantifiers and atomic groups.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-possessive-quantifiers",
+      "partTitle": "Stopping Backtracking",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Defense • Part 3 of 5",
+          "headline": "How to kill backtracking before it kills you.",
+          "highlightWord": "kill backtracking",
+          "subline": "Possessive quantifiers and atomic groups are your best defense.",
+          "narration": "How do you kill backtracking before it kills your app? You use possessive quantifiers. They tell the engine to never give back characters, forcing a fast fail.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-compare",
+          "kind": "compare",
+          "title": "Greedy vs. Possessive",
+          "top": {
+            "label": "Greedy (+)",
+            "badge": "Backtracks",
+            "tone": "bad",
+            "code": "a+b",
+            "points": [
+              "Gives back characters",
+              "Can cause ReDoS"
+            ]
+          },
+          "bottom": {
+            "label": "Possessive (++)",
+            "badge": "No Backtrack",
+            "tone": "good",
+            "code": "a++b",
+            "points": [
+              "Discards checkpoints",
+              "Fails fast"
+            ]
+          },
+          "narration": "Greedy quantifiers are polite; they give back characters if they need to. Possessive quantifiers are greedy and selfish. They keep what they take, preventing the engine from ever backtracking.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-atomic",
+          "kind": "code-spotlight",
+          "title": "Atomic Groups",
+          "filename": "Defense.java",
+          "code": "// Atomic group (?>...)\nPattern p = Pattern.compile(\"^(?>(a+))+b$\");",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "(?>...)",
+              "explanation": "Atomic groups lock in the match for the entire sub-expression.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Atomic groups are even more powerful. They lock in the match for an entire sub-expression. If the next part of the pattern fails, the engine gives up immediately.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-code-negated",
+          "kind": "code-spotlight",
+          "title": "The Negated Class Trick",
+          "filename": "Safe.java",
+          "code": "// Faster than reluctant quantifier\nPattern p = Pattern.compile(\"\\\"[^\\\"]*+\\\"\");",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "[^\\\"]*+",
+              "explanation": "Matches everything until a quote, then stops. No backtracking needed.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "Here is a pro tip: use negated character classes with possessive quantifiers. It is faster and clearer than reluctant quantifiers, and it is impossible to misinterpret.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Possessive quantifiers (++) stop backtracking",
+            "Atomic groups (?>) lock sub-expressions",
+            "Negated classes are faster"
+          ],
+          "nextPartTeaser": "Up Next: Production guardrails →",
+          "narration": "You now have the tools to write safe regex. In Part 4, we add runtime guardrails for production.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-production-guardrails",
+      "partTitle": "Production Guardrails",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Guardrails • Part 4 of 5",
+          "headline": "Don't trust user input in your regex.",
+          "highlightWord": "Don't trust",
+          "subline": "Add length limits and timeout guards to every regex call.",
+          "narration": "Never trust user input in a regex. Even a safe pattern can be exploited if the input is massive. Add length limits and timeout guards to every single call.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-code-limit",
+          "kind": "code-spotlight",
+          "title": "Input Length Guard",
+          "filename": "Guard.java",
+          "code": "if (input == null || input.length() > 256) {\n    return false;\n}\nreturn PATTERN.matcher(input).matches();",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Length Check",
+              "explanation": "Always validate input size before passing it to the engine.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "This is the cheapest performance fix. If your input cannot exceed 256 characters, check it. A polynomial regex on a small string is harmless.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b3-code-timeout",
+          "kind": "code-spotlight",
+          "title": "Interruptible Matcher",
+          "filename": "Watchdog.java",
+          "code": "if ((++accessCount & 1023) == 0) {\n    if (System.nanoTime() > deadline) {\n        throw new RegexTimeoutException();\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "Watchdog",
+              "explanation": "Check the clock every 1024 accesses to prevent infinite loops.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "For complex patterns, wrap the input in an InterruptibleCharSequence. Check the clock every 1024 accesses. If it exceeds your deadline, throw an exception and kill the match.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Standard vs. Linear Engine",
+          "top": {
+            "label": "java.util.regex",
+            "badge": "Backtracking",
+            "tone": "neutral",
+            "code": "Pattern.compile()",
+            "points": [
+              "Supports backreferences",
+              "Risk of ReDoS"
+            ]
+          },
+          "bottom": {
+            "label": "com.google.re2j",
+            "badge": "Linear Time",
+            "tone": "good",
+            "code": "RE2.compile()",
+            "points": [
+              "Guaranteed O(N) time",
+              "No backreferences"
+            ]
+          },
+          "narration": "If you let users provide their own regexes, use re2j. It guarantees linear time execution. You lose backreferences, but you gain immunity to ReDoS.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Part 4 Locked In",
+          "takeaways": [
+            "Check input length first",
+            "Use timeout guards for complex patterns",
+            "Use re2j for user-supplied regex"
+          ],
+          "nextPartTeaser": "Up Next: Readable Regexes →",
+          "narration": "Your service is now hardened. In Part 5, we use Text Blocks to make your regexes actually readable.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 5,
+      "partSlug": "part-5-readability-and-caching",
+      "partTitle": "Readability & Caching",
+      "beats": [
+        {
+          "id": "p5-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Readability • Part 5 of 5",
+          "headline": "Stop writing regexes that look like line noise.",
+          "highlightWord": "line noise",
+          "subline": "Use Text Blocks and comments to make your patterns maintainable.",
+          "narration": "Stop writing regexes that look like line noise. Use Java Text Blocks and comments. It makes your code maintainable and much easier to review.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p5-b2-code-readable",
+          "kind": "code-spotlight",
+          "title": "Readable Regex",
+          "filename": "SemVer.java",
+          "code": "Pattern.compile(\"\"\"\n    ^ (?<major>\\d+) \\.\n      (?<minor>\\d+) $\n    \"\"\", Pattern.COMMENTS);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                3
+              ],
+              "badge": "Text Blocks",
+              "explanation": "Multi-line strings make complex patterns readable.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Pattern.COMMENTS",
+              "explanation": "Allows whitespace and comments inside the regex.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use triple quotes for the pattern and enable Pattern.COMMENTS. You can now use whitespace and comments to explain exactly what each part of your regex is doing.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b3-code-cache",
+          "kind": "code-spotlight",
+          "title": "Bounded Pattern Cache",
+          "filename": "Cache.java",
+          "code": "private final Map<String, Pattern> cache = \n    Caffeine.newBuilder()\n            .maximumSize(256)\n            .build();",
+          "steps": [
+            {
+              "lines": [
+                2,
+                3
+              ],
+              "badge": "Bounded Cache",
+              "explanation": "Prevents memory leaks from dynamic regex compilation.",
+              "accent": "amber"
+            }
+          ],
+          "narration": "If you must compile dynamic regexes, use a bounded cache like Caffeine. Never use an unbounded map, or you will leak memory when users submit unique patterns.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p5-b4-terminal",
+          "kind": "terminal",
+          "title": "Performance Checklist",
+          "caption": "Final Regex Optimization",
+          "lines": [
+            {
+              "kind": "success",
+              "text": "1. Static final for constants"
+            },
+            {
+              "kind": "success",
+              "text": "2. Bounded cache for dynamic"
+            },
+            {
+              "kind": "success",
+              "text": "3. Length checks on input"
+            },
+            {
+              "kind": "success",
+              "text": "4. Possessive quantifiers"
+            }
+          ],
+          "narration": "Follow this checklist. Static constants, bounded caches, length limits, and possessive quantifiers. Your regexes will be fast, safe, and readable.",
+          "durationSec": 10,
+          "sfx": "success"
+        },
+        {
+          "id": "p5-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Use Text Blocks for readability",
+            "Cache dynamic patterns with bounds",
+            "git checkout topic/level-2/regular-expressions-and-redos-defense"
+          ],
+          "command": "git checkout topic/level-2/regular-expressions-and-redos-defense",
+          "nextPartTeaser": "Full guide at ravishankar2463.github.io/java_hub",
+          "narration": "You have mastered regex defense. Checkout the branch for the full lab and read the guide at the link below.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
