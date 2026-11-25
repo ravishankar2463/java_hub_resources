@@ -1,0 +1,479 @@
+{
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-classloader-lifecycle",
+      "partTitle": "How Java Loads Classes",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Internals • Part 1 of 4",
+          "headline": "Why does Java load classes lazily?",
+          "highlightWord": "lazily",
+          "subline": "It isn't just for speed. It's a security requirement for the entire runtime.",
+          "narration": "Java doesn't load every class at startup. It uses a lazy, hierarchical loading system. If you've ever wondered why your app crashes with a LinkageError, it's usually because this delegation model got tangled.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The ClassLoader Hierarchy",
+          "subtitle": "Parent Delegation ensures security",
+          "nodes": [
+            {
+              "label": "Bootstrap",
+              "detail": "Native C++, loads java.base modules",
+              "tag": "Root",
+              "accent": "sky"
+            },
+            {
+              "label": "Platform",
+              "detail": "Loads standard platform modules",
+              "tag": "Layer 2",
+              "accent": "amber"
+            },
+            {
+              "label": "Application",
+              "detail": "Loads your JARs and classpath",
+              "tag": "User",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The hierarchy is strict. When a class is requested, the loader delegates upward to the Bootstrap loader first. This prevents third-party code from injecting fake versions of core JDK classes like String.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-loader",
+          "kind": "code-spotlight",
+          "title": "Inspecting the Chain",
+          "filename": "ClassLoaderChain.java",
+          "code": "ClassLoader app = ClassLoaderChain.class.getClassLoader();\nClassLoader platform = app.getParent();\nClassLoader bootstrap = platform.getParent();\n\nSystem.out.println(\"App: \" + app);\nSystem.out.println(\"Platform: \" + platform);\nSystem.out.println(\"Bootstrap: \" + bootstrap);",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Delegation",
+              "explanation": "getParent() traverses the hierarchy. Bootstrap returns null because it is implemented in native C++.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                5,
+                6,
+                7
+              ],
+              "badge": "Identity",
+              "explanation": "A class's identity is the pair: (Fully Qualified Name, Defining ClassLoader).",
+              "accent": "amber"
+            }
+          ],
+          "narration": "You can inspect this chain yourself. Remember: a class's identity is defined by its name AND its ClassLoader. If two loaders define the same class, they are completely incompatible types.",
+          "durationSec": 14,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Linking: Preparation vs. Init",
+          "top": {
+            "label": "Preparation",
+            "badge": "Linking Phase",
+            "tone": "neutral",
+            "code": "public static int value = 42;",
+            "points": [
+              "Allocates memory for static fields",
+              "Sets fields to default zero values (0, null)"
+            ]
+          },
+          "bottom": {
+            "label": "Initialization",
+            "badge": "Execution Phase",
+            "tone": "good",
+            "code": "static { value = 42; }",
+            "points": [
+              "Runs <clinit> method",
+              "Assigns actual values defined in code"
+            ]
+          },
+          "narration": "Linking is subtle. During Preparation, the JVM sets static fields to zero. The actual assignment to 42 only happens later during Initialization, when the class is first actively used.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Locked In",
+          "takeaways": [
+            "Parent Delegation prevents class spoofing",
+            "Identity = (ClassName, ClassLoader)",
+            "Preparation sets zeros; Init runs logic"
+          ],
+          "nextPartTeaser": "Up Next (Part 2): Stack vs Heap vs Metaspace →",
+          "narration": "That's the loading phase. In Part 2, we map out the JVM memory areas, including why Metaspace replaced PermGen.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-runtime-memory",
+      "partTitle": "Stack, Heap, and Metaspace",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Internals • Part 2 of 4",
+          "headline": "Where do your variables actually reside?",
+          "highlightWord": "reside",
+          "subline": "The JVM isn't just one big blob of memory. It's a precise map of shared and private areas.",
+          "narration": "Stop guessing where your objects live. The JVM splits memory into thread-shared areas and thread-private stacks. Understanding this is the only way to debug StackOverflowErrors and memory leaks.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-flow",
+          "kind": "flow-diagram",
+          "title": "JVM Memory Layout",
+          "subtitle": "Shared vs. Thread-Private",
+          "nodes": [
+            {
+              "label": "Heap",
+              "detail": "Objects, Arrays, String Pool",
+              "tag": "Shared",
+              "accent": "emerald"
+            },
+            {
+              "label": "Metaspace",
+              "detail": "Class metadata, off-heap",
+              "tag": "Shared",
+              "accent": "sky"
+            },
+            {
+              "label": "JVM Stack",
+              "detail": "Local variables, method frames",
+              "tag": "Private",
+              "accent": "amber"
+            }
+          ],
+          "narration": "The Heap holds your objects. Metaspace stores class metadata in native memory—not the heap. Each thread gets its own private Stack for method frames, which is why recursion depth is limited.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b3-code-stack",
+          "kind": "code-spotlight",
+          "title": "Inside a Stack Frame",
+          "filename": "Frame.java",
+          "code": "public int add(int a, int b) {\n    int sum = a + b;\n    return sum;\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "LVT",
+              "explanation": "Local Variable Table holds 'this', 'a', 'b', and 'sum'.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Operand Stack",
+              "explanation": "LIFO workspace where bytecode pushes values to perform arithmetic.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Every method call pushes a Frame. Inside, the Local Variable Table holds your variables, while the Operand Stack acts as a LIFO workspace for calculations. It's a stack-based machine, not register-based.",
+          "durationSec": 13,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "PermGen vs. Metaspace",
+          "top": {
+            "label": "PermGen (Java 7)",
+            "badge": "Fixed Size",
+            "tone": "bad",
+            "code": "-XX:MaxPermSize=256m",
+            "points": [
+              "Contiguous with Heap",
+              "Hard to size, prone to OOM"
+            ]
+          },
+          "bottom": {
+            "label": "Metaspace (Java 8+)",
+            "badge": "Native Memory",
+            "tone": "good",
+            "code": "-XX:MaxMetaspaceSize=512m",
+            "points": [
+              "Expands dynamically",
+              "Uses OS RAM, safer"
+            ]
+          },
+          "narration": "Java 8 killed PermGen. Metaspace now lives in native memory. It grows dynamically, but you should still set a cap to prevent runaway native memory usage from killing your OS process.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Locked In",
+          "takeaways": [
+            "Heap = Objects; Metaspace = Metadata",
+            "Stack = Thread-private frames",
+            "Set MaxMetaspaceSize to prevent OOM"
+          ],
+          "nextPartTeaser": "Up Next (Part 3): JIT Compilation & Tiered Execution →",
+          "narration": "Memory management is clear. In Part 3, we look at the Execution Engine: how the JIT compiler turns your bytecode into lightning-fast native machine code.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-jit-compilation",
+      "partTitle": "Tiered JIT Compilation",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Internals • Part 3 of 4",
+          "headline": "Why is Java so fast?",
+          "highlightWord": "so fast",
+          "subline": "It's not just bytecode. It's the JIT compiler profiling your code while it runs.",
+          "narration": "Java starts as interpreted bytecode, but it doesn't stay that way. The JIT compiler watches your code, profiles the hot paths, and compiles them into native CPU instructions on the fly.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "Tiered Compilation Pipeline",
+          "subtitle": "From Interpreter to Native",
+          "nodes": [
+            {
+              "label": "Interpreter",
+              "detail": "Starts instantly, no delay",
+              "tag": "Tier 0",
+              "accent": "sky"
+            },
+            {
+              "label": "C1 Compiler",
+              "detail": "Fast, light optimizations",
+              "tag": "Tiers 1-3",
+              "accent": "amber"
+            },
+            {
+              "label": "C2 Compiler",
+              "detail": "Aggressive, profile-guided",
+              "tag": "Tier 4",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The JVM uses tiered compilation. Tier 0 interprets code. Tiers 1 to 3 use C1 for fast native code. Finally, Tier 4 uses C2 for aggressive, profile-guided optimizations based on real usage.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-opt",
+          "kind": "code-spotlight",
+          "title": "C2 Optimization: Inlining",
+          "filename": "Optimizer.java",
+          "code": "public int totalPrice(int base, int tax) {\n    return add(base, tax);\n}\nprivate int add(int x, int y) {\n    return x + y;\n}",
+          "steps": [
+            {
+              "lines": [
+                1,
+                2,
+                3
+              ],
+              "badge": "Inlining",
+              "explanation": "C2 copies the body of add() directly into totalPrice(), removing the method call overhead.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "C2 is brilliant at inlining. By pulling the logic of small methods directly into the caller, it eliminates call frames and opens the door for constant folding and dead-code elimination.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Escape Analysis",
+          "top": {
+            "label": "Standard Allocation",
+            "badge": "Heap",
+            "tone": "neutral",
+            "code": "Point p = new Point(x, y);",
+            "points": [
+              "Allocated on Heap",
+              "Creates GC pressure"
+            ]
+          },
+          "bottom": {
+            "label": "Scalar Replacement",
+            "badge": "Stack/Register",
+            "tone": "good",
+            "code": "int px = x; int py = y;",
+            "points": [
+              "No object created",
+              "Zero GC overhead"
+            ]
+          },
+          "narration": "If C2 proves an object doesn't escape the method, it performs scalar replacement. It tears the object apart and keeps fields in registers. No heap allocation, no GC. Pure speed.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Locked In",
+          "takeaways": [
+            "Tiered compilation balances startup vs speed",
+            "Inlining removes call overhead",
+            "Escape Analysis eliminates heap allocations"
+          ],
+          "nextPartTeaser": "Up Next (Part 4): Deoptimization & Safepoints →",
+          "narration": "JIT is the secret sauce. In Part 4, we cover what happens when those speculative optimizations go wrong and how the JVM safely deoptimizes code.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-deopt-safepoints",
+      "partTitle": "Deoptimization & Safepoints",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "JVM Internals • Part 4 of 4",
+          "headline": "What if the JIT compiler guesses wrong?",
+          "highlightWord": "guesses wrong",
+          "subline": "The JVM is speculative. It optimizes for the common case and handles the rare case by throwing it away.",
+          "narration": "The JIT compiler makes assumptions. If those assumptions are violated—like a new class being loaded—the JVM must perform a deoptimization. It's a complex dance that keeps your app running safely.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Deoptimization Cycle",
+          "subtitle": "Safepoints ensure consistency",
+          "nodes": [
+            {
+              "label": "Optimized Code",
+              "detail": "Speculative native machine code",
+              "tag": "Tier 4",
+              "accent": "emerald"
+            },
+            {
+              "label": "Safepoint",
+              "detail": "Pause point for thread sync",
+              "tag": "Sync",
+              "accent": "amber"
+            },
+            {
+              "label": "Interpreter",
+              "detail": "Fallback to safe execution",
+              "tag": "Tier 0",
+              "accent": "sky"
+            }
+          ],
+          "narration": "When a speculative optimization fails, the JVM reaches a safepoint. It halts the thread, discards the optimized code, and reverts to the interpreter. It's slow, but it's correct.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-term-print",
+          "kind": "terminal",
+          "title": "Monitoring Compilation",
+          "caption": "Watch the tiers in action",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "java -XX:+PrintCompilation MyApp"
+            },
+            {
+              "kind": "output",
+              "text": "  123  1  n  java.lang.String::hashCode (0 bytes)"
+            },
+            {
+              "kind": "output",
+              "text": "  125  3  com.app.Service::process (45 bytes)"
+            },
+            {
+              "kind": "output",
+              "text": "  130  4  com.app.Service::process (45 bytes) [HOT]"
+            }
+          ],
+          "narration": "Use the PrintCompilation flag to see the JVM promoting methods through tiers. You'll see methods move from Tier 1 to Tier 4 as they get hotter. It's the best way to visualize JIT behavior.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-compare",
+          "kind": "compare",
+          "title": "Speculation vs. Reality",
+          "top": {
+            "label": "Speculation",
+            "badge": "C2 Compiler",
+            "tone": "neutral",
+            "code": "if (processor instanceof Stripe)",
+            "points": [
+              "Assumes only one implementation",
+              "Inlines aggressively"
+            ]
+          },
+          "bottom": {
+            "label": "Deoptimization",
+            "badge": "Fallback",
+            "tone": "good",
+            "code": "if (processor instanceof Paypal)",
+            "points": [
+              "Guard check fails",
+              "Reverts to interpreter"
+            ]
+          },
+          "narration": "C2 assumes your code stays consistent. If you suddenly introduce a new implementation, the guard check fails. The JVM deoptimizes, updates its profile, and recompiles. It's adaptive, not static.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete!",
+          "takeaways": [
+            "Safepoints allow safe deoptimization",
+            "PrintCompilation tracks tier promotion",
+            "JVM is adaptive, not static"
+          ],
+          "command": "git checkout topic/level-3/jvm-architecture-internals",
+          "nextPartTeaser": "Full roadmap at ravishankar2463.github.io/java_hub",
+          "narration": "You've mastered the JVM internals. Checkout the branch below to explore the source code and run the labs. See you in the next level.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    }
+  ],
+  "chapterId": "level-3/jvm-architecture-internals",
+  "level": "level-3",
+  "levelLabel": "Level 3",
+  "slug": "jvm-architecture-internals",
+  "chapterTitle": "JVM Architecture Internals",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-3/jvm-architecture-internals",
+  "branchName": "topic/level-3/jvm-architecture-internals",
+  "voice": "af_heart",
+  "speed": 1.24
+}
