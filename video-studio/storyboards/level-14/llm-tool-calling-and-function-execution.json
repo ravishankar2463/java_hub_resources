@@ -1,0 +1,479 @@
+{
+  "chapterId": "level-14/llm-tool-calling-and-function-execution",
+  "level": "level-14",
+  "levelLabel": "Level 14",
+  "slug": "llm-tool-calling-and-function-execution",
+  "chapterTitle": "LLM Tool Calling and Function Execution",
+  "roadmapUrl": "https://ravishankar2463.github.io/java_hub/roadmap/level-14/llm-tool-calling-and-function-execution",
+  "branchName": "topic/level-14/llm-tool-calling-and-function-execution",
+  "voice": "af_heart",
+  "speed": 1.24,
+  "parts": [
+    {
+      "partNumber": 1,
+      "partSlug": "part-1-mechanics",
+      "partTitle": "How LLMs Execute Java Code",
+      "beats": [
+        {
+          "id": "p1-b1-hook",
+          "kind": "hook",
+          "eyebrow": "LLM Tooling • Part 1 of 4",
+          "headline": "Does the LLM actually run your Java code?",
+          "highlightWord": "run your Java",
+          "subline": "It never touches your JVM. Here is the JSON-schema handshake that makes it possible.",
+          "narration": "If you think the LLM executes your Java methods directly, you are wrong. It is a pure JSON-schema handshake. The model outputs a tool call, and your Spring service executes the logic.",
+          "durationSec": 9,
+          "sfx": "pop"
+        },
+        {
+          "id": "p1-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Tool-Calling Loop",
+          "subtitle": "Model requests, Java executes",
+          "nodes": [
+            {
+              "label": "LLM",
+              "detail": "Emits JSON tool_calls payload",
+              "tag": "Request",
+              "accent": "sky"
+            },
+            {
+              "label": "Spring AI",
+              "detail": "Invokes local Java method",
+              "tag": "Execution",
+              "accent": "amber"
+            },
+            {
+              "label": "Result",
+              "detail": "Serializes response back to LLM",
+              "tag": "Feedback",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "The model emits a tool call payload. Spring AI intercepts this, runs your Java method, and feeds the result back into the conversation history for the final synthesis.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p1-b3-code-annotation",
+          "kind": "code-spotlight",
+          "title": "Registering Tools",
+          "filename": "OrderTools.java",
+          "code": "@Tool(description = \"Look up order status\")\npublic OrderStatusResult getOrderStatus(\n    @ToolParam(description = \"ORD-XXXX\")\n    String orderId,\n    ToolContext toolContext) {\n    // Logic here\n}",
+          "steps": [
+            {
+              "lines": [
+                1
+              ],
+              "badge": "@Tool",
+              "explanation": "Registers the method as an LLM-accessible function.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "@ToolParam",
+              "explanation": "Provides the model with schema hints for arguments.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5
+              ],
+              "badge": "ToolContext",
+              "explanation": "Injected server-side; NEVER exposed to the model.",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Use @Tool and @ToolParam to expose methods. Crucially, ToolContext is injected server-side by Spring, keeping sensitive identity data hidden from the LLM's context window.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p1-b4-compare",
+          "kind": "compare",
+          "title": "Identity Security",
+          "top": {
+            "label": "Bad Pattern",
+            "badge": "Insecure",
+            "tone": "bad",
+            "code": "getOrder(String userId, String orderId)",
+            "points": [
+              "Model can spoof any userId",
+              "Prompt injection risk"
+            ]
+          },
+          "bottom": {
+            "label": "Secure Pattern",
+            "badge": "Safe",
+            "tone": "good",
+            "code": "getOrder(String orderId, ToolContext ctx)",
+            "points": [
+              "Identity from Auth token",
+              "Scoped to tenant/user"
+            ]
+          },
+          "narration": "Never let the model supply the userId. That is an open invitation for prompt injection. Always extract the identity from a secure ToolContext on the server side.",
+          "durationSec": 11,
+          "sfx": "error"
+        },
+        {
+          "id": "p1-b5-cta",
+          "kind": "cta",
+          "title": "Part 1 Done",
+          "takeaways": [
+            "Tool calling is a JSON-schema handshake",
+            "Use ToolContext for secure identity",
+            "Never trust model-provided IDs"
+          ],
+          "nextPartTeaser": "Up Next: Bounding iterations to prevent infinite loops →",
+          "narration": "That is the foundation. In Part 2, we stop runaway LLM loops with manual execution management.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 2,
+      "partSlug": "part-2-loop-control",
+      "partTitle": "Managing Tool Iterations",
+      "beats": [
+        {
+          "id": "p2-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Loop Control • Part 2 of 4",
+          "headline": "What if the model gets stuck in a loop?",
+          "highlightWord": "stuck in a loop",
+          "subline": "Unbounded tool calls will burn your tokens and crash your threads.",
+          "narration": "If an LLM keeps retrying broken arguments, it will burn tokens and stall your request threads. You need a hard iteration cap in production.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p2-b2-code-loop",
+          "kind": "code-spotlight",
+          "title": "Manual Execution Control",
+          "filename": "BoundedExecutor.java",
+          "code": "ToolCallingChatOptions options = ...\n    .internalToolExecutionEnabled(false)\n    .build();\n\nwhile (response.hasToolCalls()) {\n    if (iteration++ > MAX) throw new Exception();\n    result = manager.executeToolCalls(prompt, response);\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Manual Mode",
+              "explanation": "Disable auto-execution to take control of the loop.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                5,
+                6
+              ],
+              "badge": "Iteration Cap",
+              "explanation": "Hard limit prevents runaway token usage.",
+              "accent": "purple"
+            }
+          ],
+          "narration": "Set internal tool execution to false. Now, you drive the loop with a ToolCallingManager, allowing you to enforce a strict iteration cap and audit every single step.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b3-terminal",
+          "kind": "terminal",
+          "title": "Audit Logging",
+          "caption": "Trace every tool decision",
+          "lines": [
+            {
+              "kind": "info",
+              "text": "INFO: Executing tool=getOrderStatus, iter=1"
+            },
+            {
+              "kind": "info",
+              "text": "INFO: Executing tool=requestCancel, iter=2"
+            },
+            {
+              "kind": "warn",
+              "text": "WARN: Aborted loop after 5 iterations"
+            }
+          ],
+          "narration": "Structured logging is mandatory. Log the tool name, the principal, and the iteration count. If it hits your limit, kill the request and audit the failure.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p2-b4-compare",
+          "kind": "compare",
+          "title": "Auto vs Manual",
+          "top": {
+            "label": "Auto-Execution",
+            "badge": "Convenient",
+            "tone": "neutral",
+            "code": "internalToolExecutionEnabled(true)",
+            "points": [
+              "Good for simple lookups",
+              "Risk of infinite loops"
+            ]
+          },
+          "bottom": {
+            "label": "Manual-Execution",
+            "badge": "Enterprise",
+            "tone": "good",
+            "code": "internalToolExecutionEnabled(false)",
+            "points": [
+              "Deterministic limits",
+              "Full audit control"
+            ]
+          },
+          "narration": "Auto-execution is fine for quick prototypes. But for enterprise services, you need the deterministic control of manual execution.",
+          "durationSec": 10,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p2-b5-cta",
+          "kind": "cta",
+          "title": "Part 2 Done",
+          "takeaways": [
+            "Disable auto-execution for production",
+            "Use ToolCallingManager for loops",
+            "Always enforce a max iteration cap"
+          ],
+          "nextPartTeaser": "Up Next: The hidden danger of indirect prompt injection →",
+          "narration": "Now your loops are safe. In Part 3, we tackle the silent killer: indirect prompt injection.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 3,
+      "partSlug": "part-3-security",
+      "partTitle": "Securing Against Injection",
+      "beats": [
+        {
+          "id": "p3-b1-hook",
+          "kind": "hook",
+          "eyebrow": "Security • Part 3 of 4",
+          "headline": "Is your LLM reading a Trojan horse?",
+          "highlightWord": "Trojan horse",
+          "subline": "Indirect prompt injection hides commands in PDFs and emails.",
+          "narration": "An LLM cannot distinguish between user data and instructions. If it reads an email containing a hidden override command, it will execute it. This is indirect prompt injection.",
+          "durationSec": 9,
+          "sfx": "error"
+        },
+        {
+          "id": "p3-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Injection Vector",
+          "subtitle": "Data is not code",
+          "nodes": [
+            {
+              "label": "Untrusted Data",
+              "detail": "PDFs, emails, web pages",
+              "tag": "Source",
+              "accent": "amber"
+            },
+            {
+              "label": "LLM Context",
+              "detail": "Data mixed with instructions",
+              "tag": "Processing",
+              "accent": "purple"
+            },
+            {
+              "label": "Tool Boundary",
+              "detail": "Unauthorized action triggered",
+              "tag": "Breach",
+              "accent": "red"
+            }
+          ],
+          "narration": "The model reads a document, hits a hidden command, and triggers a tool call. Because the model is already authenticated, your backend treats the malicious call as legitimate.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p3-b3-code-validation",
+          "kind": "code-spotlight",
+          "title": "Hardened Validation",
+          "filename": "ToolSecurity.java",
+          "code": "public void requestCancel(String id, ToolContext ctx) {\n    validateInput(new CancelInput(id));\n    Order order = repo.findById(id);\n    if (!order.isOwner(ctx.userId())) {\n        throw new SecurityException(\"Access denied\");\n    }\n}",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Bean Validation",
+              "explanation": "Enforce strict schema constraints on all inputs.",
+              "accent": "sky"
+            },
+            {
+              "lines": [
+                4
+              ],
+              "badge": "Ownership Check",
+              "explanation": "Verify identity against the record, not the LLM.",
+              "accent": "red"
+            }
+          ],
+          "narration": "Validate every input using Jakarta Bean Validation. Then, re-verify ownership against the database. Never assume the LLM's arguments are safe.",
+          "durationSec": 12,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b4-compare",
+          "kind": "compare",
+          "title": "Tool Privileges",
+          "top": {
+            "label": "Global Tools",
+            "badge": "Risky",
+            "tone": "bad",
+            "code": "chatClient.tools(allTools)",
+            "points": [
+              "Read & Write mixed",
+              "High blast radius"
+            ]
+          },
+          "bottom": {
+            "label": "Scoped Tools",
+            "badge": "Secure",
+            "tone": "good",
+            "code": "chatClient.tools(readOnlyTools)",
+            "points": [
+              "Least privilege",
+              "Dynamic filtering"
+            ]
+          },
+          "narration": "Apply the principle of least privilege. Only register read-only tools when processing untrusted content. Never mix write-capable tools with external data ingestion.",
+          "durationSec": 11,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p3-b5-cta",
+          "kind": "cta",
+          "title": "Part 3 Done",
+          "takeaways": [
+            "Data is not code: treat all inputs as untrusted",
+            "Validate arguments with Jakarta Bean Validation",
+            "Use least-privilege tool registration"
+          ],
+          "nextPartTeaser": "Up Next: Human-in-the-loop for high-risk actions →",
+          "narration": "Security is a process, not a toggle. In Part 4, we gate high-risk mutations behind human approval.",
+          "durationSec": 9,
+          "sfx": "success"
+        }
+      ]
+    },
+    {
+      "partNumber": 4,
+      "partSlug": "part-4-human-in-the-loop",
+      "partTitle": "Human-in-the-Loop (HITL)",
+      "beats": [
+        {
+          "id": "p4-b1-hook",
+          "kind": "hook",
+          "eyebrow": "HITL • Part 4 of 4",
+          "headline": "Never let an LLM move money alone.",
+          "highlightWord": "move money",
+          "subline": "High-risk mutations require a cryptographic human gate.",
+          "narration": "For high-risk actions like refunds or transfers, do not execute the mutation inside the tool. Use a pending-approval pattern instead.",
+          "durationSec": 8,
+          "sfx": "pop"
+        },
+        {
+          "id": "p4-b2-flow",
+          "kind": "flow-diagram",
+          "title": "The Approval Gate",
+          "subtitle": "Safe mutations",
+          "nodes": [
+            {
+              "label": "LLM",
+              "detail": "Requests mutation",
+              "tag": "Trigger",
+              "accent": "amber"
+            },
+            {
+              "label": "Pending Record",
+              "detail": "Persist with crypto token",
+              "tag": "Gate",
+              "accent": "purple"
+            },
+            {
+              "label": "Human/System",
+              "detail": "Out-of-band confirmation",
+              "tag": "Action",
+              "accent": "emerald"
+            }
+          ],
+          "narration": "Persist a pending record with a unique token. The LLM returns a status to the user, and the actual mutation only triggers after an out-of-band human confirmation.",
+          "durationSec": 12,
+          "sfx": "whoosh"
+        },
+        {
+          "id": "p4-b3-code-hitl",
+          "kind": "code-spotlight",
+          "title": "Implementing HITL",
+          "filename": "ApprovalService.java",
+          "code": "if (order.isHighValue()) {\n    String id = approvalService.createPending(order);\n    return new Result(\"PENDING_APPROVAL\", id);\n}\norderRepository.markCancelled(order.getId());",
+          "steps": [
+            {
+              "lines": [
+                2
+              ],
+              "badge": "Pending State",
+              "explanation": "Create a secure record instead of executing.",
+              "accent": "amber"
+            },
+            {
+              "lines": [
+                3
+              ],
+              "badge": "Return Status",
+              "explanation": "Inform the model that human action is required.",
+              "accent": "sky"
+            }
+          ],
+          "narration": "If the value is high, create a pending record and return the status. This prevents the LLM from unilaterally executing high-risk business logic.",
+          "durationSec": 10,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b4-terminal",
+          "kind": "terminal",
+          "title": "Audit Trail",
+          "caption": "Finalizing the chapter",
+          "lines": [
+            {
+              "kind": "command",
+              "text": "git checkout topic/level-14/llm-tool-calling-and-function-execution"
+            },
+            {
+              "kind": "info",
+              "text": "Lab: Spring AI 1.0 GA Tooling"
+            },
+            {
+              "kind": "success",
+              "text": "Ready for deployment"
+            }
+          ],
+          "narration": "Check out the branch for the full labs. You now have the tools to build secure, enterprise-grade LLM agents.",
+          "durationSec": 8,
+          "sfx": "keyclick"
+        },
+        {
+          "id": "p4-b5-cta",
+          "kind": "cta",
+          "title": "Chapter Complete",
+          "takeaways": [
+            "Gate high-risk actions behind HITL",
+            "Return PENDING_APPROVAL status",
+            "Use out-of-band confirmation"
+          ],
+          "nextPartTeaser": "Full guide at https://ravishankar2463.github.io/java_hub/roadmap/level-14/llm-tool-calling-and-function-execution",
+          "narration": "You have mastered LLM tool calling. Head to the roadmap for the full implementation guide and JUnit 5 tests.",
+          "durationSec": 8,
+          "sfx": "success"
+        }
+      ]
+    }
+  ]
+}
